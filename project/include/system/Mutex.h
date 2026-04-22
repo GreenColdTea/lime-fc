@@ -1,6 +1,4 @@
-#ifndef LIME_SYSTEM_MUTEX_H
-#define LIME_SYSTEM_MUTEX_H
-
+#pragma once
 
 namespace lime {
 
@@ -13,9 +11,9 @@ namespace lime {
 			Mutex ();
 			~Mutex ();
 
-			bool Lock () const;
+			void Lock () const;
 			bool TryLock () const;
-			bool Unlock () const;
+			void Unlock () const;
 
 		private:
 
@@ -26,6 +24,3 @@ namespace lime {
 
 
 }
-
-
-#endif

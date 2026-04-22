@@ -1,13 +1,14 @@
-#ifdef HX_WINDOWS
-#define _WIN32_DCOM
-#include <iostream>
-#include <wbemidl.h>
-#include <comutil.h>
-#pragma comment(lib, "wbemuuid.lib")
-#include <windows.h>
-#endif
-
+#include <graphics/PixelFormat.h>
+#include <math/Rectangle.h>
+#include <system/DisplayMode.h>
+#include <system/JNI.h>
 #include <system/System.h>
+
+#include <SDL3/SDL.h>
+
+#include <string>
+#include <locale>
+#include <codecvt>
 
 
 namespace lime {
@@ -46,8 +47,7 @@ namespace lime {
 
 		if (!_isHL) {
 
-			// TODO: Only supported in HXCPP 4.3
-			// gc_try_blocking ();
+			gc_try_blocking ();
 
 		}
 
@@ -58,366 +58,579 @@ namespace lime {
 
 		if (!_isHL) {
 
-			// TODO: Only supported in HXCPP 4.3
-			//gc_try_unblocking ();
+			gc_try_unblocking ();
 
 		}
 
 	}
 
 
-	#if defined (HX_WINDOWS)
-	std::wstring* GetWMIValue (BSTR query, BSTR field) {
+	bool System::GetAllowScreenTimeout () {
 
-		HRESULT hres = 0;
-		IWbemLocator *pLoc = NULL;
-		IWbemServices *pSvc = NULL;
-		IEnumWbemClassObject* pEnumerator = NULL;
-		IWbemClassObject *pclsObj = NULL;
-		ULONG uReturn = 0;
-		std::wstring* result = NULL;
+		return SDL_ScreenSaverEnabled ();
 
-		// hres = CoInitializeEx (0, COINIT_MULTITHREADED);
+	}
 
-		// if (FAILED (hres)) {
 
-		// 	return NULL;
+	bool System::SetAllowScreenTimeout (bool allow) {
 
-		// }
+		if (allow) {
 
-		// hres = CoInitializeSecurity (NULL, -1, NULL, NULL, RPC_C_AUTHN_LEVEL_DEFAULT, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE, NULL);
+			SDL_EnableScreenSaver ();
 
-		// if (FAILED (hres)) {
+		} else {
 
-		// 	CoUninitialize ();
-		// 	NULL;
-
-		// }
-
-		hres = CoCreateInstance (CLSID_WbemLocator, 0, CLSCTX_INPROC_SERVER, IID_IWbemLocator, (LPVOID *) &pLoc);
-
-		if (FAILED (hres)) {
-
-			//CoUninitialize ();
-			return NULL;
+			SDL_DisableScreenSaver ();
 
 		}
 
-		hres = pLoc->ConnectServer (_bstr_t (L"ROOT\\CIMV2"), NULL, NULL, 0, NULL, 0, 0, &pSvc);
+		return allow;
 
-		if (FAILED (hres)) {
+	}
 
-			pLoc->Release ();
-			// CoUninitialize ();
-			return NULL;
+
+	char* System::GetDirectory (SystemDirectory type, const char* company, const char* title) {
+
+		char* result = nullptr;
+
+		System::GCEnterBlocking ();
+
+		switch (type) {
+
+			case APPLICATION: {
+
+				result = SDL_strdup (SDL_GetBasePath ());
+				break;
+
+			}
+
+			case APPLICATION_STORAGE: {
+
+				result = SDL_GetPrefPath (company, title);
+				break;
+
+			}
+
+			case DESKTOP: {
+
+				result = SDL_strdup (SDL_GetUserFolder (SDL_FOLDER_DESKTOP));
+				break;
+
+			}
+
+			case DOCUMENTS: {
+
+				result = SDL_strdup (SDL_GetUserFolder (SDL_FOLDER_DOCUMENTS));
+				break;
+
+			}
+
+			case USER: {
+
+				result = SDL_strdup (SDL_GetUserFolder (SDL_FOLDER_HOME));
+				break;
+
+			}
 
 		}
 
-		hres = CoSetProxyBlanket (pSvc, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, NULL, RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE);
-
-		if (FAILED (hres)) {
-
-			pSvc->Release ();
-			pLoc->Release ();
-			// CoUninitialize ();
-			return NULL;
-
-		}
-
-		hres = pSvc->ExecQuery (bstr_t (L"WQL"), query, WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY, NULL, &pEnumerator);
-
-		if (FAILED (hres)) {
-
-			pSvc->Release ();
-			pLoc->Release ();
-			// CoUninitialize ();
-			return NULL;
-
-		}
-
-		while (pEnumerator) {
-
-			HRESULT hr = pEnumerator->Next (WBEM_INFINITE, 1, &pclsObj, &uReturn);
-			if (uReturn == 0) break;
-
-			VARIANT vtProp;
-
-			hr = pclsObj->Get (field, 0, &vtProp, 0, 0);
-			VariantClear (&vtProp);
-			result = new std::wstring (vtProp.bstrVal, SysStringLen (vtProp.bstrVal));
-
-			pclsObj->Release ();
-
-		}
-
-		pSvc->Release ();
-		pLoc->Release ();
-		pEnumerator->Release ();
-		// CoUninitialize ();
+		System::GCExitBlocking ();
 
 		return result;
 
 	}
-	#endif
 
 
-	std::wstring* System::GetDeviceModel () {
+	int System::GetNumDisplays () {
 
-		#if defined (HX_WINDOWS)
-		return GetWMIValue (_bstr_t(L"SELECT * FROM Win32_ComputerSystemProduct"), _bstr_t(L"Version"));
-		#endif
+		int numDisplays;
 
-		return NULL;
+		SDL_DisplayID *displays = SDL_GetDisplays (&numDisplays);
 
-	}
+		SDL_free (displays);
 
-
-	std::wstring* System::GetDeviceVendor () {
-
-		#if defined (HX_WINDOWS)
-		return GetWMIValue (_bstr_t(L"SELECT * FROM Win32_ComputerSystemProduct"), _bstr_t(L"Vendor"));
-		#endif
-
-		return NULL;
+		return numDisplays;
 
 	}
 
+	void* System::GetDisplay (bool useCFFIValue, int id) {
 
-	std::wstring* System::GetPlatformLabel () {
+		if (id == 0)
+			id = SDL_GetPrimaryDisplay();
 
-		#if defined (HX_WINDOWS)
-		return GetWMIValue (_bstr_t(L"SELECT * FROM Win32_OperatingSystem"), _bstr_t(L"Caption"));
-		#endif
+		if (useCFFIValue) {
 
-		return NULL;
+			const char* displayName = SDL_GetDisplayName (id);
+			if (displayName == NULL) {
 
-	}
+				return alloc_null ();
 
+			}
 
-	std::wstring* System::GetPlatformName () {
+			value display = alloc_empty_object ();
+			alloc_field (display, val_id ("name"), alloc_string (displayName));
 
-		return NULL;
+			SDL_Rect bounds = { 0, 0, 0, 0 };
+			SDL_GetDisplayBounds (id, &bounds);
+			alloc_field (display, val_id ("bounds"), Rectangle (bounds.x, bounds.y, bounds.w, bounds.h).Value ());
 
-	}
+			SDL_Rect usable = { 0, 0, 0, 0 };
+			SDL_GetDisplayUsableBounds(id, &usable);
+			alloc_field(display, val_id ("safeArea"), Rectangle (usable.x, usable.y, usable.w, usable.h).Value ());
 
+			const SDL_DisplayMode *displayMode = SDL_GetDesktopDisplayMode (id);
 
-	std::wstring* System::GetPlatformVersion () {
+			float pixelDensity = displayMode ? displayMode->pixel_density : 1.0f;
 
-		#if defined (HX_WINDOWS)
-		return GetWMIValue (_bstr_t(L"SELECT * FROM Win32_OperatingSystem"), _bstr_t(L"Version"));
-		#endif
+			float contentScale = SDL_GetDisplayContentScale (id);
 
-		return NULL;
+			if (contentScale == 0.0f) {
 
-	}
+				contentScale = 1.0f;
 
+			}
 
-	#if defined (HX_WINDOWS)
-	int System::GetWindowsConsoleMode (int handleType) {
+			#if defined (ANDROID) || defined (__IPHONEOS__)
+			float dpi = pixelDensity * contentScale * 160.0f;
+			#else
+			float dpi = pixelDensity * contentScale * 96.0f;
+			#endif
 
-		HANDLE handle = GetStdHandle ((DWORD)handleType);
-		DWORD mode = 0;
+			alloc_field (display, val_id ("dpi"), alloc_float (dpi));
 
-		if (handle) {
+			alloc_field (display, val_id ("orientation"), alloc_int ((int) SDL_GetCurrentDisplayOrientation (id)));
 
-			bool result = GetConsoleMode (handle, &mode);
+			DisplayMode mode;
+
+			mode.height = displayMode->h;
+
+			switch (displayMode->format) {
+
+				case SDL_PIXELFORMAT_ARGB8888:
+
+					mode.pixelFormat = ARGB32;
+					break;
+
+				case SDL_PIXELFORMAT_BGRA8888:
+				case SDL_PIXELFORMAT_BGRX8888:
+
+					mode.pixelFormat = BGRA32;
+					break;
+
+				default:
+
+					mode.pixelFormat = RGBA32;
+
+			}
+
+			mode.refreshRate = displayMode->refresh_rate;
+			mode.width = displayMode->w;
+
+			alloc_field (display, val_id ("currentMode"), (value)mode.Value ());
+
+			int numDisplayModes;
+			SDL_DisplayMode **displayModes = SDL_GetFullscreenDisplayModes (id, &numDisplayModes);
+			value supportedModes = alloc_array (numDisplayModes);
+
+			for (int i = 0; i < numDisplayModes; i++) {
+
+				const SDL_DisplayMode *sdlDisplayMode = displayModes[i];
+
+				mode.height = sdlDisplayMode->h;
+
+				switch (sdlDisplayMode->format) {
+
+					case SDL_PIXELFORMAT_ARGB8888:
+
+						mode.pixelFormat = ARGB32;
+						break;
+
+					case SDL_PIXELFORMAT_BGRA8888:
+					case SDL_PIXELFORMAT_BGRX8888:
+
+						mode.pixelFormat = BGRA32;
+						break;
+
+					default:
+
+						mode.pixelFormat = RGBA32;
+
+				}
+
+				mode.refreshRate = sdlDisplayMode->refresh_rate;
+				mode.width = sdlDisplayMode->w;
+
+				val_array_set_i (supportedModes, i, (value)mode.Value ());
+
+			}
+
+			alloc_field (display, val_id ("supportedModes"), supportedModes);
+			return display;
+
+		} else {
+
+			const char* displayName = SDL_GetDisplayName (id);
+			if (displayName == NULL) {
+
+				return 0;
+
+			}
+
+			vdynamic* display = (vdynamic*)hl_alloc_dynobj ();
+
+			char* _displayName = (char*)malloc(strlen(displayName) + 1);
+			strcpy (_displayName, displayName);
+			hl_dyn_setp (display, hl_hash_utf8 ("bounds"), &hlt_bytes, _displayName);
+
+			SDL_Rect bounds = { 0, 0, 0, 0 };
+			SDL_GetDisplayBounds (id, &bounds);
+
+			vdynamic* _bounds = (vdynamic*)hl_alloc_dynobj ();
+			hl_dyn_seti (_bounds, hl_hash_utf8 ("x"), &hlt_i32, bounds.x);
+			hl_dyn_seti (_bounds, hl_hash_utf8 ("y"), &hlt_i32, bounds.y);
+			hl_dyn_seti (_bounds, hl_hash_utf8 ("width"), &hlt_i32, bounds.w);
+			hl_dyn_seti (_bounds, hl_hash_utf8 ("height"), &hlt_i32, bounds.h);
+
+			hl_dyn_setp (display, hl_hash_utf8 ("bounds"), &hlt_dynobj, _bounds);
+
+			SDL_Rect usable = { 0, 0, 0, 0 };
+			SDL_GetDisplayUsableBounds(id, &usable);
+
+			vdynamic* _usable = (vdynamic*)hl_alloc_dynobj ();
+			hl_dyn_seti (_usable, hl_hash_utf8 ("x"), &hlt_i32, usable.x);
+			hl_dyn_seti (_usable, hl_hash_utf8 ("y"), &hlt_i32, usable.y);
+			hl_dyn_seti (_usable, hl_hash_utf8 ("width"), &hlt_i32, usable.w);
+			hl_dyn_seti (_usable, hl_hash_utf8 ("height"), &hlt_i32, usable.h);
+
+			hl_dyn_setp (display, hl_hash_utf8 ("safeArea"), &hlt_dynobj, _usable);
+
+			const SDL_DisplayMode *displayMode = SDL_GetDesktopDisplayMode (id);
+
+			float pixelDensity = displayMode ? displayMode->pixel_density : 1.0f;
+
+			float contentScale = SDL_GetDisplayContentScale (id);
+
+			if (contentScale == 0.0f) {
+
+				contentScale = 1.0f;
+
+			}
+
+			#if defined (ANDROID) || defined (__IPHONEOS__)
+			float dpi = pixelDensity * contentScale * 160.0f;
+			#else
+			float dpi = pixelDensity * contentScale * 96.0f;
+			#endif
+
+			hl_dyn_setf (display, hl_hash_utf8 ("dpi"), dpi);
+
+			hl_dyn_seti (display, hl_hash_utf8 ("orientation"), &hlt_i32, (int) SDL_GetCurrentDisplayOrientation (id));
+
+			DisplayMode mode;
+
+			mode.height = displayMode->h;
+
+			switch (displayMode->format) {
+
+				case SDL_PIXELFORMAT_ARGB8888:
+
+					mode.pixelFormat = ARGB32;
+					break;
+
+				case SDL_PIXELFORMAT_BGRA8888:
+				case SDL_PIXELFORMAT_BGRX8888:
+
+					mode.pixelFormat = BGRA32;
+					break;
+
+				default:
+
+					mode.pixelFormat = RGBA32;
+
+			}
+
+			mode.refreshRate = displayMode->refresh_rate;
+			mode.width = displayMode->w;
+
+			vdynamic* _displayMode = (vdynamic*)hl_alloc_dynobj ();
+			hl_dyn_seti (_displayMode, hl_hash_utf8 ("height"), &hlt_i32, mode.height);
+			hl_dyn_seti (_displayMode, hl_hash_utf8 ("pixelFormat"), &hlt_i32, mode.pixelFormat);
+			hl_dyn_seti (_displayMode, hl_hash_utf8 ("refreshRate"), &hlt_i32, mode.refreshRate);
+			hl_dyn_seti (_displayMode, hl_hash_utf8 ("width"), &hlt_i32, mode.width);
+			hl_dyn_setp (display, hl_hash_utf8 ("currentMode"), &hlt_dynobj, _displayMode);
+
+			int numDisplayModes;
+			SDL_DisplayMode **displayModes = SDL_GetFullscreenDisplayModes (id, &numDisplayModes);
+
+			hl_varray* supportedModes = (hl_varray*)hl_alloc_array (&hlt_dynobj, numDisplayModes);
+			vdynamic** supportedModesData = hl_aptr (supportedModes, vdynamic*);
+
+			for (int i = 0; i < numDisplayModes; i++) {
+
+				const SDL_DisplayMode *sdlDisplayMode = displayModes[i];
+
+				mode.height = sdlDisplayMode->h;
+
+				switch (sdlDisplayMode->format) {
+
+					case SDL_PIXELFORMAT_ARGB8888:
+
+						mode.pixelFormat = ARGB32;
+						break;
+
+					case SDL_PIXELFORMAT_BGRA8888:
+					case SDL_PIXELFORMAT_BGRX8888:
+
+						mode.pixelFormat = BGRA32;
+						break;
+
+					default:
+
+						mode.pixelFormat = RGBA32;
+
+				}
+
+				mode.refreshRate = sdlDisplayMode->refresh_rate;
+				mode.width = sdlDisplayMode->w;
+
+				vdynamic* _displayMode = (vdynamic*)hl_alloc_dynobj ();
+				hl_dyn_seti (_displayMode, hl_hash_utf8 ("height"), &hlt_i32, mode.height);
+				hl_dyn_seti (_displayMode, hl_hash_utf8 ("pixelFormat"), &hlt_i32, mode.pixelFormat);
+				hl_dyn_seti (_displayMode, hl_hash_utf8 ("refreshRate"), &hlt_i32, mode.refreshRate);
+				hl_dyn_seti (_displayMode, hl_hash_utf8 ("width"), &hlt_i32, mode.width);
+
+				*supportedModesData++ = _displayMode;
+
+			}
+
+			hl_dyn_setp (display, hl_hash_utf8 ("supportedModes"), &hlt_array, supportedModes);
+			return display;
 
 		}
 
-		return mode;
-
 	}
-	#endif
 
 
-	#if defined (HX_WINDOWS)
-	bool System::SetWindowsConsoleMode (int handleType, int mode) {
+	int System::GetFirstGyroscopeSensorId () {
 
-		HANDLE handle = GetStdHandle ((DWORD)handleType);
+		int count = 0;
 
-		if (handle) {
+		SDL_SensorID *sensors = SDL_GetSensors (&count);
 
-			return SetConsoleMode (handle, (DWORD)mode);
+		if (!sensors)
+			return -1;
+
+		for (int i = 0; i < count; i++)
+		{
+			if (SDL_GetSensorTypeForID (sensors[i]) == SDL_SENSOR_GYRO) {
+
+				SDL_free (sensors);
+				return sensors[i];
+
+			}
 
 		}
 
-		return false;
-
-	}
-	#endif
-
-	int System::GetDeviceOrientation () {
-
-		return 0; // SDL_ORIENTATION_UNKNOWN
+		SDL_free (sensors);
+		return -1;
 
 	}
 
-	void System::EnableDeviceOrientationChange (bool enable) {
+
+	int System::GetFirstAccelerometerSensorId () {
+
+		int count = 0;
+
+		SDL_SensorID *sensors = SDL_GetSensors(&count);
+
+		if (!sensors)
+			return -1;
+
+		for (int i = 0; i < count; i++) {
+
+			if (SDL_GetSensorTypeForID(sensors[i]) == SDL_SENSOR_ACCEL) {
+
+				SDL_free(sensors);
+				return sensors[i];
+
+			}
+
+		}
+
+		SDL_free (sensors);
+		return -1;
 
 	}
 
-}
+
+	double System::GetTimer () {
+
+		return SDL_GetTicksNS ();
+
+	}
 
 
-#ifdef HX_LINUX
+	void System::OpenFile (const char* path) {
 
-// Improve compatibility with old glibc
+		OpenURL (path, NULL);
 
-#define __fdelt_chk __fdelt_chk_local
-#include <sys/select.h>
-#undef __fdelt_chk
+	}
 
-long int __fdelt_chk (long int d) {
 
-	if (d >= FD_SETSIZE) {
+	void System::OpenURL (const char* url, const char* target) {
 
-		//printf("Select - bad fd.\n");
+		SDL_OpenURL (url);
+
+	}
+
+
+	const char* System::GetHint (const char* key) {
+
+		std::string hintKey (key);
+
+		if (hintKey.rfind ("SDL_", 0) != 0) {
+
+			hintKey = "SDL_" + hintKey;
+
+		}
+
+		const char* hint = SDL_GetHint (hintKey.c_str ());
+
+		if (!hint) {
+
+			return nullptr;
+
+		}
+
+		return hint;
+
+	}
+
+	void System::SetHint (const char* key, const char* value) {
+
+		std::string hintKey (key);
+
+		if (hintKey.rfind ("SDL_", 0) != 0) {
+
+			hintKey = "SDL_" + hintKey;
+
+		}
+
+		SDL_SetHint (hintKey.c_str (), value);
+
+	}
+
+
+	int fclose (FILE_HANDLE *stream) {
+
+		if (stream) {
+
+			System::GCEnterBlocking ();
+
+			int code = SDL_CloseIO ((SDL_IOStream*)stream->handle);
+
+			delete stream;
+
+			System::GCExitBlocking ();
+
+			return code;
+
+		}
+
 		return 0;
 
 	}
 
-	return d / __NFDBITS;
+
+	FILE_HANDLE *fopen (const char *filename, const char *mode) {
+
+		System::GCEnterBlocking ();
+
+		SDL_IOStream *result = SDL_IOFromFile (filename, mode);
+
+		if (!result) {
+
+			const char *base = SDL_GetBasePath ();
+
+			if (base) {
+
+				char *fullpath;
+
+				if (SDL_asprintf (&fullpath, "%s%s", base, filename) >= 0) {
+
+					result = SDL_IOFromFile (fullpath, mode);
+
+					SDL_free (fullpath);
+
+				}
+
+			}
+
+		}
+
+		System::GCExitBlocking ();
+
+		if (result) {
+
+			return new FILE_HANDLE (result);
+
+		}
+
+		return NULL;
+
+	}
+
+
+	size_t fread (void *ptr, size_t size, size_t count, FILE_HANDLE *stream) {
+
+		System::GCEnterBlocking ();
+
+	  	size_t nmem = size > 0 && count > 0 ? SDL_ReadIO (stream ? (SDL_IOStream*)stream->handle : NULL, ptr, size * count) / size : 0;
+
+		System::GCExitBlocking ();
+
+		return nmem;
+
+	}
+
+
+	int fseek (FILE_HANDLE *stream, long int offset, int origin) {
+
+		System::GCEnterBlocking ();
+
+		int success = SDL_SeekIO (stream ? (SDL_IOStream*)stream->handle : NULL, offset, (SDL_IOWhence)origin);
+
+		System::GCExitBlocking ();
+
+		return success;
+
+	}
+
+
+	long int ftell (FILE_HANDLE *stream) {
+
+		System::GCEnterBlocking ();
+
+		long int pos = SDL_TellIO (stream ? (SDL_IOStream*)stream->handle : NULL);
+
+		System::GCExitBlocking ();
+
+		return pos;
+
+	}
+
+
+	size_t fwrite (const void *ptr, size_t size, size_t count, FILE_HANDLE *stream) {
+
+		System::GCEnterBlocking ();
+
+        size_t nmem = size > 0 && count > 0 ? SDL_WriteIO (stream ? (SDL_IOStream*)stream->handle : NULL, ptr, size * count) / size : 0;
+
+		System::GCExitBlocking ();
+
+		return nmem;
+
+	}
+
 
 }
-
-#endif
-
-
-#if defined(ANDROID) && !defined(HXCPP_CLANG)
-
-#include <stdint.h>
-#include <wchar.h>
-#include <errno.h>
-
-/*
-* This code was written by Rich Felker in 2010; no copyright is claimed.
-* This code is in the public domain. Attribution is appreciated but
-* unnecessary.
-*/
-
-#define OOB(c,b) (((((b)>>3)-0x10)|(((b)>>3)+((int32_t)(c)>>26))) & ~7)
-
-#define R(a,b) ((uint32_t)((a==0x80 ? 0x40-b : -a) << 23))
-
-#define C(x) ( x<2 ? -1 : ( R(0x80,0xc0) | x ) )
-#define D(x) C((x+16))
-#define E(x) ( ( x==0 ? R(0xa0,0xc0) : \
-				x==0xd ? R(0x80,0xa0) : \
-				R(0x80,0xc0) ) \
-			| ( R(0x80,0xc0) >> 6 ) \
-			| x )
-#define F(x) ( ( x>=5 ? 0 : \
-				x==0 ? R(0x90,0xc0) : \
-				x==4 ? R(0x80,0xa0) : \
-				R(0x80,0xc0) ) \
-			| ( R(0x80,0xc0) >> 6 ) \
-			| ( R(0x80,0xc0) >> 12 ) \
-			| x )
-
-#define SA 0xc2u
-#define SB 0xf4u
-
-const uint32_t bittab[] = {
-				C(0x2),C(0x3),C(0x4),C(0x5),C(0x6),C(0x7),
-	C(0x8),C(0x9),C(0xa),C(0xb),C(0xc),C(0xd),C(0xe),C(0xf),
-	D(0x0),D(0x1),D(0x2),D(0x3),D(0x4),D(0x5),D(0x6),D(0x7),
-	D(0x8),D(0x9),D(0xa),D(0xb),D(0xc),D(0xd),D(0xe),D(0xf),
-	E(0x0),E(0x1),E(0x2),E(0x3),E(0x4),E(0x5),E(0x6),E(0x7),
-	E(0x8),E(0x9),E(0xa),E(0xb),E(0xc),E(0xd),E(0xe),E(0xf),
-	F(0x0),F(0x1),F(0x2),F(0x3),F(0x4)
-};
-
-// Added minor C++ compile fixes
-
-size_t _mbsrtowcs(wchar_t * ws, const char **src, size_t wn, mbstate_t *st)
-{
-	const unsigned char *s = (const unsigned char *)*src;
-	size_t wn0 = wn;
-	unsigned c = 0;
-
-	if (st && (c = *(unsigned *)st)) {
-		if (ws) {
-			*(unsigned *)st = 0;
-			goto resume;
-		} else {
-			goto resume0;
-		}
-	}
-
-	if (!ws) for (;;) {
-		if (*s-1u < 0x7f && (uintptr_t)s%4 == 0) {
-			while (!(( *(uint32_t*)s | *(uint32_t*)s-0x01010101) & 0x80808080)) {
-				s += 4;
-				wn -= 4;
-			}
-		}
-		if (*s-1u < 0x7f) {
-			s++;
-			wn--;
-			continue;
-		}
-		if (*s-SA > SB-SA) break;
-		c = bittab[*s++-SA];
-resume0:
-		if (OOB(c,*s)) { s--; break; }
-		s++;
-		if (c&(1U<<25)) {
-			if (*s-0x80u >= 0x40) { s-=2; break; }
-			s++;
-			if (c&(1U<<19)) {
-				if (*s-0x80u >= 0x40) { s-=3; break; }
-				s++;
-			}
-		}
-		wn--;
-		c = 0;
-	} else for (;;) {
-		if (!wn) {
-			*src = (const char *)s;
-			return wn0;
-		}
-		if (*s-1u < 0x7f && (uintptr_t)s%4 == 0) {
-			while (wn>=5 && !(( *(uint32_t*)s | *(uint32_t*)s-0x01010101) & 0x80808080)) {
-				*ws++ = *s++;
-				*ws++ = *s++;
-				*ws++ = *s++;
-				*ws++ = *s++;
-				wn -= 4;
-			}
-		}
-		if (*s-1u < 0x7f) {
-			*ws++ = *s++;
-			wn--;
-			continue;
-		}
-		if (*s-SA > SB-SA) break;
-		c = bittab[*s++-SA];
-resume:
-		if (OOB(c,*s)) { s--; break; }
-		c = (c<<6) | *s++-0x80;
-		if (c&(1U<<31)) {
-			if (*s-0x80u >= 0x40) { s-=2; break; }
-			c = (c<<6) | *s++-0x80;
-			if (c&(1U<<31)) {
-				if (*s-0x80u >= 0x40) { s-=3; break; }
-				c = (c<<6) | *s++-0x80;
-			}
-		}
-		*ws++ = c;
-		wn--;
-		c = 0;
-	}
-
-	if (!c && !*s) {
-		if (ws) {
-			*ws = 0;
-			*src = 0;
-		}
-		return wn0-wn;
-	}
-	errno = EILSEQ;
-	if (ws) *src = (const char *)s;
-	return -1;
-}
-
-#endif

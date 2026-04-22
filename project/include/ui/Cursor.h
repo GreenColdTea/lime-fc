@@ -1,11 +1,9 @@
-#ifndef LIME_UI_CURSOR_H
-#define LIME_UI_CURSOR_H
-
+#pragma once
 
 namespace lime {
 
 
-	enum Cursor {
+	enum SystemCursor {
 
 		HIDDEN,
 		ARROW,
@@ -24,8 +22,13 @@ namespace lime {
 
 	};
 
+	class Cursor {
+
+		public:
+
+			static void* GetSystemCursor (SystemCursor type);
+
+	};
+
 
 }
-
-
-#endif

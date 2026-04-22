@@ -1,7 +1,7 @@
 #include "SDLApplication.h"
-#include "SDLGamepad.h"
-#include "SDLJoystick.h"
 #include <system/System.h>
+#include <ui/Gamepad.h>
+#include <ui/Joystick.h>
 
 #ifdef HX_MACOS
 #include <unistd.h>
@@ -17,13 +17,8 @@
 namespace lime {
 
 
-	AutoGCRoot* Application::callback = 0;
 	SDLApplication* SDLApplication::currentApplication = 0;
 	bool inBackground = false;
-
-
-	const int analogAxisDeadZone = 1000;
-	std::map<int, std::map<int, int> > gamepadsAxisMap;
 
 
 	SDL_SensorID accelerometerSensorID = -1;
@@ -42,11 +37,7 @@ namespace lime {
 		SDL_SetHint (SDL_HINT_IOS_HIDE_HOME_INDICATOR, "3");
 		#endif
 
-		Uint32 initFlags = SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_JOYSTICK | SDL_INIT_SENSOR;
-
-		#ifdef LIME_OPENALSOFT
-		initFlags |= SDL_INIT_AUDIO;
-		#endif
+		Uint32 initFlags = SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_JOYSTICK | SDL_INIT_SENSOR;
 
 		if (!SDL_Init (initFlags)) {
 
@@ -365,35 +356,9 @@ namespace lime {
 
 				case SDL_EVENT_GAMEPAD_AXIS_MOTION:
 
-					if (gamepadsAxisMap[event->gaxis.which].empty ()) {
-
-						gamepadsAxisMap[event->gaxis.which][event->gaxis.axis] = event->gaxis.value;
-
-					} else if (gamepadsAxisMap[event->gaxis.which][event->gaxis.axis] == event->gaxis.value) {
-
-						break;
-
-					}
-
 					gamepadEvent.type = GAMEPAD_AXIS_MOVE;
 					gamepadEvent.axis = event->gaxis.axis;
 					gamepadEvent.id = event->gaxis.which;
-
-					if (event->gaxis.value > -analogAxisDeadZone && event->gaxis.value < analogAxisDeadZone) {
-
-						if (gamepadsAxisMap[event->gaxis.which][event->gaxis.axis] != 0) {
-
-							gamepadsAxisMap[event->gaxis.which][event->gaxis.axis] = 0;
-							gamepadEvent.axisValue = 0;
-							GamepadEvent::Dispatch (&gamepadEvent);
-
-						}
-
-						break;
-
-					}
-
-					gamepadsAxisMap[event->gaxis.which][event->gaxis.axis] = event->gaxis.value;
 					gamepadEvent.axisValue = event->gaxis.value / (event->gaxis.value > 0 ? 32767.0 : 32768.0);
 					gamepadEvent.timestamp = event->gaxis.timestamp;
 
@@ -422,10 +387,10 @@ namespace lime {
 
 				case SDL_EVENT_GAMEPAD_ADDED:
 
-					if (SDLGamepad::Connect (event->cdevice.which)) {
+					if (Gamepad::Connect (event->cdevice.which)) {
 
 						gamepadEvent.type = GAMEPAD_CONNECT;
-						gamepadEvent.id = SDLGamepad::GetInstanceID (event->cdevice.which);
+						gamepadEvent.id = Gamepad::GetInstanceID (event->cdevice.which);
 						gamepadEvent.timestamp = event->cdevice.timestamp;
 
 						GamepadEvent::Dispatch (&gamepadEvent);
@@ -441,7 +406,7 @@ namespace lime {
 					gamepadEvent.timestamp = event->cdevice.timestamp;
 
 					GamepadEvent::Dispatch (&gamepadEvent);
-					SDLGamepad::Disconnect (event->cdevice.which);
+					Gamepad::Disconnect (event->cdevice.which);
 					break;
 
 				}
@@ -499,10 +464,15 @@ namespace lime {
 
 				case SDL_EVENT_JOYSTICK_ADDED:
 
-					joystickEvent.type = JOYSTICK_CONNECT;
-					joystickEvent.id = SDLJoystick::GetInstanceID (event->jdevice.which);
+					if (Joystick::Connect (event->jdevice.which)) {
 
-					JoystickEvent::Dispatch (&joystickEvent);
+						joystickEvent.type = JOYSTICK_CONNECT;
+						joystickEvent.id = Joystick::GetInstanceID (event->jdevice.which);
+
+						JoystickEvent::Dispatch (&joystickEvent);
+
+					}
+
 					break;
 
 				case SDL_EVENT_JOYSTICK_REMOVED:
@@ -511,7 +481,7 @@ namespace lime {
 					joystickEvent.id = event->jdevice.which;
 
 					JoystickEvent::Dispatch (&joystickEvent);
-					SDLJoystick::Disconnect (event->jdevice.which);
+					Joystick::Disconnect (event->jdevice.which);
 					break;
 
 			}
@@ -939,8 +909,3 @@ namespace lime {
 
 
 }
-
-
-#ifdef ANDROID
-int SDL_main (int argc, char *argv[]) { return 0; }
-#endif

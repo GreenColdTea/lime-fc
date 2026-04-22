@@ -63,10 +63,6 @@ class NativeApplication
 
 	public var handle:Dynamic;
 
-	#if android
-	private var deviceOrientationListener:OrientationChangeListener;
-	#end
-
 	private var pauseTimer:Float;
 	private var parent:Application;
 	private var toggleFullscreen:Bool;
@@ -83,13 +79,6 @@ class NativeApplication
 		this.parent = parent;
 		pauseTimer = -1;
 		toggleFullscreen = true;
-
-		#if android
-		var setDeviceOrientationListener = JNI.createStaticMethod("org/haxe/lime/GameActivity", "setDeviceOrientationListener",
-			"(Lorg/haxe/lime/HaxeObject;)V");
-		deviceOrientationListener = new OrientationChangeListener(handleJNIOrientationEvent);
-		setDeviceOrientationListener(deviceOrientationListener);
-		#end
 
 		#if (!macro && lime_cffi)
 		handle = NativeCFFI.lime_application_create();
@@ -165,11 +154,7 @@ class NativeApplication
 
 	public function getDeviceOrientation():Orientation
 	{
-		#if (!macro && lime_cffi)
-		return cast NativeCFFI.lime_system_get_device_orientation();
-		#else
 		return UNKNOWN;
-		#end
 	}
 
 	private function handleApplicationEvent():Void
@@ -400,14 +385,6 @@ class NativeApplication
 				parent.onDeviceOrientationChange.dispatch(orientation);
 		}
 	}
-
-	#if android
-	private function handleJNIOrientationEvent(newOrientation:Int):Void
-	{
-		var orientation:Orientation = cast newOrientation;
-		parent.onDeviceOrientationChange.dispatch(orientation);
-	}
-	#end
 
 	private function handleRenderEvent():Void
 	{
@@ -654,17 +631,11 @@ class NativeApplication
 			}
 		}
 
-		#if (haxe_ver >= 4.2)
 		#if target.threaded
 		#if haxe5
 		sys.thread.Thread.current().events.loopOnce();
 		#else
 		sys.thread.Thread.current().events.progress();
-		#end
-		#else
-		// Duplicate code required because Haxe 3 can't handle
-		// #if (haxe_ver >= 4.2 && target.threaded)
-		@:privateAccess haxe.EntryPoint.processEvents();
 		#end
 		#else
 		@:privateAccess haxe.EntryPoint.processEvents();
@@ -1071,22 +1042,3 @@ private enum abstract OrientationEventType(Int)
 	var DISPLAY_ORIENTATION_CHANGE = 0;
 	var DEVICE_ORIENTATION_CHANGE = 1;
 }
-
-#if android
-@:keep
-private class OrientationChangeListener implements JNISafety
-{
-	private var callback:Int->Void;
-
-	public function new(callback:Int->Void)
-	{
-		this.callback = callback;
-	}
-
-	@:runOnMainThread
-	public function onOrientationChanged(orientation:Int):Void
-	{
-		callback(orientation);
-	}
-}
-#end

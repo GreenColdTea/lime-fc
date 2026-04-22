@@ -6,45 +6,44 @@
 #define NEKO_COMPATIBLE
 #endif
 
-#include <system/CFFI.h>
-
 #include <app/Application.h>
-#include <app/ApplicationEvent.h>
+#include <events/ApplicationEvent.h>
+#include <events/ClipboardEvent.h>
+#include <events/DropEvent.h>
+#include <events/GamepadEvent.h>
+#include <events/JoystickEvent.h>
+#include <events/KeyEvent.h>
+#include <events/MouseEvent.h>
+#include <events/OrientationEvent.h>
+#include <events/RenderEvent.h>
+#include <events/SensorEvent.h>
+#include <events/TextEvent.h>
+#include <events/TouchEvent.h>
+#include <events/WindowEvent.h>
 #include <graphics/format/JPEG.h>
 #include <graphics/format/PNG.h>
-#include <graphics/utils/ImageDataUtil.h>
 #include <graphics/Image.h>
 #include <graphics/ImageBuffer.h>
-#include <graphics/RenderEvent.h>
+#include <graphics/utils/ImageDataUtil.h>
+#include <media/AudioBuffer.h>
 #include <media/containers/OGG.h>
 #include <media/containers/WAV.h>
-#include <media/AudioBuffer.h>
+#include <system/CFFI.h>
 #include <system/CFFIPointer.h>
 #include <system/Clipboard.h>
-#include <system/ClipboardEvent.h>
 #include <system/Endian.h>
 #include <system/FileWatcher.h>
 #include <system/JNI.h>
 #include <system/Locale.h>
-#include <system/OrientationEvent.h>
-#include <system/SensorEvent.h>
 #include <system/System.h>
 #include <text/Font.h>
 #include <ui/Cursor.h>
-#include <ui/DropEvent.h>
 #include <ui/FileDialog.h>
 #include <ui/Gamepad.h>
-#include <ui/GamepadEvent.h>
 #include <ui/Haptic.h>
 #include <ui/Joystick.h>
-#include <ui/JoystickEvent.h>
 #include <ui/KeyCode.h>
-#include <ui/KeyEvent.h>
-#include <ui/MouseEvent.h>
-#include <ui/TextEvent.h>
-#include <ui/TouchEvent.h>
 #include <ui/Window.h>
-#include <ui/WindowEvent.h>
 #include <utils/compress/LZMA.h>
 #include <utils/compress/Zlib.h>
 
@@ -584,12 +583,12 @@ namespace lime {
 
 		if (Clipboard::HasText ()) {
 
-			std::wstring* text = Clipboard::GetText ();
+			char* text = Clipboard::GetText ();
 
 			if (text) {
 
-				value result = alloc_wstring (text->c_str ());
-				delete text;
+				value result = alloc_string (text);
+				free (text);
 				return result;
 
 			}
@@ -605,12 +604,13 @@ namespace lime {
 
 		if (Clipboard::HasText ()) {
 
-			std::wstring* text = Clipboard::GetText ();
+			char* text = Clipboard::GetText ();
 
 			if (text) {
 
-				vbyte* const result = hl_wstring_to_utf8_bytes (*text);
-				delete text;
+				vbyte* result = hl_alloc_bytes (strlen (text) + 1);
+				std::memcpy (result, text, strlen (text) + 1);
+				free (text);
 				return result;
 
 			}
@@ -2679,7 +2679,6 @@ namespace lime {
 
 		OrientationEvent::callback = new ValuePointer (callback);
 		OrientationEvent::eventObject = new ValuePointer (eventObject);
-		System::EnableDeviceOrientationChange(true);
 
 	}
 
@@ -2810,37 +2809,36 @@ namespace lime {
 
 	value lime_system_get_device_model () {
 
-		std::wstring* model = System::GetDeviceModel ();
+		#if defined(HX_WINDOWS) || defined(IPHONE) || defined(APPLETV)
+		char* model = System::GetDeviceModel ();
 
 		if (model) {
 
-			value result = alloc_wstring (model->c_str ());
-			delete model;
+			value result = alloc_string (model);
+			free (model);
 			return result;
 
-		} else {
-
-			return alloc_null ();
-
 		}
+		#endif
+
+		return alloc_null ();
 
 	}
 
 
 	HL_PRIM vbyte* HL_NAME(hl_system_get_device_model) () {
 
-		#ifndef EMSCRIPTEN
-
-		std::wstring* model = System::GetDeviceModel ();
+		#if defined(HX_WINDOWS) || defined(IPHONE) || defined(APPLETV)
+		char* model = System::GetDeviceModel ();
 
 		if (model) {
 
-			vbyte* const result = hl_wstring_to_utf8_bytes (*model);
-			delete model;
+			vbyte* result = hl_alloc_bytes (strlen (model) + 1);
+			std::memcpy (result, model, strlen (model) + 1);
+			free (model);
 			return result;
 
 		}
-
 		#endif
 
 		return 0;
@@ -2850,52 +2848,50 @@ namespace lime {
 
 	value lime_system_get_device_vendor () {
 
-		std::wstring* vendor = System::GetDeviceVendor ();
+		#if defined(HX_WINDOWS) || defined(IPHONE) || defined(APPLETV)
+		char* vendor = System::GetDeviceVendor ();
 
 		if (vendor) {
 
-			value result = alloc_wstring (vendor->c_str ());
-			delete vendor;
+			value result = alloc_string (vendor);
+			free (vendor);
 			return result;
 
-		} else {
-
-			return alloc_null ();
-
 		}
+		#endif
+
+		return alloc_null ();
 
 	}
 
 
 	HL_PRIM vbyte* HL_NAME(hl_system_get_device_vendor) () {
 
-		#ifndef EMSCRIPTEN
-
-		std::wstring* vendor = System::GetDeviceVendor ();
+		#if defined(HX_WINDOWS) || defined(IPHONE) || defined(APPLETV)
+		char* vendor = System::GetDeviceVendor ();
 
 		if (vendor) {
 
-			vbyte* const result = hl_wstring_to_utf8_bytes (*vendor);
-			delete vendor;
+			vbyte* result = hl_alloc_bytes (strlen (vendor) + 1);
+			std::memcpy (result, vendor, strlen (vendor) + 1);
+			free (vendor);
 			return result;
 
 		}
-
 		#endif
 
 		return 0;
 
 	}
 
-
 	value lime_system_get_directory (int type, HxString company, HxString title) {
 
-		std::wstring* path = System::GetDirectory ((SystemDirectory)type, hxs_utf8 (company, nullptr), hxs_utf8 (title, nullptr));
+		char* path = System::GetDirectory ((SystemDirectory)type, hxs_utf8 (company, nullptr), hxs_utf8 (title, nullptr));
 
 		if (path) {
 
-			value result = alloc_wstring (path->c_str ());
-			delete path;
+			value result = alloc_string (path);
+			free (path);
 			return result;
 
 		} else {
@@ -2906,22 +2902,18 @@ namespace lime {
 
 	}
 
-
 	HL_PRIM vbyte* HL_NAME(hl_system_get_directory) (int type, hl_vstring* company, hl_vstring* title) {
 
-		#ifndef EMSCRIPTEN
-
-		std::wstring* path = System::GetDirectory ((SystemDirectory)type, company ? (char*)hl_to_utf8 ((const uchar*)company->bytes) : NULL, title ? (char*)hl_to_utf8 ((const uchar*)title->bytes) : NULL);
+		char* path = System::GetDirectory ((SystemDirectory)type, company ? (char*)hl_to_utf8 ((const uchar*)company->bytes) : NULL, title ? (char*)hl_to_utf8 ((const uchar*)title->bytes) : NULL);
 
 		if (path) {
 
-			vbyte* const result = hl_wstring_to_utf8_bytes (*path);
-			delete path;
+			vbyte* result = hl_alloc_bytes (strlen (path) + 1);
+			std::memcpy (result, path, strlen (path) + 1);
+			free (path);
 			return result;
 
 		}
-
-		#endif
 
 		return 0;
 
@@ -2956,20 +2948,6 @@ namespace lime {
 	}
 
 
-	int lime_system_get_device_orientation () {
-
-		return System::GetDeviceOrientation();
-
-	}
-
-
-	HL_PRIM int HL_NAME(hl_system_get_device_orientation) () {
-
-		return System::GetDeviceOrientation();
-
-	}
-
-
 	int lime_system_get_first_gyroscope_sensor_id () {
 
 		return System::GetFirstGyroscopeSensorId ();
@@ -3000,37 +2978,36 @@ namespace lime {
 
 	value lime_system_get_platform_label () {
 
-		std::wstring* label = System::GetPlatformLabel ();
+		#if defined(HX_WINDOWS) || defined(IPHONE) || defined(APPLETV)
+		char* label = System::GetPlatformLabel ();
 
 		if (label) {
 
-			value result = alloc_wstring (label->c_str ());
-			delete label;
+			value result = alloc_string (label);
+			free (label);
 			return result;
 
-		} else {
-
-			return alloc_null ();
-
 		}
+		#endif
+
+		return alloc_null ();
 
 	}
 
 
 	HL_PRIM vbyte* HL_NAME(hl_system_get_platform_label) () {
 
-		#ifndef EMSCRIPTEN
-
-		std::wstring* label = System::GetPlatformLabel ();
+		#if defined(HX_WINDOWS) || defined(IPHONE) || defined(APPLETV)
+		char* label = System::GetPlatformLabel ();
 
 		if (label) {
 
-			vbyte* const result = hl_wstring_to_utf8_bytes (*label);
-			delete label;
+			vbyte* result = hl_alloc_bytes (strlen (label) + 1);
+			std::memcpy (result, label, strlen (label) + 1);
+			free (label);
 			return result;
 
 		}
-
 		#endif
 
 		return 0;
@@ -3040,37 +3017,36 @@ namespace lime {
 
 	value lime_system_get_platform_name () {
 
-		std::wstring* name = System::GetPlatformName ();
+		#if defined(HX_WINDOWS) || defined(IPHONE) || defined(APPLETV)
+		char* name = System::GetPlatformName ();
 
 		if (name) {
 
-			value result = alloc_wstring (name->c_str ());
-			delete name;
+			value result = alloc_string (name);
+			free (name);
 			return result;
 
-		} else {
-
-			return 0;
-
 		}
+		#endif
+
+		return alloc_null ();
 
 	}
 
 
 	HL_PRIM vbyte* HL_NAME(hl_system_get_platform_name) () {
 
-		#ifndef EMSCRIPTEN
-
-		std::wstring* name = System::GetPlatformName ();
+		#if defined(HX_WINDOWS) || defined(IPHONE) || defined(APPLETV)
+		char* name = System::GetPlatformName ();
 
 		if (name) {
 
-			vbyte* const result = hl_wstring_to_utf8_bytes (*name);
-			delete name;
+			vbyte* result = hl_alloc_bytes (strlen (name) + 1);
+			std::memcpy (result, name, strlen (name) + 1);
+			free (name);
 			return result;
 
 		}
-
 		#endif
 
 		return 0;
@@ -3080,36 +3056,36 @@ namespace lime {
 
 	value lime_system_get_platform_version () {
 
-		std::wstring* version = System::GetPlatformVersion ();
+		#if defined(HX_WINDOWS) || defined(IPHONE) || defined(APPLETV)
+		char* version = System::GetPlatformVersion ();
 
 		if (version) {
 
-			value result = alloc_wstring (version->c_str ());
-			delete version;
+			value result = alloc_string (version);
+			free (version);
 			return result;
 
-		} else {
-
-			return alloc_null ();
-
 		}
+		#endif
+
+		return alloc_null ();
 
 	}
 
 
 	HL_PRIM vbyte* HL_NAME(hl_system_get_platform_version) () {
 
-		#ifndef EMSCRIPTEN
-
-		std::wstring* version = System::GetPlatformVersion ();
+		#if defined(HX_WINDOWS) || defined(IPHONE) || defined(APPLETV)
+		char* version = System::GetPlatformVersion ();
 
 		if (version) {
 
-			vbyte* const result = hl_wstring_to_utf8_bytes (*version);
-			delete version;
+			vbyte* result = hl_alloc_bytes (strlen (version) + 1);
+			std::memcpy (result, version, strlen (version) + 1);
+			free (version);
 			return result;
-		}
 
+		}
 		#endif
 
 		return 0;
@@ -3197,13 +3173,11 @@ namespace lime {
 
 	value lime_system_get_hint (HxString hintKey) {
 
-		std::wstring* hint = System::GetHint (hxs_utf8 (hintKey, nullptr));
+		const char* hint = System::GetHint (hxs_utf8 (hintKey, nullptr));
 
 		if (hint) {
 
-			value result = alloc_wstring (hint->c_str ());
-			delete hint;
-			return result;
+			return alloc_string (hint);
 
 		} else {
 
@@ -3215,16 +3189,7 @@ namespace lime {
 
 	HL_PRIM vbyte* HL_NAME(hl_system_get_hint) (hl_vstring* key) {
 
-		std::wstring* hint = System::GetHint (key ? hl_to_utf8(key->bytes) : nullptr);
-
-		if (hint) {
-
-			vbyte* const result = hl_wstring_to_utf8_bytes (*hint);
-			delete hint;
-			return result;
-		}
-
-		return 0;
+		return (vbyte*)System::GetHint (key ? hl_to_utf8(key->bytes) : nullptr);
 
 	}
 
@@ -3792,7 +3757,7 @@ namespace lime {
 	void lime_window_set_cursor (value window, int cursor) {
 
 		Window* targetWindow = (Window*)val_data (window);
-		targetWindow->SetCursor ((Cursor)cursor);
+		targetWindow->SetCursor ((SystemCursor)cursor);
 
 	}
 
@@ -3800,7 +3765,7 @@ namespace lime {
 	HL_PRIM void HL_NAME(hl_window_set_cursor) (HL_CFFIPointer* window, int cursor) {
 
 		Window* targetWindow = (Window*)window->ptr;
-		targetWindow->SetCursor ((Cursor)cursor);
+		targetWindow->SetCursor ((SystemCursor)cursor);
 
 	}
 
@@ -4227,7 +4192,6 @@ namespace lime {
 	DEFINE_PRIME3 (lime_system_get_directory);
 	DEFINE_PRIME1 (lime_system_get_display);
 	DEFINE_PRIME0 (lime_system_get_num_displays);
-	DEFINE_PRIME0 (lime_system_get_device_orientation);
 	DEFINE_PRIME0 (lime_system_get_first_gyroscope_sensor_id);
 	DEFINE_PRIME0 (lime_system_get_first_accelerometer_sensor_id);
 	DEFINE_PRIME0 (lime_system_get_platform_label);
@@ -4426,7 +4390,6 @@ namespace lime {
 	DEFINE_HL_PRIM (_BYTES, hl_system_get_directory, _I32 _STRING _STRING);
 	DEFINE_HL_PRIM (_DYN, hl_system_get_display, _I32);
 	DEFINE_HL_PRIM (_I32, hl_system_get_num_displays, _NO_ARG);
-	DEFINE_HL_PRIM (_I32, hl_system_get_device_orientation, _NO_ARG);
 	DEFINE_HL_PRIM (_I32, hl_system_get_first_gyroscope_sensor_id, _NO_ARG);
 	DEFINE_HL_PRIM (_I32, hl_system_get_first_accelerometer_sensor_id, _NO_ARG);
 	DEFINE_HL_PRIM (_BYTES, hl_system_get_platform_label, _NO_ARG);

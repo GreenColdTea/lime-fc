@@ -1,5 +1,4 @@
-#ifndef LIME_APP_APPLICATION_H
-#define LIME_APP_APPLICATION_H
+#pragma once
 
 
 #include <system/CFFI.h>
@@ -15,8 +14,6 @@ namespace lime {
 
 			virtual ~Application () {};
 
-			static AutoGCRoot* callback;
-
 			virtual int Exec () = 0;
 			virtual void Init () = 0;
 			virtual int Quit () = 0;
@@ -31,6 +28,3 @@ namespace lime {
 
 
 }
-
-
-#endif

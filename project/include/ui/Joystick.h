@@ -1,6 +1,4 @@
-#ifndef LIME_UI_JOYSTICK_H
-#define LIME_UI_JOYSTICK_H
-
+#pragma once
 
 namespace lime {
 
@@ -9,6 +7,9 @@ namespace lime {
 
 		public:
 
+			static bool Connect (int deviceID);
+			static bool Disconnect (int id);
+			static int GetInstanceID (int deviceID);
 			static char* GetDeviceGUID (int id);
 			static const char* GetDeviceName (int id);
 			static int GetNumAxes (int id);
@@ -21,6 +22,3 @@ namespace lime {
 
 
 }
-
-
-#endif

@@ -1,6 +1,4 @@
-#ifndef LIME_UI_GAMEPAD_H
-#define LIME_UI_GAMEPAD_H
-
+#pragma once
 
 namespace lime {
 
@@ -9,6 +7,9 @@ namespace lime {
 
 		public:
 
+			static bool Connect (int deviceID);
+			static bool Disconnect (int id);
+			static int GetInstanceID (int deviceID);
 			static void AddMapping (const char* content);
 			static char* GetDeviceGUID (int id);
 			static const char* GetDeviceName (int id);
@@ -19,6 +20,3 @@ namespace lime {
 
 
 }
-
-
-#endif

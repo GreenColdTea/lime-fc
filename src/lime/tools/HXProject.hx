@@ -11,11 +11,7 @@ import lime.tools.Platform;
 import sys.FileSystem;
 import sys.io.File;
 import sys.io.Process;
-#if (haxe_ver >= 4)
 import haxe.xml.Access;
-#else
-import haxe.xml.Fast as Access;
-#end
 #if (lime && lime_cffi && !macro)
 import lime.text.Font;
 
@@ -139,7 +135,7 @@ class HXProject extends Script
 
 		platformType = switch (target)
 		{
-			case HTML5, WEB_ASSEMBLY:
+			case HTML5:
 				PlatformType.WEB;
 
 			case ANDROID, IOS, TVOS:
@@ -711,15 +707,6 @@ class HXProject extends Script
 			{
 				defines.set("hlc", "1");
 			}
-		}
-		else if (target == Platform.WEB_ASSEMBLY)
-		{
-			defines.set("webassembly", "1");
-			defines.set("wasm", "1");
-			defines.set("emscripten", "1");
-			defines.set("targetType", "cpp");
-			defines.set("native", "1");
-			defines.set("cpp", "1");
 		}
 		else if (targetFlags.exists("cpp")
 			|| ((platformType != PlatformType.WEB) && !targetFlags.exists("html5")))

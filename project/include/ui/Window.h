@@ -1,6 +1,4 @@
-#ifndef LIME_UI_WINDOW_H
-#define LIME_UI_WINDOW_H
-
+#pragma once
 #include <app/Application.h>
 #include <graphics/ImageBuffer.h>
 #include <math/Rectangle.h>
@@ -53,7 +51,7 @@ namespace lime {
 			virtual void SetMinimumSize (int width, int height) = 0;
 			virtual void SetMaximumSize (int width, int height) = 0;
 			virtual bool SetBorderless (bool borderless) = 0;
-			virtual void SetCursor (Cursor cursor) = 0;
+			virtual void SetCursor (SystemCursor cursor) = 0;
 			virtual void SetDisplayMode (DisplayMode* displayMode) = 0;
 			virtual bool SetFullscreen (bool fullscreen) = 0;
 			virtual void SetIcon (ImageBuffer *imageBuffer) = 0;
@@ -102,6 +100,3 @@ namespace lime {
 	};
 
 }
-
-
-#endif
