@@ -7,6 +7,7 @@ import lime.math.Vector4;
 import lime.media.openal.AL;
 import lime.media.openal.ALBuffer;
 import lime.media.openal.ALSource;
+import lime.media.openal.ext.EXT_float32;
 import lime.media.vorbis.VorbisFile;
 import lime.media.AudioManager;
 import lime.media.AudioSource;
@@ -100,6 +101,10 @@ class NativeAudioSource
 			{
 				format = AL.FORMAT_MONO16;
 			}
+			else
+			{
+				format = EXT_float32.FORMAT_MONO_FLOAT32;
+			}
 		}
 		else if (parent.buffer.channels == 2)
 		{
@@ -110,6 +115,10 @@ class NativeAudioSource
 			else if (parent.buffer.bitsPerSample == 16)
 			{
 				format = AL.FORMAT_STEREO16;
+			}
+			else
+			{
+				format = EXT_float32.FORMAT_STEREO_FLOAT32;
 			}
 		}
 
