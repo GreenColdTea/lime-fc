@@ -19,6 +19,14 @@ namespace lime {
 
 	};
 
+	enum SystemTheme {
+
+		UNKNOWN,
+		LIGHT,
+		DARK
+
+	};
+
 
 	class System {
 
@@ -49,6 +57,8 @@ namespace lime {
 
 			static double GetTimer ();
 
+			static SystemTheme GetTheme ();
+
 			static void OpenFile (const char* path);
 			static void OpenURL (const char* url, const char* target);
 
@@ -62,10 +72,6 @@ namespace lime {
 			static int GetWindowsConsoleMode (int handleType);
 			static bool SetWindowsConsoleMode (int handleType, int mode);
 			#endif
-
-		private:
-
-			static bool _isHL;
 
 
 	};

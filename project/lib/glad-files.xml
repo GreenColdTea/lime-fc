@@ -2,11 +2,11 @@
 
 	<files id="native-toolkit-glad">
 
-		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/glad/include/" />
+		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/glad/include" />
 
 		<file name="${NATIVE_TOOLKIT_PATH}/glad/src/gl.c" if="windows || mac || linux" />
 
-		<file name="${NATIVE_TOOLKIT_PATH}/glad/src/gles2.c" if="android || rpi || tizen" />
+		<file name="${NATIVE_TOOLKIT_PATH}/glad/src/gles2.c" if="android || rpi" />
 
 	</files>
 
