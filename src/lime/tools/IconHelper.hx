@@ -190,16 +190,7 @@ class IconHelper
 
 			if (image != null)
 			{
-				var data:Bytes = null;
-
-				if (size < 256)
-				{
-					data = lime._internal.format.BMP.encode(image, ICO);
-				}
-				else
-				{
-					data = image.encode(PNG);
-				}
+				var data:Bytes = image.encode(PNG);
 
 				if (data != null)
 				{
@@ -329,8 +320,7 @@ class IconHelper
 		}
 	}
 
-	private static function getIconImage(icons:Array<Icon>, width:Int, height:Int,
-			backgroundColor:Int = null):#if (lime && lime_cffi && !macro) Image #else Dynamic #end
+	private static function getIconImage(icons:Array<Icon>, width:Int, height:Int):#if (lime && lime_cffi && !macro) Image #else Dynamic #end
 	{
 		var icon = findMatch(icons, width, height);
 
@@ -360,8 +350,7 @@ class IconHelper
 				image = ImageHelper.resizeImage(Image.fromFile(icon.path), width, height);
 
 			case "svg":
-				// image = ImageHelper.rasterizeSVG (null /*new SVG (File.getContent (icon.path))*/, width, height, backgroundColor);
-				image = ImageHelper.rasterizeSVG(icon.path, width, height, backgroundColor);
+				image = ImageHelper.rasterizeSVG(icon.path, width, height);
 		}
 		return image;
 		#else

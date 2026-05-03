@@ -25,7 +25,7 @@ This product bundles HashLink 1.9, which is available under an
 This product bundles libjpeg 6b, which is available under a
 "libjpeg" (BSD-style) license. For details, see [project/lib/jpeg/](project/lib).
 
-This product bundles libogg 1.3.0, which is available under a
+This product bundles libogg 1.3.6, which is available under a
 "BSD" license. For details, see [project/lib/ogg/](project/lib).
 
 This product bundles LZMA SDK 4.65, which is available under
@@ -52,7 +52,7 @@ This product bundles SDL 2.0.12, which is available under a
 This product bundles tinyfiledialogs 2.9.3, which is available under a
 "zlib" (BSD-style) license. For details, see [project/lib/tinyfiledialogs/](project/lib).
 
-This product bundles libvorbis 1.3.3, which is available under a
+This product bundles libvorbis 1.3.7, which is available under a
 "BSD" license. For details, see [project/lib/vorbis/](project/lib).
 
 This product bundles zlib 1.2.8, which is available under a

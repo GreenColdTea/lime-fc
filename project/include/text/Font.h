@@ -41,6 +41,9 @@ namespace lime {
 
 		public:
 
+			static void InitializeLibrary();
+			static void ShutdownLibrary();
+
 			Font (Resource *resource, int faceIndex = 0);
 			~Font ();
 
@@ -59,16 +62,15 @@ namespace lime {
 			int GetStrikethroughThickness ();
 			int GetUnitsPerEM ();
 			int RenderGlyph (int index, Bytes *bytes, int offset = 0);
-			int RenderGlyphs (value indices, Bytes *bytes);
+			int RenderGlyphs (int* indices, int numIndices, Bytes* bytes);
 			void SetSize (size_t size, size_t dpi);
 
-			void* library;
 			void* face;
 			void* faceMemory;
 
 		private:
 
-			size_t mSize;
+			static void* library;
 
 	};
 

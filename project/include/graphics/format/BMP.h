@@ -9,13 +9,13 @@
 namespace lime {
 
 
-	class JPEG {
+	class BMP {
 
 
 		public:
 
 			static bool Decode (Resource *resource, ImageBuffer *imageBuffer);
-			static bool Encode (ImageBuffer *imageBuffer, Bytes *bytes, int quality);
+			static bool Encode (ImageBuffer *imageBuffer, Bytes *bytes);
 
 
 	};

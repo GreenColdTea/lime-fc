@@ -1,6 +1,7 @@
 #include <text/Font.h>
 #include <graphics/ImageBuffer.h>
 #include <system/System.h>
+#include <utils/File.h>
 
 #include <algorithm>
 #include <list>
@@ -272,99 +273,86 @@ namespace {
 namespace lime {
 
 
+	void* Font::library;
+
+
+	void Font::InitializeLibrary() {
+
+		FT_Init_FreeType((FT_Library*)&library);
+
+	}
+
+
+	void Font::ShutdownLibrary() {
+
+		if (library) {
+
+			FT_Done_FreeType((FT_Library)library);
+
+			library = 0;
+
+		}
+
+	}
+
+
 	Font::Font (Resource *resource, int faceIndex) {
 
-		this->library = 0;
 		this->face = 0;
 		this->faceMemory = 0;
 
 		if (resource) {
 
-			int error;
-			FT_Library library;
+			File file = resource->path ? File (resource->path, "rb") : File (resource->data);
 
-			error = FT_Init_FreeType (&library);
+			if (!file.handle) {
 
-			if (error) {
+				return;
 
-				printf ("Could not initialize FreeType\n");
+			}
+
+			file.Seek(0, SEEK_END);
+			size_t size = (size_t)file.Tell();
+			file.Seek(0, SEEK_SET);
+
+			unsigned char* faceMemory = (unsigned char*)malloc(size);
+			file.Read(faceMemory, size);
+			file.Close();
+
+			FT_Face face;
+
+			int error = FT_New_Memory_Face((FT_Library)library, faceMemory, size, faceIndex, &face);
+
+			if (!error) {
+
+				this->face = face;
+				this->faceMemory = faceMemory;
+
+				/* Set charmap
+					*
+					* See http://www.microsoft.com/typography/otspec/name.htm for a list of
+					* some possible platform-encoding pairs.  We're interested in 0-3 aka 3-1
+					* - UCS-2.  Otherwise, fail. If a font has some unicode map, but lacks
+					* UCS-2 - it is a broken or irrelevant font. What exactly Freetype will
+					* select on face load (it promises most wide unicode, and if that will be
+					* slower that UCS-2 - left as an excercise to check.
+					*/
+				for (int i = 0; i < ((FT_Face)face)->num_charmaps; i++) {
+
+					FT_UShort pid = ((FT_Face)face)->charmaps[i]->platform_id;
+					FT_UShort eid = ((FT_Face)face)->charmaps[i]->encoding_id;
+
+					if (((pid == 0) && (eid == 3)) || ((pid == 3) && (eid == 1))) {
+
+						FT_Set_Charmap ((FT_Face)face, ((FT_Face)face)->charmaps[i]);
+
+					}
+
+				}
 
 			} else {
 
-				FT_Face face;
-				FILE_HANDLE *file = NULL;
-				unsigned char *faceMemory = NULL;
-
-				if (resource->path) {
-
-					file = lime::fopen (resource->path, "rb");
-
-					if (!file) {
-
-						FT_Done_FreeType (library);
-						return;
-
-					}
-
-					Bytes data;
-					data.ReadFile (resource->path);
-					faceMemory = (unsigned char*)malloc (data.length);
-					memcpy (faceMemory, data.b, data.length);
-
-					lime::fclose (file);
-					file = 0;
-
-					error = FT_New_Memory_Face (library, faceMemory, data.length, faceIndex, &face);
-
-				} else {
-
-					faceMemory = (unsigned char*)malloc (resource->data->length);
-					memcpy (faceMemory, resource->data->b, resource->data->length);
-					error = FT_New_Memory_Face (library, faceMemory, resource->data->length, faceIndex, &face);
-
-				}
-
-				if (file) {
-
-					lime::fclose (file);
-					file = 0;
-
-				}
-
-				if (!error) {
-
-					this->library = library;
-					this->face = face;
-					this->faceMemory = faceMemory;
-
-					/* Set charmap
-					 *
-					 * See http://www.microsoft.com/typography/otspec/name.htm for a list of
-					 * some possible platform-encoding pairs.  We're interested in 0-3 aka 3-1
-					 * - UCS-2.  Otherwise, fail. If a font has some unicode map, but lacks
-					 * UCS-2 - it is a broken or irrelevant font. What exactly Freetype will
-					 * select on face load (it promises most wide unicode, and if that will be
-					 * slower that UCS-2 - left as an excercise to check.
-					 */
-					for (int i = 0; i < ((FT_Face)face)->num_charmaps; i++) {
-
-						FT_UShort pid = ((FT_Face)face)->charmaps[i]->platform_id;
-						FT_UShort eid = ((FT_Face)face)->charmaps[i]->encoding_id;
-
-						if (((pid == 0) && (eid == 3)) || ((pid == 3) && (eid == 1))) {
-
-							FT_Set_Charmap ((FT_Face)face, ((FT_Face)face)->charmaps[i]);
-
-						}
-
-					}
-
-				} else {
-
-					FT_Done_FreeType (library);
-					free (faceMemory);
-
-				}
+				free (faceMemory);
 
 			}
 
@@ -375,16 +363,19 @@ namespace lime {
 
 	Font::~Font () {
 
-		if (library) {
+		if (face) {
 
-			FT_Done_FreeType ((FT_Library)library);
-			library = 0;
+			FT_Done_Face ((FT_Face)face);
 			face = 0;
 
 		}
 
-		free (faceMemory);
-		faceMemory = 0;
+		if (faceMemory) {
+
+			free(faceMemory);
+			faceMemory = 0;
+
+		}
 
 	}
 
@@ -475,97 +466,9 @@ namespace lime {
 
 		wchar_t* family_name = GetFamilyName ();
 
-		#ifdef LIME_FREETYPE_SWF_METRICS
-
-		// this should more closely match how [Embed] works in AS3 when
-		// embedding a font in a SWF
-
-		int calculatedAscender = 0;
-		int calculatedDescender = 0;
-		int calculatedHeight = 0;
-
-		TT_OS2* os2 = (TT_OS2*)FT_Get_Sfnt_Table(((FT_Face)face), ft_sfnt_os2);
-		TT_HoriHeader* hhea = (TT_HoriHeader*)FT_Get_Sfnt_Table(((FT_Face)face), ft_sfnt_hhea);
-
-		if (os2 && os2->version != 0xFFFFU) {
-
-			calculatedAscender = (FT_Short)os2->usWinAscent;
-			calculatedDescender = -(FT_Short)os2->usWinDescent;
-			calculatedHeight = calculatedAscender - calculatedDescender;
-
-		} else if (hhea) {
-
-			calculatedAscender = hhea->Ascender;
-			calculatedDescender = hhea->Descender;
-			calculatedHeight = calculatedAscender - calculatedDescender + hhea->Line_Gap;
-
-		} else {
-
-			// should never happen, but let's have a fallback to be safe
-			calculatedAscender = ((FT_Face)face)->ascender;
-			calculatedDescender = ((FT_Face)face)->descender;
-			calculatedHeight = ((FT_Face)face)->height;
-
-		}
-
-		#elif defined(LIME_FREETYPE_LEGACY_METRICS)
-
-		// this is FreeType's font metrics algorithm from 2.9.1
-		// it behaves more like SWF than the new algorithm
-
-		TT_OS2* os2 = (TT_OS2*)FT_Get_Sfnt_Table(((FT_Face)face), ft_sfnt_os2);
-		TT_HoriHeader* hhea = (TT_HoriHeader*)FT_Get_Sfnt_Table(((FT_Face)face), ft_sfnt_hhea);
-
-		int calculatedAscender = 0;
-		int calculatedDescender = 0;
-		int calculatedHeight = 0;
-
-		if (hhea) {
-
-			calculatedAscender = hhea->Ascender;
-			calculatedDescender = hhea->Descender;
-			calculatedHeight = calculatedAscender - calculatedDescender + hhea->Line_Gap;
-
-		}
-
-        if (!( calculatedAscender || calculatedDescender ))
-        {
-			if (os2 && os2->version != 0xFFFFU)
-			{
-				if (os2->sTypoAscender || os2->sTypoDescender)
-				{
-
-					calculatedAscender = os2->sTypoAscender;
-					calculatedDescender = os2->sTypoDescender;
-					calculatedHeight = calculatedAscender - calculatedDescender + os2->sTypoLineGap;
-
-				}
-				else
-				{
-
-					calculatedAscender = (FT_Short)os2->usWinAscent;
-					calculatedDescender = -(FT_Short)os2->usWinDescent;
-					calculatedHeight = calculatedAscender - calculatedDescender;
-
-				}
-			}
-        }
-
-		if (!calculatedAscender || !calculatedDescender) {
-
-			calculatedAscender = ((FT_Face)face)->ascender;
-			calculatedDescender = ((FT_Face)face)->descender;
-			calculatedHeight = ((FT_Face)face)->height;
-
-		}
-
-		#else
-
 		int calculatedAscender = ((FT_Face)face)->ascender;
 		int calculatedDescender = ((FT_Face)face)->descender;
 		int calculatedHeight = ((FT_Face)face)->height;
-
-		#endif
 
 		if (useCFFIValue) {
 
@@ -752,160 +655,14 @@ namespace lime {
 
 	int Font::GetAscender () {
 
-		#ifdef LIME_FREETYPE_SWF_METRICS
-
-		// this should more closely match how [Embed] works in AS3 when
-		// embedding a font in a SWF
-
-		TT_OS2* os2 = (TT_OS2*)FT_Get_Sfnt_Table(((FT_Face)face), ft_sfnt_os2);
-		TT_HoriHeader* hhea = (TT_HoriHeader*)FT_Get_Sfnt_Table(((FT_Face)face), ft_sfnt_hhea);
-
-		if (os2 && os2->version != 0xFFFFU) {
-
-			return (FT_Short)os2->usWinAscent;
-
-		} else if (hhea) {
-
-			return hhea->Ascender;
-
-		}
-
-		// should never happen, but let's have a fallback to be safe
 		return ((FT_Face)face)->ascender;
-
-		#elif defined(LIME_FREETYPE_LEGACY_METRICS)
-
-		// this is FreeType's font metrics algorithm from 2.9.1
-		// it behaves more like SWF than the new algorithm
-
-		TT_OS2* os2 = (TT_OS2*)FT_Get_Sfnt_Table(((FT_Face)face), ft_sfnt_os2);
-		TT_HoriHeader* hhea = (TT_HoriHeader*)FT_Get_Sfnt_Table(((FT_Face)face), ft_sfnt_hhea);
-
-		int calculatedAscender = 0;
-		int calculatedDescender = 0;
-
-		if (hhea) {
-
-			calculatedAscender = hhea->Ascender;
-			calculatedDescender = hhea->Descender;
-		}
-
-        if (!( calculatedAscender || calculatedDescender ))
-        {
-			if (os2 && os2->version != 0xFFFFU)
-			{
-				if (os2->sTypoAscender || os2->sTypoDescender)
-				{
-
-					calculatedAscender = os2->sTypoAscender;
-					calculatedDescender = os2->sTypoDescender;
-
-				}
-				else
-				{
-
-					calculatedAscender = (FT_Short)os2->usWinAscent;
-					calculatedDescender = -(FT_Short)os2->usWinDescent;
-
-				}
-			}
-        }
-
-		if (!calculatedAscender || !calculatedDescender) {
-
-			calculatedAscender = ((FT_Face)face)->ascender;
-			calculatedDescender = ((FT_Face)face)->descender;
-
-		}
-
-		return calculatedAscender;
-
-		#else
-
-		return ((FT_Face)face)->ascender;
-
-		#endif
 
 	}
 
 
 	int Font::GetDescender () {
 
-		#ifdef LIME_FREETYPE_SWF_METRICS
-
-		// this should more closely match how [Embed] works in AS3 when
-		// embedding a font in a SWF
-
-		TT_OS2* os2 = (TT_OS2*)FT_Get_Sfnt_Table(((FT_Face)face), ft_sfnt_os2);
-		TT_HoriHeader* hhea = (TT_HoriHeader*)FT_Get_Sfnt_Table(((FT_Face)face), ft_sfnt_hhea);
-
-		if (os2 && os2->version != 0xFFFFU) {
-
-			return -(FT_Short)os2->usWinDescent;
-
-		}
-		else if (hhea) {
-
-			return hhea->Descender;
-
-		}
-
-		// should never happen, but let's have a fallback to be safe
 		return ((FT_Face)face)->descender;
-
-		#elif defined(LIME_FREETYPE_LEGACY_METRICS)
-
-		// this is FreeType's font metrics algorithm from 2.9.1
-		// it behaves more like SWF than the new algorithm
-
-		TT_OS2* os2 = (TT_OS2*)FT_Get_Sfnt_Table(((FT_Face)face), ft_sfnt_os2);
-		TT_HoriHeader* hhea = (TT_HoriHeader*)FT_Get_Sfnt_Table(((FT_Face)face), ft_sfnt_hhea);
-
-		int calculatedAscender = 0;
-		int calculatedDescender = 0;
-
-		if (hhea) {
-
-			calculatedAscender = hhea->Ascender;
-			calculatedDescender = hhea->Descender;
-
-		}
-
-        if (!( calculatedAscender || calculatedDescender ))
-        {
-			if (os2 && os2->version != 0xFFFFU)
-			{
-				if (os2->sTypoAscender || os2->sTypoDescender)
-				{
-
-					calculatedAscender = os2->sTypoAscender;
-					calculatedDescender = os2->sTypoDescender;
-
-				}
-				else
-				{
-
-					calculatedAscender = (FT_Short)os2->usWinAscent;
-					calculatedDescender = -(FT_Short)os2->usWinDescent;
-
-				}
-			}
-        }
-
-		if (!calculatedAscender || !calculatedDescender) {
-
-			calculatedAscender = ((FT_Face)face)->ascender;
-			calculatedDescender = ((FT_Face)face)->descender;
-
-		}
-
-		return calculatedDescender;
-
-		#else
-
-		return ((FT_Face)face)->descender;
-
-		#endif
 
 	}
 
@@ -1085,87 +842,7 @@ namespace lime {
 
 	int Font::GetHeight () {
 
-		#ifdef LIME_FREETYPE_SWF_METRICS
-
-		// this should more closely match how [Embed] works in AS3 when
-		// embedding a font in a SWF
-
-		TT_OS2* os2 = (TT_OS2*)FT_Get_Sfnt_Table(((FT_Face)face), ft_sfnt_os2);
-		TT_HoriHeader* hhea = (TT_HoriHeader*)FT_Get_Sfnt_Table(((FT_Face)face), ft_sfnt_hhea);
-
-		if (os2 && os2->version != 0xFFFFU) {
-
-			int calculatedAscender = (FT_Short)os2->usWinAscent;
-			int calculatedDescender = -(FT_Short)os2->usWinDescent;
-			return calculatedAscender - calculatedDescender;
-
-		} else if (hhea) {
-
-			int calculatedAscender = hhea->Ascender;
-			int calculatedDescender = hhea->Descender;
-			return calculatedAscender - calculatedDescender + hhea->Line_Gap;
-
-		}
-
-		// should never happen, but let's have a fallback to be safe
 		return ((FT_Face)face)->height;
-
-		#elif defined(LIME_FREETYPE_LEGACY_METRICS)
-
-		// this is FreeType's font metrics algorithm from 2.9.1
-		// it behaves more like SWF than the new algorithm
-
-		TT_OS2* os2 = (TT_OS2*)FT_Get_Sfnt_Table(((FT_Face)face), ft_sfnt_os2);
-		TT_HoriHeader* hhea = (TT_HoriHeader*)FT_Get_Sfnt_Table(((FT_Face)face), ft_sfnt_hhea);
-
-		int calculatedAscender = 0;
-		int calculatedDescender = 0;
-		int calculatedHeight = 0;
-
-		if (hhea) {
-
-			calculatedAscender = hhea->Ascender;
-			calculatedDescender = hhea->Descender;
-			calculatedHeight = calculatedAscender - calculatedDescender + hhea->Line_Gap;
-
-		}
-
-        if (!( calculatedAscender || calculatedDescender ))
-        {
-			if (os2 && os2->version != 0xFFFFU)
-			{
-				if (os2->sTypoAscender || os2->sTypoDescender)
-				{
-
-					calculatedAscender = os2->sTypoAscender;
-					calculatedDescender = os2->sTypoDescender;
-					calculatedHeight = calculatedAscender - calculatedDescender + os2->sTypoLineGap;
-
-				}
-				else
-				{
-
-					calculatedAscender = (FT_Short)os2->usWinAscent;
-					calculatedDescender = -(FT_Short)os2->usWinDescent;
-					calculatedHeight = calculatedAscender - calculatedDescender;
-
-				}
-			}
-        }
-
-        if (!calculatedHeight) {
-
-			calculatedHeight = ((FT_Face)face)->height;
-
-		}
-
-		return calculatedHeight;
-
-		#else
-
-		return ((FT_Face)face)->height;
-
-		#endif
 
 	}
 
@@ -1294,17 +971,15 @@ namespace lime {
 	}
 
 
-	int Font::RenderGlyphs (value indices, Bytes *bytes) {
+	int Font::RenderGlyphs (int* indices, int numIndices, Bytes* bytes) {
 
 		int offset = 0;
 		int totalOffset = 4;
 		uint32_t count = 0;
 
-		int numIndices = val_array_size (indices);
-
 		for (int i = 0; i < numIndices; i++) {
 
-			offset = RenderGlyph (val_int (val_array_i (indices, i)), bytes, totalOffset);
+			offset = RenderGlyph (indices[i], bytes, totalOffset);
 
 			if (offset > 0) {
 
@@ -1340,7 +1015,6 @@ namespace lime {
 			hdpi,								//Horizontal DPI
 			vdpi								//Vertical DPI
 		);
-		mSize = size;
 
 	}
 

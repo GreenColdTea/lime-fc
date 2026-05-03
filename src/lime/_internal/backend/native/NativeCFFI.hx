@@ -69,8 +69,6 @@ class NativeCFFI
 
 	@:cffi private static function lime_application_update(handle:Dynamic):Bool;
 
-	@:cffi private static function lime_audio_load(data:Dynamic, buffer:Dynamic):Dynamic;
-
 	@:cffi private static function lime_audio_load_bytes(data:Dynamic, buffer:Dynamic):Dynamic;
 
 	@:cffi private static function lime_audio_load_file(path:Dynamic, buffer:Dynamic):Dynamic;
@@ -141,8 +139,6 @@ class NativeCFFI
 
 	@:cffi private static function lime_font_get_units_per_em(handle:Dynamic):Int;
 
-	@:cffi private static function lime_font_load(data:Dynamic):Dynamic;
-
 	@:cffi private static function lime_font_load_bytes(data:Dynamic):Dynamic;
 
 	@:cffi private static function lime_font_load_file(path:Dynamic):Dynamic;
@@ -154,6 +150,10 @@ class NativeCFFI
 	@:cffi private static function lime_font_render_glyphs(handle:Dynamic, indices:Dynamic, data:Dynamic):Dynamic;
 
 	@:cffi private static function lime_font_set_size(handle:Dynamic, size:Int, dpi:Int):Void;
+
+	@:cffi private static function lime_font_initialize_library():Void;
+
+	@:cffi private static function lime_font_shutdown_library():Void;
 
 	@:cffi private static function lime_gamepad_add_mappings(mappings:Dynamic):Void;
 
@@ -174,8 +174,6 @@ class NativeCFFI
 	@:cffi private static function lime_haptic_vibrate(period:Int, duration:Int):Void;
 
 	@:cffi private static function lime_image_encode(data:Dynamic, type:Int, quality:Int, bytes:Dynamic):Dynamic;
-
-	@:cffi private static function lime_image_load(data:Dynamic, buffer:Dynamic):Dynamic;
 
 	@:cffi private static function lime_image_load_bytes(data:Dynamic, buffer:Dynamic):Dynamic;
 
@@ -227,10 +225,6 @@ class NativeCFFI
 
 	@:cffi private static function lime_joystick_event_manager_register(callback:Dynamic, eventObject:Dynamic):Void;
 
-	@:cffi private static function lime_jpeg_decode_bytes(data:Dynamic, decodeData:Bool, buffer:Dynamic):Dynamic;
-
-	@:cffi private static function lime_jpeg_decode_file(path:String, decodeData:Bool, buffer:Dynamic):Dynamic;
-
 	@:cffi private static function lime_key_code_from_scan_code(scanCode:Int):Int;
 
 	@:cffi private static function lime_key_code_to_scan_code(keyCode:Int):Int;
@@ -245,9 +239,25 @@ class NativeCFFI
 
 	@:cffi private static function lime_orientation_event_manager_register(callback:Dynamic, eventObject:Dynamic):Void;
 
-	@:cffi private static function lime_png_decode_bytes(data:Dynamic, decodeData:Bool, buffer:Dynamic):Dynamic;
+	@:cffi private static function lime_png_decode_bytes(data:Dynamic, buffer:Dynamic):Dynamic;
 
-	@:cffi private static function lime_png_decode_file(path:String, decodeData:Bool, buffer:Dynamic):Dynamic;
+	@:cffi private static function lime_png_decode_file(path:String, buffer:Dynamic):Dynamic;
+
+	@:cffi private static function lime_jpeg_decode_bytes(data:Dynamic, buffer:Dynamic):Dynamic;
+
+	@:cffi private static function lime_jpeg_decode_file(path:String, buffer:Dynamic):Dynamic;
+
+	@:cffi private static function lime_bmp_decode_bytes(data:Dynamic, buffer:Dynamic):Dynamic;
+
+	@:cffi private static function lime_bmp_decode_file(path:String, buffer:Dynamic):Dynamic;
+
+	@:cffi private static function lime_svg_decode_bytes(data:Dynamic, buffer:Dynamic):Dynamic;
+
+	@:cffi private static function lime_svg_decode_file(path:String, buffer:Dynamic):Dynamic;
+
+	@:cffi private static function lime_svg_decode_sized_bytes(data:Dynamic, width:Int, height:Int, buffer:Dynamic):Dynamic;
+
+	@:cffi private static function lime_svg_decode_sized_file(path:String, width:Int, height:Int, buffer:Dynamic):Dynamic;
 
 	@:cffi private static function lime_render_event_manager_register(callback:Dynamic, eventObject:Dynamic):Void;
 
@@ -292,6 +302,8 @@ class NativeCFFI
 	@:cffi private static function lime_text_event_manager_register(callback:Dynamic, eventObject:Dynamic):Void;
 
 	@:cffi private static function lime_touch_event_manager_register(callback:Dynamic, eventObject:Dynamic):Void;
+
+	@:cffi private static function lime_gesture_event_manager_register(callback:Dynamic, eventObject:Dynamic):Void;
 
 	@:cffi private static function lime_window_alert(handle:Dynamic, type:Int, message:String, title:String, buttons:Dynamic):Int;
 
@@ -390,7 +402,6 @@ class NativeCFFI
 	private static var lime_application_set_frame_rate = new cpp.Callable<cpp.Object->Float->cpp.Void>(cpp.Prime._loadPrime("lime",
 		"lime_application_set_frame_rate", "odv", false));
 	private static var lime_application_update = new cpp.Callable<cpp.Object->Bool>(cpp.Prime._loadPrime("lime", "lime_application_update", "ob", false));
-	private static var lime_audio_load = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_audio_load", "ooo", false));
 	private static var lime_audio_load_bytes = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_audio_load_bytes",
 		"ooo", false));
 	private static var lime_audio_load_file = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_audio_load_file", "ooo",
@@ -454,7 +465,6 @@ class NativeCFFI
 	private static var lime_font_get_strikethrough_thickness = new cpp.Callable<cpp.Object->Int>(cpp.Prime._loadPrime("lime", "lime_font_get_strikethrough_thickness",
 		"oi", false));
 	private static var lime_font_get_units_per_em = new cpp.Callable<cpp.Object->Int>(cpp.Prime._loadPrime("lime", "lime_font_get_units_per_em", "oi", false));
-	private static var lime_font_load = new cpp.Callable<cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_font_load", "oo", false));
 	private static var lime_font_load_bytes = new cpp.Callable<cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_font_load_bytes", "oo", false));
 	private static var lime_font_load_file = new cpp.Callable<cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_font_load_file", "oo", false));
 	private static var lime_font_outline_decompose = new cpp.Callable<cpp.Object->Int->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_font_outline_decompose",
@@ -464,6 +474,8 @@ class NativeCFFI
 	private static var lime_font_render_glyphs = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime",
 		"lime_font_render_glyphs", "oooo", false));
 	private static var lime_font_set_size = new cpp.Callable<cpp.Object->Int->Int->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_font_set_size", "oiiv", false));
+	private static var lime_font_initialize_library = new cpp.Callable<Void->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_font_initialize_library", "v", false));
+	private static var lime_font_shutdown_library = new cpp.Callable<Void->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_font_shutdown_library", "v", false));
 	private static var lime_gamepad_add_mappings = new cpp.Callable<cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_gamepad_add_mappings", "ov",
 		false));
 	private static var lime_gamepad_get_device_guid = new cpp.Callable<Int->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_gamepad_get_device_guid", "io",
@@ -483,7 +495,6 @@ class NativeCFFI
 	private static var lime_haptic_vibrate = new cpp.Callable<Int->Int->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_haptic_vibrate", "iiv", false));
 	private static var lime_image_encode = new cpp.Callable<cpp.Object->Int->Int->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_image_encode",
 		"oiioo", false));
-	private static var lime_image_load = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_image_load", "ooo", false));
 	private static var lime_image_load_bytes = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_image_load_bytes",
 		"ooo", false));
 	private static var lime_image_load_file = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_image_load_file", "ooo",
@@ -527,10 +538,6 @@ class NativeCFFI
 		false));
 	private static var lime_joystick_event_manager_register = new cpp.Callable<cpp.Object->cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime",
 		"lime_joystick_event_manager_register", "oov", false));
-	private static var lime_jpeg_decode_bytes = new cpp.Callable<cpp.Object->Bool->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime",
-		"lime_jpeg_decode_bytes", "oboo", false));
-	private static var lime_jpeg_decode_file = new cpp.Callable<String->Bool->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_jpeg_decode_file",
-		"sboo", false));
 	private static var lime_key_code_from_scan_code = new cpp.Callable<Int->Int>(cpp.Prime._loadPrime("lime", "lime_key_code_from_scan_code",
 		"ii", false));
 	private static var lime_key_code_to_scan_code = new cpp.Callable<Int->Int>(cpp.Prime._loadPrime("lime", "lime_key_code_to_scan_code",
@@ -545,10 +552,26 @@ class NativeCFFI
 		"lime_mouse_event_manager_register", "oov", false));
 	private static var lime_orientation_event_manager_register = new cpp.Callable<cpp.Object->cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime",
 		"lime_orientation_event_manager_register", "oov", false));
-	private static var lime_png_decode_bytes = new cpp.Callable<cpp.Object->Bool->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime",
-		"lime_png_decode_bytes", "oboo", false));
-	private static var lime_png_decode_file = new cpp.Callable<String->Bool->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_png_decode_file",
-		"sboo", false));
+	private static var lime_png_decode_bytes = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime",
+		"lime_png_decode_bytes", "ooo", false));
+	private static var lime_png_decode_file = new cpp.Callable<String->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_png_decode_file",
+		"soo", false));
+	private static var lime_jpeg_decode_bytes = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime",
+		"lime_jpeg_decode_bytes", "ooo", false));
+	private static var lime_jpeg_decode_file = new cpp.Callable<String->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_jpeg_decode_file",
+		"soo", false));
+	private static var lime_bmp_decode_bytes = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime",
+		"lime_bmp_decode_bytes", "ooo", false));
+	private static var lime_bmp_decode_file = new cpp.Callable<String->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_bmp_decode_file",
+		"soo", false));
+	private static var lime_svg_decode_bytes = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime",
+		"lime_svg_decode_bytes", "ooo", false));
+	private static var lime_svg_decode_file = new cpp.Callable<String->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_svg_decode_file",
+		"soo", false));
+	private static var lime_svg_decode_sized_bytes = new cpp.Callable<cpp.Object->Int->Int->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime",
+		"lime_svg_decode_sized_bytes", "oiioo", false));
+	private static var lime_svg_decode_sized_file = new cpp.Callable<String->Int->Int->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_svg_decode_sized_file",
+		"siioo", false));
 	private static var lime_render_event_manager_register = new cpp.Callable<cpp.Object->cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime",
 		"lime_render_event_manager_register", "oov", false));
 	private static var lime_sensor_event_manager_register = new cpp.Callable<cpp.Object->cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime",
@@ -585,6 +608,8 @@ class NativeCFFI
 		"lime_text_event_manager_register", "oov", false));
 	private static var lime_touch_event_manager_register = new cpp.Callable<cpp.Object->cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime",
 		"lime_touch_event_manager_register", "oov", false));
+	private static var lime_gesture_event_manager_register = new cpp.Callable<cpp.Object->cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime",
+		"lime_gesture_event_manager_register", "oov", false));
 	private static var lime_window_alert = new cpp.Callable<cpp.Object->Int->String->String->cpp.Object->Int>(cpp.Prime._loadPrime("lime", "lime_window_alert", "oissoi",
 		false));
 	private static var lime_window_set_vsync_mode = new cpp.Callable<cpp.Object->Int->Bool>(cpp.Prime._loadPrime("lime", "lime_window_set_vsync_mode", "oib",
@@ -670,7 +695,6 @@ class NativeCFFI
 	private static var lime_application_quit = CFFI.load("lime", "lime_application_quit", 1);
 	private static var lime_application_set_frame_rate = CFFI.load("lime", "lime_application_set_frame_rate", 2);
 	private static var lime_application_update = CFFI.load("lime", "lime_application_update", 1);
-	private static var lime_audio_load = CFFI.load("lime", "lime_audio_load", 2);
 	private static var lime_audio_load_bytes = CFFI.load("lime", "lime_audio_load_bytes", 2);
 	private static var lime_audio_load_file = CFFI.load("lime", "lime_audio_load_file", 2);
 	private static var lime_bytes_from_data_pointer = CFFI.load("lime", "lime_bytes_from_data_pointer", 3);
@@ -706,13 +730,14 @@ class NativeCFFI
 	private static var lime_font_get_strikethrough_position = CFFI.load("lime", "lime_font_get_strikethrough_position", 1);
 	private static var lime_font_get_strikethrough_thickness = CFFI.load("lime", "lime_font_get_strikethrough_thickness", 1);
 	private static var lime_font_get_units_per_em = CFFI.load("lime", "lime_font_get_units_per_em", 1);
-	private static var lime_font_load = CFFI.load("lime", "lime_font_load", 1);
 	private static var lime_font_load_bytes = CFFI.load("lime", "lime_font_load_bytes", 1);
 	private static var lime_font_load_file = CFFI.load("lime", "lime_font_load_file", 1);
 	private static var lime_font_outline_decompose = CFFI.load("lime", "lime_font_outline_decompose", 2);
 	private static var lime_font_render_glyph = CFFI.load("lime", "lime_font_render_glyph", 3);
 	private static var lime_font_render_glyphs = CFFI.load("lime", "lime_font_render_glyphs", 3);
 	private static var lime_font_set_size = CFFI.load("lime", "lime_font_set_size", 3);
+	private static var lime_font_initialize_library = CFFI.load("lime", "lime_font_initialize_library", 0);
+	private static var lime_font_shutdown_library = CFFI.load("lime", "lime_font_shutdown_library", 0);
 	private static var lime_gamepad_add_mappings = CFFI.load("lime", "lime_gamepad_add_mappings", 1);
 	private static var lime_gamepad_get_device_guid = CFFI.load("lime", "lime_gamepad_get_device_guid", 1);
 	private static var lime_gamepad_get_device_name = CFFI.load("lime", "lime_gamepad_get_device_name", 1);
@@ -723,7 +748,6 @@ class NativeCFFI
 	private static var lime_gzip_decompress = CFFI.load("lime", "lime_gzip_decompress", 2);
 	private static var lime_haptic_vibrate = CFFI.load("lime", "lime_haptic_vibrate", 2);
 	private static var lime_image_encode = CFFI.load("lime", "lime_image_encode", 4);
-	private static var lime_image_load = CFFI.load("lime", "lime_image_load", 2);
 	private static var lime_image_load_bytes = CFFI.load("lime", "lime_image_load_bytes", 2);
 	private static var lime_image_load_file = CFFI.load("lime", "lime_image_load_file", 2);
 	private static var lime_image_data_util_color_transform = CFFI.load("lime", "lime_image_data_util_color_transform", 3);
@@ -747,8 +771,6 @@ class NativeCFFI
 	private static var lime_joystick_rumble = CFFI.load("lime", "lime_joystick_rumble", 4);
 	private static var lime_joystick_set_led = CFFI.load("lime", "lime_joystick_set_led", 4);
 	private static var lime_joystick_event_manager_register = CFFI.load("lime", "lime_joystick_event_manager_register", 2);
-	private static var lime_jpeg_decode_bytes = CFFI.load("lime", "lime_jpeg_decode_bytes", 3);
-	private static var lime_jpeg_decode_file = CFFI.load("lime", "lime_jpeg_decode_file", 3);
 	private static var lime_key_code_from_scan_code = CFFI.load("lime", "lime_key_code_from_scan_code", 1);
 	private static var lime_key_code_to_scan_code = CFFI.load("lime", "lime_key_code_to_scan_code", 1);
 	private static var lime_key_event_manager_register = CFFI.load("lime", "lime_key_event_manager_register", 2);
@@ -756,8 +778,16 @@ class NativeCFFI
 	private static var lime_lzma_decompress = CFFI.load("lime", "lime_lzma_decompress", 2);
 	private static var lime_mouse_event_manager_register = CFFI.load("lime", "lime_mouse_event_manager_register", 2);
 	private static var lime_orientation_event_manager_register = CFFI.load("lime", "lime_orientation_event_manager_register", 2);
-	private static var lime_png_decode_bytes = CFFI.load("lime", "lime_png_decode_bytes", 3);
-	private static var lime_png_decode_file = CFFI.load("lime", "lime_png_decode_file", 3);
+	private static var lime_png_decode_bytes = CFFI.load("lime", "lime_png_decode_bytes", 2);
+	private static var lime_png_decode_file = CFFI.load("lime", "lime_png_decode_file", 2);
+	private static var lime_jpeg_decode_bytes = CFFI.load("lime", "lime_jpeg_decode_bytes", 2);
+	private static var lime_jpeg_decode_file = CFFI.load("lime", "lime_jpeg_decode_file", 2);
+	private static var lime_bmp_decode_bytes = CFFI.load("lime", "lime_bmp_decode_bytes", 2);
+	private static var lime_bmp_decode_file = CFFI.load("lime", "lime_bmp_decode_file", 2);
+	private static var lime_svg_decode_bytes = CFFI.load("lime", "lime_svg_decode_bytes", 2);
+	private static var lime_svg_decode_file = CFFI.load("lime", "lime_svg_decode_file", 2);
+	private static var lime_svg_decode_sized_bytes = CFFI.load("lime", "lime_svg_decode_sized_bytes", 4);
+	private static var lime_svg_decode_sized_file = CFFI.load("lime", "lime_svg_decode_sized_file", 4);
 	private static var lime_render_event_manager_register = CFFI.load("lime", "lime_render_event_manager_register", 2);
 	private static var lime_sensor_event_manager_register = CFFI.load("lime", "lime_sensor_event_manager_register", 2);
 	private static var lime_system_get_allow_screen_timeout = CFFI.load("lime", "lime_system_get_allow_screen_timeout", 0);
@@ -780,6 +810,7 @@ class NativeCFFI
 	private static var lime_system_open_url = CFFI.load("lime", "lime_system_open_url", 2);
 	private static var lime_text_event_manager_register = CFFI.load("lime", "lime_text_event_manager_register", 2);
 	private static var lime_touch_event_manager_register = CFFI.load("lime", "lime_touch_event_manager_register", 2);
+	private static var lime_gesture_event_manager_register = CFFI.load("lime", "lime_gesture_event_manager_register", 2);
 	private static var lime_window_alert = CFFI.load("lime", "lime_window_alert", 5);
 	private static var lime_window_set_vsync_mode = CFFI.load("lime", "lime_window_set_vsync_mode", 2);
 	private static var lime_window_close = CFFI.load("lime", "lime_window_close", 1);
@@ -854,7 +885,6 @@ class NativeCFFI
 		return false;
 	}
 
-	// @:cffi private static function lime_audio_load (data:Dynamic, buffer:Dynamic):Dynamic;
 	@:hlNative("lime", "hl_audio_load_bytes") private static function lime_audio_load_bytes(data:Bytes, buffer:AudioBuffer):AudioBuffer
 	{
 		return null;
@@ -1008,7 +1038,6 @@ class NativeCFFI
 		return 0;
 	}
 
-	// @:hlNative("lime", "") private static function lime_font_load (data:Dynamic):Dynamic { return null; }
 	@:hlNative("lime", "hl_font_load_bytes") private static function lime_font_load_bytes(data:Bytes):CFFIPointer
 	{
 		return null;
@@ -1036,6 +1065,10 @@ class NativeCFFI
 	}
 
 	@:hlNative("lime", "hl_font_set_size") private static function lime_font_set_size(handle:CFFIPointer, size:Int, dpi:Int):Void {}
+
+	@:hlNative("lime", "hl_font_initialize_library") private static function lime_font_initialize_library():Void {}
+
+	@:hlNative("lime", "hl_font_shutdown_library") private static function lime_font_shutdown_library():Void {}
 
 	@:hlNative("lime", "hl_gamepad_add_mappings") private static function lime_gamepad_add_mappings(mappings:hl.NativeArray<String>):Void {}
 
@@ -1073,7 +1106,6 @@ class NativeCFFI
 		return null;
 	}
 
-	// @:cffi private static function lime_image_load (data:Dynamic, buffer:Dynamic):Dynamic;
 	@:hlNative("lime", "hl_image_load_bytes") private static function lime_image_load_bytes(data:Bytes, buffer:ImageBuffer):ImageBuffer
 	{
 		return null;
@@ -1161,16 +1193,6 @@ class NativeCFFI
 	@:hlNative("lime", "hl_joystick_event_manager_register") private static function lime_joystick_event_manager_register(callback:Void->Void,
 		eventObject:JoystickEventInfo):Void {}
 
-	@:hlNative("lime", "hl_jpeg_decode_bytes") private static function lime_jpeg_decode_bytes(data:Bytes, decodeData:Bool, buffer:ImageBuffer):ImageBuffer
-	{
-		return null;
-	}
-
-	@:hlNative("lime", "hl_jpeg_decode_file") private static function lime_jpeg_decode_file(path:String, decodeData:Bool, buffer:ImageBuffer):ImageBuffer
-	{
-		return null;
-	}
-
 	@:hlNative("lime", "hl_key_code_from_scan_code") private static function lime_key_code_from_scan_code(scanCode:Int):Int
 	{
 		return 0;
@@ -1200,12 +1222,52 @@ class NativeCFFI
 	@:hlNative("lime", "hl_orientation_event_manager_register") private static function lime_orientation_event_manager_register(callback:Void->Void,
 		eventObject:OrientationEventInfo):Void {}
 
-	@:hlNative("lime", "hl_png_decode_bytes") private static function lime_png_decode_bytes(data:Bytes, decodeData:Bool, buffer:ImageBuffer):ImageBuffer
+	@:hlNative("lime", "hl_png_decode_bytes") private static function lime_png_decode_bytes(data:Bytes, buffer:ImageBuffer):ImageBuffer
 	{
 		return null;
 	}
 
-	@:hlNative("lime", "hl_png_decode_file") private static function lime_png_decode_file(path:String, decodeData:Bool, buffer:ImageBuffer):ImageBuffer
+	@:hlNative("lime", "hl_png_decode_file") private static function lime_png_decode_file(path:String, buffer:ImageBuffer):ImageBuffer
+	{
+		return null;
+	}
+
+	@:hlNative("lime", "hl_jpeg_decode_bytes") private static function lime_jpeg_decode_bytes(data:Bytes, buffer:ImageBuffer):ImageBuffer
+	{
+		return null;
+	}
+
+	@:hlNative("lime", "hl_jpeg_decode_file") private static function lime_jpeg_decode_file(path:String, buffer:ImageBuffer):ImageBuffer
+	{
+		return null;
+	}
+
+	@:hlNative("lime", "hl_bmp_decode_bytes") private static function lime_bmp_decode_bytes(data:Bytes, buffer:ImageBuffer):ImageBuffer
+	{
+		return null;
+	}
+
+	@:hlNative("lime", "hl_bmp_decode_file") private static function lime_bmp_decode_file(path:String, buffer:ImageBuffer):ImageBuffer
+	{
+		return null;
+	}
+
+	@:hlNative("lime", "hl_svg_decode_bytes") private static function lime_svg_decode_bytes(data:Bytes, buffer:ImageBuffer):ImageBuffer
+	{
+		return null;
+	}
+
+	@:hlNative("lime", "hl_svg_decode_file") private static function lime_svg_decode_file(path:String, buffer:ImageBuffer):ImageBuffer
+	{
+		return null;
+	}
+
+	@:hlNative("lime", "hl_svg_decode_sized_bytes") private static function lime_svg_decode_sized_bytes(data:Bytes, width:Int, height:Int, buffer:ImageBuffer):ImageBuffer
+	{
+		return null;
+	}
+
+	@:hlNative("lime", "hl_svg_decode_sized_file") private static function lime_svg_decode_sized_file(path:String, width:Int, height:Int, buffer:ImageBuffer):ImageBuffer
 	{
 		return null;
 	}
@@ -1302,6 +1364,9 @@ class NativeCFFI
 
 	@:hlNative("lime", "hl_touch_event_manager_register") private static function lime_touch_event_manager_register(callback:Void->Void,
 		eventObject:TouchEventInfo):Void {}
+
+	@:hlNative("lime", "hl_gesture_event_manager_register") private static function lime_gesture_event_manager_register(callback:Void->Void,
+		eventObject:GestureEventInfo):Void {}
 
 	@:hlNative("lime", "hl_window_alert") private static function lime_window_alert(handle:CFFIPointer, type:Int, message:String, title:String, buttons:hl.NativeArray<String>):Int
 	{

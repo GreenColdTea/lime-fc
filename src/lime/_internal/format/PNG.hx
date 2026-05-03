@@ -2,20 +2,12 @@ package lime._internal.format;
 
 import haxe.io.Bytes;
 import lime._internal.backend.native.NativeCFFI;
-import lime._internal.graphics.ImageCanvasUtil;
 import lime.graphics.Image;
 import lime.graphics.ImageBuffer;
-import lime.system.CFFI;
 import lime.utils.UInt8Array;
 #if (js && html5)
+import lime._internal.graphics.ImageCanvasUtil;
 import js.Browser;
-#end
-#if format
-import format.png.Data;
-import format.png.Writer;
-// import format.tools.Deflate;
-import haxe.io.Bytes;
-import haxe.io.BytesOutput;
 #end
 
 #if !lime_debug
@@ -26,10 +18,10 @@ import haxe.io.BytesOutput;
 @:access(lime.graphics.ImageBuffer)
 class PNG
 {
-	public static function decodeBytes(bytes:Bytes, decodeData:Bool = true):Image
+	public static function decodeBytes(bytes:Bytes):Image
 	{
 		#if (lime_cffi && !macro)
-		var buffer = NativeCFFI.lime_png_decode_bytes(bytes, decodeData, new ImageBuffer(new UInt8Array(Bytes.alloc(0))));
+		var buffer = NativeCFFI.lime_png_decode_bytes(bytes, new ImageBuffer(new UInt8Array(Bytes.alloc(0))));
 
 		if (buffer != null)
 		{
@@ -40,10 +32,10 @@ class PNG
 		return null;
 	}
 
-	public static function decodeFile(path:String, decodeData:Bool = true):Image
+	public static function decodeFile(path:String):Image
 	{
 		#if (lime_cffi && !macro)
-		var buffer = NativeCFFI.lime_png_decode_file(path, decodeData, new ImageBuffer(new UInt8Array(Bytes.alloc(0))));
+		var buffer = NativeCFFI.lime_png_decode_file(path, new ImageBuffer(new UInt8Array(Bytes.alloc(0))));
 
 		if (buffer != null)
 		{
@@ -65,55 +57,9 @@ class PNG
 			image.format = RGBA32;
 		}
 
-		#if (sys && lime_cffi && (!disable_cffi || !format) && !macro)
-		if (CFFI.enabled)
-		{
-			return NativeCFFI.lime_image_encode(image.buffer, 0, 0, Bytes.alloc(0));
-		}
-		#end
-
-		#if ((!js || !html5) && format)
-		#if (sys && (!disable_cffi || !format) && !macro)
-		else
-		#end
-		{
-			try
-			{
-				var bytes = Bytes.alloc(image.width * image.height * 4 + image.height);
-				var sourceBytes = image.buffer.data.toBytes();
-
-				var sourceIndex:Int, index:Int;
-
-				for (y in 0...image.height)
-				{
-					sourceIndex = y * image.width * 4;
-					index = y * image.width * 4 + y;
-
-					bytes.set(index, 0);
-					bytes.blit(index + 1, sourceBytes, sourceIndex, image.width * 4);
-				}
-
-				var data = new List();
-				data.add(CHeader(
-					{
-						width: image.width,
-						height: image.height,
-						colbits: 8,
-						color: ColTrue(true),
-						interlaced: false
-					}));
-				data.add(CData(Zlib.compress(bytes)));
-				data.add(CEnd);
-
-				var output = new BytesOutput();
-				var png = new Writer(output);
-				png.write(data);
-
-				return output.getBytes();
-			}
-			catch (e:Dynamic) {}
-		}
-		#elseif js
+		#if (lime_cffi && !macro)
+		return NativeCFFI.lime_image_encode(image.buffer, 0, 0, Bytes.alloc(0));
+		#elseif (js && html5)
 		ImageCanvasUtil.convertToCanvas(image, false);
 
 		if (image.buffer.__srcCanvas != null)

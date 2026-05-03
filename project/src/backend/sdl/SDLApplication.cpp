@@ -7,10 +7,6 @@
 #include <unistd.h>
 #endif
 
-#ifdef EMSCRIPTEN
-#include "emscripten.h"
-#endif
-
 #include <cmath>
 
 
@@ -31,10 +27,32 @@ namespace lime {
 
 	SDLApplication::SDLApplication () {
 
+		SDL_SetHint (SDL_HINT_AUDIO_FREQUENCY, "48000");
+		SDL_SetHint (SDL_HINT_AUDIO_CHANNELS, "2");
+		SDL_SetHint (SDL_HINT_AUDIO_FORMAT, "F32");
+
+		#ifdef IPHONE
+		SDL_SetHint (SDL_HINT_AUDIO_CATEGORY, "playback");
+		#endif
+
+		SDL_SetHint (SDL_HINT_AUDIO_DEVICE_STREAM_ROLE, "Game");
+
+		#ifdef ANDROID
+		if (SDL_GetAndroidSDKVersion () < 31) {
+
+			SDL_SetHint (SDL_HINT_AUDIO_DRIVER, "openslES");
+
+		}
+		#endif
+
 		SDL_SetHint (SDL_HINT_JOYSTICK_HIDAPI, "1");
 
 		#ifdef IPHONE
 		SDL_SetHint (SDL_HINT_IOS_HIDE_HOME_INDICATOR, "3");
+		#endif
+
+		#ifdef HX_MACOS
+		SDL_SetHint (SDL_HINT_MAC_SCROLL_MOMENTUM, "1");
 		#endif
 
 		Uint32 initFlags = SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_JOYSTICK | SDL_INIT_SENSOR;
@@ -116,17 +134,7 @@ namespace lime {
 
 		Init ();
 
-		#ifdef EMSCRIPTEN
-		emscripten_cancel_main_loop ();
-		emscripten_set_main_loop (UpdateFrame, 0, 0);
-		emscripten_set_main_loop_timing (EM_TIMING_RAF, 1);
-		#endif
-
-		#if defined(IPHONE) || defined(EMSCRIPTEN)
-
-		return 0;
-
-		#else
+		#ifndef IPHONE
 
 		while (active) {
 
@@ -136,6 +144,10 @@ namespace lime {
 
 		return Quit ();
 
+		#else
+
+		return 0;
+
 		#endif
 
 	}
@@ -143,7 +155,7 @@ namespace lime {
 
 	void SDLApplication::HandleEvent (SDL_Event* event) {
 
-		#if defined(IPHONE) || defined(EMSCRIPTEN)
+		#ifdef IPHONE
 
 		int top = 0;
 		gc_set_top_of_stack(&top, false);
@@ -226,7 +238,6 @@ namespace lime {
 				ProcessMouseEvent (event);
 				break;
 
-			#ifndef EMSCRIPTEN
 			case SDL_EVENT_RENDER_DEVICE_RESET:
 				renderEvent.type = RENDER_CONTEXT_LOST;
 				RenderEvent::Dispatch (&renderEvent);
@@ -234,7 +245,6 @@ namespace lime {
 				renderEvent.type = RENDER_CONTEXT_RESTORED;
 				RenderEvent::Dispatch (&renderEvent);
 				break;
-			#endif
 
 			case SDL_EVENT_SENSOR_UPDATE:
 
@@ -573,18 +583,8 @@ namespace lime {
 				case SDL_EVENT_MOUSE_WHEEL:
 
 					mouseEvent.type = MOUSE_WHEEL;
-
-					if (event->wheel.direction == SDL_MOUSEWHEEL_FLIPPED) {
-
-						mouseEvent.x = -event->wheel.x;
-						mouseEvent.y = -event->wheel.y;
-
-					} else {
-
-						mouseEvent.x = event->wheel.x;
-						mouseEvent.y = event->wheel.y;
-
-					}
+					mouseEvent.x = event->wheel.x;
+					mouseEvent.y = event->wheel.y;
 					break;
 
 			}
@@ -771,6 +771,10 @@ namespace lime {
 
 	void SDLApplication::RegisterWindow (SDLWindow *window) {
 
+		#ifdef HX_MACOS
+		Gesture::Register(window);
+		#endif
+
 		#ifdef IPHONE
 		SDL_SetiOSAnimationCallback (window->sdlWindow, 1, UpdateFrame, NULL);
 		#endif
@@ -834,7 +838,7 @@ namespace lime {
 
 	bool SDLApplication::HandleAppLifecycleEvent (void* userdata, SDL_Event* event) {
 
-		#if defined(IPHONE) || defined(EMSCRIPTEN)
+		#ifdef IPHONE
 
 		int top = 0;
 		gc_set_top_of_stack(&top, false);
@@ -882,26 +886,13 @@ namespace lime {
 	}
 
 
-	void SDLApplication::UpdateFrame () {
-
-		#ifdef EMSCRIPTEN
-		System::GCTryExitBlocking ();
-		#endif
+	#ifdef IPHONE
+	void SDLApplication::UpdateFrame (void *userdata) {
 
 		currentApplication->Update ();
 
-		#ifdef EMSCRIPTEN
-		System::GCTryEnterBlocking ();
-		#endif
-
 	}
-
-
-	void SDLApplication::UpdateFrame (void*) {
-
-		UpdateFrame ();
-
-	}
+	#endif
 
 
 	Application* CreateApplication () {

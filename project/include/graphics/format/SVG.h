@@ -9,13 +9,13 @@
 namespace lime {
 
 
-	class JPEG {
+	class SVG {
 
 
 		public:
 
 			static bool Decode (Resource *resource, ImageBuffer *imageBuffer);
-			static bool Encode (ImageBuffer *imageBuffer, Bytes *bytes, int quality);
+			static bool DecodeSized (Resource *resource, int width, int height, ImageBuffer *imageBuffer);
 
 
 	};

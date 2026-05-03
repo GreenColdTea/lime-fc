@@ -11,19 +11,13 @@ import ::APP_MAIN::;
 	{
 		lime.system.System.__registerEntryPoint("::APP_FILE::", create);
 
-		#if (!html5 || munit)
+		#if !html5
 		create(null);
 		#end
 	}
 
 	public static function create(config:Dynamic):Void
 	{
-		#if !disable_preloader_assets
-		ManifestResources.init(config);
-		#end
-
-		#if !munit
-
 		::if (WIN_ORIENTATION != "auto")::
 		lime.system.System.setHint("ORIENTATIONS", ::if (WIN_ORIENTATION == "portrait")::"Portrait PortraitUpsideDown"::else::"LandscapeLeft LandscapeRight"::end::);
 		::end::
@@ -39,6 +33,10 @@ import ::APP_MAIN::;
 
 		var app = new ::APP_MAIN::(appMeta);
 
+		#if !disable_preloader_assets
+		ManifestResources.init(config);
+		#end
+
 		::foreach windows::
 		var attributes:lime.ui.WindowAttributes =
 			{
@@ -49,9 +47,11 @@ import ::APP_MAIN::;
 				// display: ::display::,
 				element: null,
 				frameRate: ::fps::,
-				#if !web fullscreen: ::fullscreen::, #end
+				#if !web
+				fullscreen: ::fullscreen::,
+				#end
 				height: ::height::,
-				hidden: #if munit true #else ::hidden:: #end,
+				hidden: ::hidden::,
 				maximized: ::maximized::,
 				minimized: ::minimized::,
 				parameters: ::parameters::,
@@ -98,7 +98,6 @@ import ::APP_MAIN::;
 
 		app.createWindow(attributes);
 		::end::
-		#end
 
 		// preloader.create ();
 
@@ -116,25 +115,15 @@ import ::APP_MAIN::;
 
 		app.preloader.load();
 
-		#if !munit
 		start(app);
-		#end
 	}
 
 	public static function start(app:lime.app.Application = null):Void
 	{
-		#if !munit
-
 		var result = app.exec();
 
 		#if (sys && !ios && !nodejs && !webassembly)
 		lime.system.System.exit(result);
-		#end
-
-		#else
-
-		new ::APP_MAIN::();
-
 		#end
 	}
 }
