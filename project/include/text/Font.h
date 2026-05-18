@@ -47,7 +47,7 @@ namespace lime {
 			Font (Resource *resource, int faceIndex = 0);
 			~Font ();
 
-			void* Decompose (bool useCFFIValue, int em);
+			void* Decompose (bool useCFFIValue, int size, bool forceAutoHint = true);
 			int GetAscender ();
 			int GetDescender ();
 			wchar_t *GetFamilyName ();
@@ -61,8 +61,8 @@ namespace lime {
 			int GetStrikethroughPosition ();
 			int GetStrikethroughThickness ();
 			int GetUnitsPerEM ();
-			int RenderGlyph (int index, Bytes *bytes, int offset = 0);
-			int RenderGlyphs (int* indices, int numIndices, Bytes* bytes);
+			int RenderGlyph (int index, Bytes *bytes, int offset, int flags);
+			int RenderGlyphs (int* indices, int numIndices, Bytes* bytes, int flags);
 			void SetSize (size_t size, size_t dpi);
 
 			void* face;

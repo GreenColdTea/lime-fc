@@ -278,7 +278,7 @@ namespace lime {
 
 	void Font::InitializeLibrary() {
 
-		FT_Init_FreeType((FT_Library*)&library);
+		FT_Init_FreeType ((FT_Library*)&library);
 
 	}
 
@@ -287,7 +287,7 @@ namespace lime {
 
 		if (library) {
 
-			FT_Done_FreeType((FT_Library)library);
+			FT_Done_FreeType ((FT_Library)library);
 
 			library = 0;
 
@@ -311,17 +311,19 @@ namespace lime {
 
 			}
 
-			file.Seek(0, SEEK_END);
-			size_t size = (size_t)file.Tell();
-			file.Seek(0, SEEK_SET);
+			file.Seek (0, SEEK_END);
 
-			unsigned char* faceMemory = (unsigned char*)malloc(size);
-			file.Read(faceMemory, size);
-			file.Close();
+			size_t size = (size_t)file.Tell ();
+
+			file.Seek (0, SEEK_SET);
+
+			unsigned char* faceMemory = (unsigned char*)malloc (size);
+			file.Read (faceMemory, size);
+			file.Close ();
 
 			FT_Face face;
 
-			int error = FT_New_Memory_Face((FT_Library)library, faceMemory, size, faceIndex, &face);
+			int error = FT_New_Memory_Face ((FT_Library)library, faceMemory, size, faceIndex, &face);
 
 			if (!error) {
 
@@ -380,11 +382,11 @@ namespace lime {
 	}
 
 
-	void* Font::Decompose (bool useCFFIValue, int em) {
+	void* Font::Decompose (bool useCFFIValue, int size, bool forceAutoHint) {
 
 		int result, i, j;
 
-		FT_Set_Char_Size ((FT_Face)face, em, em, 72, 72);
+		FT_Set_Char_Size ((FT_Face)face, size, size, 72, 72);
 		FT_Set_Transform ((FT_Face)face, 0, NULL);
 
 		std::vector<glyph*> glyphs;
@@ -405,9 +407,21 @@ namespace lime {
 
 		char_code = FT_Get_First_Char ((FT_Face)face, &glyph_index);
 
+		int loadFlags = FT_LOAD_NO_BITMAP | FT_LOAD_DEFAULT;
+
+		if (forceAutoHint) {
+
+			loadFlags |= FT_LOAD_FORCE_AUTOHINT;
+
+		} else {
+
+			loadFlags |= FT_LOAD_NO_HINTING;
+
+		}
+
 		while (glyph_index != 0) {
 
-			if (FT_Load_Glyph ((FT_Face)face, glyph_index, FT_LOAD_NO_BITMAP | FT_LOAD_FORCE_AUTOHINT | FT_LOAD_DEFAULT) == 0) {
+			if (FT_Load_Glyph ((FT_Face)face, glyph_index, loadFlags) == 0) {
 
 				glyph *g = new glyph;
 				result = FT_Outline_Decompose (&((FT_Face)face)->glyph->outline, &ofn, g);
@@ -872,8 +886,7 @@ namespace lime {
 
 		TT_OS2* os2 = (TT_OS2*)FT_Get_Sfnt_Table(((FT_Face)face), ft_sfnt_os2);
 
-		if (os2 && os2->version != 0xFFFFU)
-		{
+		if (os2 && os2->version != 0xFFFFU) {
 
 			return os2->yStrikeoutPosition;
 
@@ -888,8 +901,7 @@ namespace lime {
 		TT_OS2* os2 = (TT_OS2*)FT_Get_Sfnt_Table(((FT_Face)face), ft_sfnt_os2);
 
 
-		if (os2 && os2->version != 0xFFFFU)
-		{
+		if (os2 && os2->version != 0xFFFFU) {
 
 			return os2->yStrikeoutSize;
 
@@ -906,27 +918,39 @@ namespace lime {
 	}
 
 
-	int Font::RenderGlyph(int index, Bytes *bytes, int offset)
-	{
-		if (FT_Load_Glyph((FT_Face)face, index, FT_LOAD_FORCE_AUTOHINT | FT_LOAD_DEFAULT) == 0)
-		{
-			if (FT_Render_Glyph(((FT_Face)face)->glyph, FT_RENDER_MODE_LCD) == 0)
-			{
+	int Font::RenderGlyph(int index, Bytes *bytes, int offset, int flags) {
+
+		int loadFlags = FT_LOAD_FORCE_AUTOHINT | FT_LOAD_DEFAULT;
+
+		if (flags) {
+
+			loadFlags |= flags;
+
+		}
+
+		if (FT_Load_Glyph((FT_Face)face, index, loadFlags) == 0) {
+
+			if (FT_Render_Glyph(((FT_Face)face)->glyph, FT_RENDER_MODE_LCD) == 0) {
+
 				FT_Bitmap bitmap = ((FT_Face)face)->glyph->bitmap;
 
 				int height = bitmap.rows;
 				int width = bitmap.width / 3; //Due to each pixel now has 3 components (R, G, B)
 				int pitch = bitmap.pitch;
 
-				if (width == 0 || height == 0)
+				if (width == 0 || height == 0) {
+
 					return 0;
+
+				}
 
 				//We calculate the size needed for the glyph image, including metadata and 24-bit RGB color data
 				uint32_t size = sizeof(GlyphImage) + (width * height * 4);
 
-				if (bytes->length < size + offset)
-				{
+				if (bytes->length < size + offset) {
+
 					bytes->Resize(size + offset);
+
 				}
 
 				GlyphImage *data = (GlyphImage *)(bytes->b + offset);
@@ -943,10 +967,10 @@ namespace lime {
 				unsigned char *position = &data->data;
 
 				//Copy the bitmap data row by row, copying each RGB triplet and adding padding for 32-bit alignment
-				for (int i = 0; i < height; i++)
-				{
-					for (int j = 0; j < width; j++)
-					{
+				for (int i = 0; i < height; i++) {
+
+					for (int j = 0; j < width; j++) {
+
 						unsigned char r = bitmap.buffer[i * pitch + j * 3 + 0];
 						unsigned char g = bitmap.buffer[i * pitch + j * 3 + 1];
 						unsigned char b = bitmap.buffer[i * pitch + j * 3 + 2];
@@ -960,18 +984,23 @@ namespace lime {
 						position[(i * width + j) * 4 + 2] = b;
 						//Alpha
 						position[(i * width + j) * 4 + 3] = a;
+
 					}
+
 				}
 
 				return size;
+
 			}
+
 		}
 
 		return 0;
+
 	}
 
 
-	int Font::RenderGlyphs (int* indices, int numIndices, Bytes* bytes) {
+	int Font::RenderGlyphs (int* indices, int numIndices, Bytes* bytes, int flags) {
 
 		int offset = 0;
 		int totalOffset = 4;
@@ -979,7 +1008,7 @@ namespace lime {
 
 		for (int i = 0; i < numIndices; i++) {
 
-			offset = RenderGlyph (indices[i], bytes, totalOffset);
+			offset = RenderGlyph (indices[i], bytes, totalOffset, flags);
 
 			if (offset > 0) {
 

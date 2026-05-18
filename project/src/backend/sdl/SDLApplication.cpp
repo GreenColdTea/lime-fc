@@ -27,14 +27,10 @@ namespace lime {
 
 	SDLApplication::SDLApplication () {
 
+		#if !(defined (HX_MACOS) || defined(IPHONE) || defined(APPLETV))
 		SDL_SetHint (SDL_HINT_AUDIO_FREQUENCY, "48000");
 		SDL_SetHint (SDL_HINT_AUDIO_CHANNELS, "2");
 		SDL_SetHint (SDL_HINT_AUDIO_FORMAT, "F32");
-
-		#ifdef IPHONE
-		SDL_SetHint (SDL_HINT_AUDIO_CATEGORY, "playback");
-		#endif
-
 		SDL_SetHint (SDL_HINT_AUDIO_DEVICE_STREAM_ROLE, "Game");
 
 		#ifdef ANDROID
@@ -43,6 +39,7 @@ namespace lime {
 			SDL_SetHint (SDL_HINT_AUDIO_DRIVER, "openslES");
 
 		}
+		#endif
 		#endif
 
 		SDL_SetHint (SDL_HINT_JOYSTICK_HIDAPI, "1");
@@ -55,7 +52,11 @@ namespace lime {
 		SDL_SetHint (SDL_HINT_MAC_SCROLL_MOMENTUM, "1");
 		#endif
 
-		Uint32 initFlags = SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_JOYSTICK | SDL_INIT_SENSOR;
+		Uint32 initFlags = SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_JOYSTICK | SDL_INIT_SENSOR;
+
+		#if !(defined (HX_MACOS) || defined(IPHONE) || defined(APPLETV))
+		initFlags |= SDL_INIT_AUDIO;
+		#endif
 
 		if (!SDL_Init (initFlags)) {
 
@@ -64,6 +65,10 @@ namespace lime {
 		}
 
 		SDL_SetEventFilter (HandleAppLifecycleEvent, NULL);
+
+		#if defined(HX_WINDOWS) || defined(HX_MACOS) || defined(HX_LINUX)
+		SDL_AddEventWatch (HandleEventWatcher, NULL);
+		#endif
 
 		currentApplication = this;
 
@@ -154,13 +159,6 @@ namespace lime {
 
 
 	void SDLApplication::HandleEvent (SDL_Event* event) {
-
-		#ifdef IPHONE
-
-		int top = 0;
-		gc_set_top_of_stack(&top, false);
-
-		#endif
 
 		switch (event->type) {
 
@@ -726,6 +724,8 @@ namespace lime {
 					windowEvent.y = event->window.data2;
 					break;
 
+				case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+				case SDL_EVENT_WINDOW_METAL_VIEW_RESIZED:
 				case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
 				case SDL_EVENT_WINDOW_RESIZED: {
 
@@ -789,29 +789,19 @@ namespace lime {
 	}
 
 
-	bool SDLApplication::Update () {
+	void SDLApplication::RenderFrame () {
 
-		SDL_Event event;
+		applicationEvent.type = UPDATE;
+		applicationEvent.deltaTime = std::fmax (0.0, (double)frameTime.frame / 1e6);
+		ApplicationEvent::Dispatch (&applicationEvent);
 
-		while (SDL_PollEvent (&event)) {
+		renderEvent.type = RENDER;
+		RenderEvent::Dispatch (&renderEvent);
 
-			HandleEvent (&event);
+	}
 
-			if (!active)
-				return active;
 
-		}
-
-		if (!inBackground) {
-
-			applicationEvent.type = UPDATE;
-			applicationEvent.deltaTime = std::fmax (0.0, (double)frameTime.frame / 1e6); // Use the duration of the *previous frame* for deltaTime
-			ApplicationEvent::Dispatch (&applicationEvent);
-
-			renderEvent.type = RENDER;
-			RenderEvent::Dispatch (&renderEvent);
-
-		}
+	void SDLApplication::FramePacer () {
 
 		// Measure the total duration of the current frame (update + render)
 		frameTime.current = SDL_GetTicksNS ();
@@ -831,19 +821,36 @@ namespace lime {
 
 		}
 
+	}
+
+
+	bool SDLApplication::Update () {
+
+		SDL_Event event;
+
+		while (SDL_PollEvent (&event)) {
+
+			HandleEvent (&event);
+
+			if (!active)
+				return active;
+
+		}
+
+		if (!inBackground) {
+
+			RenderFrame ();
+
+		}
+
+		FramePacer ();
+
 		return active;
 
 	}
 
 
 	bool SDLApplication::HandleAppLifecycleEvent (void* userdata, SDL_Event* event) {
-
-		#ifdef IPHONE
-
-		int top = 0;
-		gc_set_top_of_stack(&top, false);
-
-		#endif
 
 		switch (event->type) {
 
@@ -884,6 +891,32 @@ namespace lime {
 		}
 
 	}
+
+
+	#if defined(HX_WINDOWS) || defined(HX_MACOS) || defined(HX_LINUX)
+	bool SDLApplication::HandleEventWatcher (void *userdata, SDL_Event *event) {
+
+		if (!inBackground) {
+
+			switch (event->type) {
+
+				case SDL_EVENT_WINDOW_EXPOSED:
+				case SDL_EVENT_WINDOW_MOVED:
+				case SDL_EVENT_WINDOW_RESIZED:
+
+					currentApplication->ProcessWindowEvent (event);
+					currentApplication->RenderFrame ();
+					currentApplication->FramePacer ();
+					return false;
+
+			}
+
+		}
+
+		return true;
+
+	}
+	#endif
 
 
 	#ifdef IPHONE

@@ -698,7 +698,17 @@ class HXProject extends Script
 				defines.set("console", "1");
 		}
 
-		if (targetFlags.exists("hl"))
+		if (platformType == DESKTOP && target != System.hostPlatform)
+		{
+			if (target == Platform.WINDOWS && (targetFlags.exists("cpp") || targetFlags.exists("mingw")))
+			{
+				defines.set("targetType", "cpp");
+				defines.set("native", "1");
+				defines.set("cpp", "1");
+				defines.set("mingw", "1");
+			}
+		}
+		else if (targetFlags.exists("hl"))
 		{
 			defines.set("targetType", "hl");
 			defines.set("native", "1");
@@ -708,12 +718,16 @@ class HXProject extends Script
 				defines.set("hlc", "1");
 			}
 		}
-		else if (targetFlags.exists("cpp")
-			|| ((platformType != PlatformType.WEB) && !targetFlags.exists("html5")))
+		else if (targetFlags.exists("cpp") || ((platformType != PlatformType.WEB) && !targetFlags.exists("html5")))
 		{
 			defines.set("targetType", "cpp");
 			defines.set("native", "1");
 			defines.set("cpp", "1");
+		}
+
+		if (targetFlags.exists("simulator"))
+		{
+			defines.set("simulator", "1");
 		}
 
 		if (debug)
@@ -730,11 +744,6 @@ class HXProject extends Script
 		{
 			defines.set("buildType", "release");
 			defines.set("release", "1");
-		}
-
-		if (defines.exists("SWF_PLAYER"))
-		{
-			environment.set("SWF_PLAYER", defines.get("SWF_PLAYER"));
 		}
 
 		defines.set(Std.string(target).toLowerCase(), "1");

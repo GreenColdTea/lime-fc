@@ -93,7 +93,7 @@ class NativeApplication
 
 		AudioManager.init();
 
-		#if (ios || android)
+		#if (!macro && lime_cffi && (ios || android))
 		Sensor.registerSensor(SensorType.ACCELEROMETER, NativeCFFI.lime_system_get_first_accelerometer_sensor_id());
 
 		Sensor.registerSensor(SensorType.GYROSCOPE, NativeCFFI.lime_system_get_first_gyroscope_sensor_id());
@@ -624,15 +624,15 @@ class NativeApplication
 			{
 				case WINDOW_ACTIVATE:
 					advanceTimer();
+					AudioManager.onActivate();
 					window.onActivate.dispatch();
-					AudioManager.resume();
 
 				case WINDOW_CLOSE:
 					window.close();
 
 				case WINDOW_DEACTIVATE:
 					window.onDeactivate.dispatch();
-					AudioManager.suspend();
+					AudioManager.onDeactivate();
 					pauseTimer = System.getTimer();
 
 				case WINDOW_ENTER:

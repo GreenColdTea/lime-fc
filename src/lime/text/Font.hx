@@ -171,13 +171,14 @@ class Font
 	/**
      	* Decomposes the font into outline data.
      	*
+     	* @param forceAutoHint When `true`, force auto-hinting for outline decomposition, When `false`, preserve the unhinted glyph outlines.
      	* @return An instance of `NativeFontData` that contains decomposed font outline information.
      	*/
-	public function decompose():NativeFontData
+	public function decompose(forceAutoHint:Bool = true):NativeFontData
 	{
 		#if (lime_cffi && !macro)
 		if (src == null) throw "Uninitialized font handle.";
-		var data:Dynamic = NativeCFFI.lime_font_outline_decompose(src, 1024 * 20);
+		var data:Dynamic = NativeCFFI.lime_font_outline_decompose(src, 1024 * 20, forceAutoHint);
 		#if hl
 		if (data != null)
 		{
@@ -342,18 +343,20 @@ class Font
      	*
      	* @param glyph The glyph to render.
      	* @param fontSize The size to render the glyph at.
+     	* @param dpi The DPI used to size the glyph before rasterization.
+		* @param flags Additional FreeType load flags to apply when rasterizing.
      	* @return An `Image` instance representing the rendered glyph.
      	*/
-	public function renderGlyph(glyph:Glyph, fontSize:Int):Image
+	public function renderGlyph(glyph:Glyph, fontSize:Int, dpi:Int = 96, ?flags:Int = 0):Image
 	{
 		#if (lime_cffi && !macro)
-		__setSize(fontSize, 96);
+		__setSize(fontSize, dpi);
 
 		// Allocate an estimated buffer size - adjust if necessary
 		var bytes:Bytes = Bytes.alloc(0); // Allocate some reasonable initial size
 
 		// Call native function to render glyph and get byte data
-		bytes = NativeCFFI.lime_font_render_glyph(src, glyph, bytes);
+		bytes = NativeCFFI.lime_font_render_glyph(src, glyph, bytes, flags);
 
 		if (bytes != null && bytes.length > 0)
 		{
@@ -410,9 +413,11 @@ class Font
      	*
      	* @param glyphs The glyphs to render.
      	* @param fontSize The size to render the glyphs at.
+     	* @param dpi The DPI used to size the glyphs before rasterization.
+		* @param flags Additional FreeType load flags to apply when rasterizing.
      	* @return A `Map` containing glyphs mapped to their corresponding images.
      	*/
-	public function renderGlyphs(glyphs:Array<Glyph>, fontSize:Int):Map<Glyph, Image>
+	public function renderGlyphs(glyphs:Array<Glyph>, fontSize:Int, dpi:Int = 96, ?flags:Int = 0):Map<Glyph, Image>
 	{
 		#if (lime_cffi && !macro)
 		var uniqueGlyphs = new Map<Int, Bool>();
@@ -440,10 +445,13 @@ class Font
 		var glyphList = _glyphList;
 		#end
 
-		__setSize(fontSize, 96);
+		__setSize(fontSize, dpi);
 
-		var bytes = Bytes.alloc(0);
-		bytes = NativeCFFI.lime_font_render_glyphs(src, glyphList, bytes);
+		// Allocate an estimated buffer size - adjust if necessary
+		var bytes:Bytes = Bytes.alloc(0); // Allocate some reasonable initial size
+
+		// Call native function to render glyphs and get byte data
+		bytes = NativeCFFI.lime_font_render_glyphs(src, glyphList, bytes, flags);
 
 		if (bytes != null && bytes.length > 0)
 		{
