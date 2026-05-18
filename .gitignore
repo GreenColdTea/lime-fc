@@ -3,7 +3,6 @@
 .DS_Store?
 Export/
 project/all_objs
-project/obj
 project/vc*.pdb
 *.userprefs
 *.swp
