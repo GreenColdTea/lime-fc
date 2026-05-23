@@ -1,5 +1,6 @@
 package lime.media;
 
+import haxe.Int64;
 import haxe.io.Bytes;
 import haxe.io.Path;
 import lime._internal.backend.native.NativeCFFI;
@@ -42,7 +43,7 @@ class AudioBuffer
 	/**
 		The number of bits per sample in the audio data.
 	**/
-	public var bitsPerSample:Int;
+	public var bitsPerSample(get, never):Int;
 
 	/**
 		The number of audio channels (e.g., 1 for mono, 2 for stereo).
@@ -57,7 +58,7 @@ class AudioBuffer
 	/**
 		The format the raw audio data is stored in.
 	**/
-	public var dataFormat:AudioBufferDataFormat;
+	public var dataFormat:AudioFormat;
 
 	/**
 		The sample rate of the audio data, in Hz.
@@ -118,23 +119,23 @@ class AudioBuffer
 		}
 
 		var audioBuffer = new AudioBuffer();
-
-		#if force_html5_audio
-		audioBuffer.src = new Howl({src: [base64String], html5: true, preload: true});
-		#else
-		audioBuffer.src = new Howl({src: [base64String], preload: true});
-		#end
-
+		audioBuffer.__srcHowl = new Howl({src: [base64String], preload: true});
 		return audioBuffer;
 		#elseif (lime_cffi && !macro)
 		// if base64String contains codec data, strip it then decode it.
 		var base64StringSplit = base64String.split(",");
 		var base64StringNoEncoding = base64StringSplit[base64StringSplit.length - 1];
-		var bytes:Bytes = Base64.decode(base64StringNoEncoding);
-		var audioBuffer = new AudioBuffer();
-		audioBuffer.data = new UInt8Array(Bytes.alloc(0));
+		var decoder:AudioDecoder = AudioDecoder.fromBytes(Base64.decode(base64StringNoEncoding));
 
-		return NativeCFFI.lime_audio_load_bytes(bytes, audioBuffer);
+		if (decoder != null)
+		{
+			var buffer:AudioBuffer = new AudioBuffer();
+			buffer.sampleRate = decoder.sampleRate;
+			buffer.channels = decoder.channels;
+			buffer.dataFormat = S16;
+			buffer.data = UInt8Array.fromBytes(decoder.decode(Int64.toInt(decoder.total()), buffer.dataFormat));
+			return buffer;
+		}
 		#end
 
 		return null;
@@ -152,18 +153,20 @@ class AudioBuffer
 
 		#if (js && html5 && lime_howlerjs)
 		var audioBuffer = new AudioBuffer();
-
-		#if force_html5_audio
-		audioBuffer.src = new Howl({src: ["data:" + __getCodec(bytes) + ";base64," + Base64.encode(bytes)], html5: true, preload: true});
-		#else
-		audioBuffer.src = new Howl({src: ["data:" + __getCodec(bytes) + ";base64," + Base64.encode(bytes)], preload: true});
-		#end
-
+		audioBuffer.__srcHowl = new Howl({src: ["data:" + __getCodec(bytes) + ";base64," + Base64.encode(bytes)], preload: true});
 		return audioBuffer;
 		#elseif (lime_cffi && !macro)
-		var audioBuffer = new AudioBuffer();
-		audioBuffer.data = new UInt8Array(Bytes.alloc(0));
-		return NativeCFFI.lime_audio_load_bytes(bytes, audioBuffer);
+		var decoder:AudioDecoder = AudioDecoder.fromBytes(bytes);
+
+		if (decoder != null)
+		{
+			var buffer:AudioBuffer = new AudioBuffer();
+			buffer.sampleRate = decoder.sampleRate;
+			buffer.channels = decoder.channels;
+			buffer.dataFormat = S16;
+			buffer.data = UInt8Array.fromBytes(decoder.decode(Int64.toInt(decoder.total()), buffer.dataFormat));
+			return buffer;
+		}
 		#end
 
 		return null;
@@ -181,21 +184,23 @@ class AudioBuffer
 
 		#if (js && html5 && lime_howlerjs)
 		var audioBuffer = new AudioBuffer();
-
-		#if force_html5_audio
-		audioBuffer.__srcHowl = new Howl({src: [path], html5: true, preload: false});
-		#else
 		audioBuffer.__srcHowl = new Howl({src: [path], preload: false});
-		#end
-
 		return audioBuffer;
 		#elseif (lime_cffi && !macro)
-		var audioBuffer = new AudioBuffer();
-		audioBuffer.data = new UInt8Array(Bytes.alloc(0));
-		return NativeCFFI.lime_audio_load_file(path, audioBuffer);
-		#else
-		return null;
+		var decoder:AudioDecoder = AudioDecoder.fromFile(path);
+
+		if (decoder != null)
+		{
+			var buffer:AudioBuffer = new AudioBuffer();
+			buffer.sampleRate = decoder.sampleRate;
+			buffer.channels = decoder.channels;
+			buffer.dataFormat = S16;
+			buffer.data = UInt8Array.fromBytes(decoder.decode(Int64.toInt(decoder.total()), buffer.dataFormat));
+			return buffer;
+		}
 		#end
+
+		return null;
 	}
 
 	/**
@@ -208,13 +213,7 @@ class AudioBuffer
 	{
 		#if (js && html5 && lime_howlerjs)
 		var audioBuffer = new AudioBuffer();
-
-		#if force_html5_audio
-		audioBuffer.__srcHowl = new Howl({src: paths, html5: true, preload: false});
-		#else
 		audioBuffer.__srcHowl = new Howl({src: paths, preload: false});
-		#end
-
 		return audioBuffer;
 		#else
 		var buffer = null;
@@ -360,6 +359,16 @@ class AudioBuffer
 	}
 
 	// Get & Set Methods
+	@:noCompletion private function get_bitsPerSample():Int
+	{
+		return switch (dataFormat)
+		{
+			case S16: 16;
+			case F32: 32;
+			default: 0;
+		}
+	}
+
 	@:noCompletion private function get_src():Dynamic
 	{
 		#if (js && html5)
