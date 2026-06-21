@@ -10,7 +10,7 @@ extern "C" int lime_register_prims ();
 extern "C" int ::nameSafe::_register_prims ();::end::::end::
 
 
-extern "C" int SDL_main (int argc, char *argv[]) {
+int hxcpp_main (int argc, char *argv[]) {
 
 	hxcpp_set_top_of_stack ();
 
@@ -33,8 +33,8 @@ extern "C" int SDL_main (int argc, char *argv[]) {
 }
 
 
-extern "C" int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
 
-	return SDL_RunApp (argc, argv, SDL_main, NULL);
+	return SDL_RunApp (argc, argv, hxcpp_main, NULL);
 
 }

@@ -13,7 +13,7 @@
 
 		<section>
 
-			<section if="windows">
+			<section if="isMsvc">
 
 				<compilerflag value="/wd4477" />
 				<compilerflag value="/wd4133" />

@@ -52,11 +52,21 @@ class NativeWindow
 		var attributes = parent.__attributes;
 		var contextAttributes = Reflect.hasField(attributes, "context") ? attributes.context : {};
 		var title = Reflect.hasField(attributes, "title") ? attributes.title : "Lime Application";
+		var transparent = Reflect.hasField(attributes, "transparent") && attributes.transparent;
 		var flags = 0;
 
 		if (!Reflect.hasField(contextAttributes, "antialiasing")) contextAttributes.antialiasing = 0;
-		if (!Reflect.hasField(contextAttributes, "background")) contextAttributes.background = 0;
-		if (!Reflect.hasField(contextAttributes, "colorDepth")) contextAttributes.colorDepth = 24;
+
+		if (transparent)
+			contextAttributes.background = null;
+		else if (!Reflect.hasField(contextAttributes, "background"))
+			contextAttributes.background = 0;
+
+		if (!Reflect.hasField(contextAttributes, "colorDepth"))
+			contextAttributes.colorDepth = transparent ? 32 : 24;
+		else if (transparent && contextAttributes.colorDepth < 32)
+			contextAttributes.colorDepth = 32;
+
 		if (!Reflect.hasField(contextAttributes, "depth")) contextAttributes.depth = true;
 		if (!Reflect.hasField(contextAttributes, "stencil")) contextAttributes.stencil = true;
 		if (!Reflect.hasField(contextAttributes, "vsync")) contextAttributes.vsync = false;

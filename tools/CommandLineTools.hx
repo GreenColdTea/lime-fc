@@ -110,10 +110,7 @@ class CommandLineTools
 			case "create":
 				createTemplate();
 
-			case "install", "remove", "upgrade":
-				updateLibrary();
-
-			case "clean", "update", "display", "build", "run", "rerun", /*"install",*/ "uninstall", "trace", "test", "deploy":
+			case "clean", "update", "display", "build", "run", "rerun", "install", "uninstall", "trace", "test", "deploy":
 				if (words.length < 1 || words.length > 2)
 				{
 					Log.error("Incorrect number of arguments for command '" + command + "'");
@@ -2142,59 +2139,6 @@ class CommandLineTools
 			{
 				words.push(argument);
 			}
-		}
-	}
-
-	private function updateLibrary():Void
-	{
-		if ((words.length < 1 && command != "upgrade") || words.length > 1)
-		{
-			Log.error("Incorrect number of arguments for command '" + command + "'");
-			return;
-		}
-
-		Log.info("", Log.accentColor + "Running command: " + command.toUpperCase() + Log.resetColor);
-
-		var name = defaultLibrary;
-
-		if (words.length > 0)
-		{
-			name = words[0];
-		}
-
-		var haxelib = new Haxelib(name);
-		var path = Haxelib.getPath(haxelib);
-
-		switch (command)
-		{
-			case "install":
-				if (path == null || path == "")
-				{
-					PlatformSetup.installHaxelib(haxelib);
-				}
-				else
-				{
-					PlatformSetup.updateHaxelib(haxelib);
-				}
-
-				PlatformSetup.setupHaxelib(haxelib);
-
-			case "remove":
-				if (path != null && path != "")
-				{
-					Haxelib.runCommand("", ["remove", name]);
-				}
-
-			case "upgrade":
-				if (path != null && path != "")
-				{
-					PlatformSetup.updateHaxelib(haxelib);
-					PlatformSetup.setupHaxelib(haxelib);
-				}
-				else
-				{
-					Log.warn("\"" + haxelib.name + "\" is not a valid haxelib, or has not been installed");
-				}
 		}
 	}
 }
