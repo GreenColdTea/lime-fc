@@ -901,12 +901,17 @@ namespace lime {
 			switch (event->type) {
 
 				case SDL_EVENT_WINDOW_EXPOSED:
-				case SDL_EVENT_WINDOW_MOVED:
 				case SDL_EVENT_WINDOW_RESIZED:
-
+					
 					currentApplication->ProcessWindowEvent (event);
-					currentApplication->RenderFrame ();
-					currentApplication->FramePacer ();
+
+					Uint64 currentTime = SDL_GetTicksNS ();
+					
+					if (currentTime - currentApplication->frameTime.previous >= currentApplication->frameTime.target) {
+						currentApplication->RenderFrame ();
+						currentApplication->frameTime.previous = currentTime;
+					}
+					
 					return false;
 
 			}
