@@ -92,6 +92,7 @@ class HTML5Platform extends PlatformTarget
 		}
 
 		defaults.merge(project);
+
 		project = defaults;
 
 		initialize(command, project);

@@ -421,6 +421,19 @@
 /** @} */
 
 /* ============================================================================
+ * DISABLED FEATURES
+ * ============================================================================ */
+
+/**
+ * @name Disabled Features
+ * @brief Features that are disabled in this build configuration.
+ * @{
+ */
+#define SDL_DISABLE_SVE2 1   /**< Disable ARM SVE2 intrinsics */
+
+/** @} */
+
+/* ============================================================================
  * PLATFORM-SPECIFIC SDL DRIVERS AND SUBSYSTEMS
  * ============================================================================ */
 

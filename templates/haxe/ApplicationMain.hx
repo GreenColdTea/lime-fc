@@ -2,13 +2,22 @@ package;
 
 import ::APP_MAIN::;
 
+@:dox(hide)
 @:access(lime.app.Application)
 @:access(lime.system.System)
-
-@:dox(hide) class ApplicationMain
+#if (static_link || ios || tvos)
+@:cppFileCode("\nextern \"C\" int zlib_register_prims ();\nextern \"C\" int lime_register_prims ();\n::foreach ndlls::::if (registerStatics)::extern \"C\" int ::nameSafe::_register_prims ();::end::::end::")
+#end
+class ApplicationMain
 {
-	public static function main()
+	public static function main():Void
 	{
+		#if (static_link || ios || tvos)
+		untyped __cpp__("zlib_register_prims ()");
+		untyped __cpp__("lime_register_prims ()");
+		::foreach ndlls::::if (registerStatics)::untyped __cpp__("::nameSafe::_register_prims ()");::end::::end::
+		#end
+
 		lime.system.System.__registerEntryPoint("::APP_FILE::", create);
 
 		#if !html5
@@ -122,7 +131,7 @@ import ::APP_MAIN::;
 	{
 		var result = app.exec();
 
-		#if (sys && !ios && !nodejs && !webassembly)
+		#if (sys && !ios && !nodejs)
 		lime.system.System.exit(result);
 		#end
 	}

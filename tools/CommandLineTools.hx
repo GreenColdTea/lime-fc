@@ -859,7 +859,6 @@ class CommandLineTools
 			Log.println("  \x1b[1mlinux\x1b[0m -- Create a Linux application");
 			Log.println("  \x1b[1mmac\x1b[0m -- Create a macOS application");
 			Log.println("  \x1b[1mtvos\x1b[0m -- Create a tvOS application");
-			Log.println("  \x1b[1mwebassembly\x1b[0m -- Create a WebAssembly application");
 			Log.println("  \x1b[1mwindows\x1b[0m -- Create a Windows application");
 
 			Log.println("");
@@ -952,8 +951,8 @@ class CommandLineTools
 
 			if (command == "run" || command == "test")
 			{
-				Log.println("  \x1b[3m(html5|webassembly)\x1b[0m \x1b[1m-nolaunch\x1b[0m -- Begin test server without launching");
-				Log.println("  \x1b[3m(html5|webassembly)\x1b[0m \x1b[1m--port=\x1b[0;3mvalue\x1b[0m -- Set port for test server");
+				Log.println("  \x1b[3m(html5)\x1b[0m \x1b[1m-nolaunch\x1b[0m -- Begin test server without launching");
+				Log.println("  \x1b[3m(html5)\x1b[0m \x1b[1m--port=\x1b[0;3mvalue\x1b[0m -- Set port for test server");
 			}
 
 			Log.println("");

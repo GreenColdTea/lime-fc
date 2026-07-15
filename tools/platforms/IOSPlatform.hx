@@ -99,6 +99,7 @@ class IOSPlatform extends PlatformTarget
 		}
 
 		defaults.merge(project);
+
 		project = defaults;
 
 		for (excludeArchitecture in project.excludeArchitectures)
@@ -470,9 +471,9 @@ class IOSPlatform extends PlatformTarget
 
 		var commands:Array<Array<String>> = [];
 
-		if (arm64) commands.push(["-Dios", "-DHXCPP_ARM64"]);
-		if (arm64sim) commands.push(["-Dios", "-Dsimulator", "-DHXCPP_ARM64"]);
-		if (x86_64) commands.push(["-Dios", "-Dsimulator", "-DHXCPP_M64"]);
+		if (arm64) commands.push(["-Dios", "-Dstatic_link", "-DHXCPP_ARM64"]);
+		if (arm64sim) commands.push(["-Dios", "-Dsimulator", "-Dstatic_link", "-DHXCPP_ARM64"]);
+		if (x86_64) commands.push(["-Dios", "-Dsimulator", "-Dstatic_link", "-DHXCPP_M64"]);
 
 		if (arc)
 		{

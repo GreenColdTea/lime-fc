@@ -135,6 +135,7 @@
                 <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/core/linux/SDL_system_theme.c" />
                 <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/core/linux/SDL_threadprio.c" />
                 <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/core/linux/SDL_udev.c" />
+                <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/core/linux/SDL_ubuntu_touch.c" />
 
             </section>
 
@@ -211,6 +212,7 @@
             <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/events/SDL_keysym_to_keycode.c" />
             <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/events/SDL_keysym_to_scancode.c" />
             <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/events/SDL_mouse.c" />
+            <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/events/SDL_notificationevents.c" />
             <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/events/SDL_pen.c" />
             <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/events/SDL_quit.c" />
             <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/events/SDL_scancode_tables.c" />
@@ -408,6 +410,12 @@
             <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/misc/windows/SDL_sysurl.c" if="windows" />
 
         </section>
+
+            <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/notification/SDL_notification.c" />
+            <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/notification/cocoa/SDL_cocoanotification.m" if="macos" />
+            <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/notification/dummy/SDL_dummynotification.c" unless="windows || macos || linux" />
+            <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/notification/unix/SDL_dbusnotification.c" if="linux" />
+            <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/notification/windows/SDL_windowsnotification.c" if="windows" />
 
         <section>
 
@@ -648,6 +656,7 @@
                     <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/video/wayland/SDL_waylanddatamanager.c" />
                     <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/video/wayland/SDL_waylanddyn.c" />
                     <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/video/wayland/SDL_waylandevents.c" />
+                    <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/video/wayland/SDL_waylandeventthread.c" />
                     <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/video/wayland/SDL_waylandkeyboard.c" />
                     <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/video/wayland/SDL_waylandmessagebox.c" />
                     <file name="${NATIVE_TOOLKIT_PATH}/sdl/src/video/wayland/SDL_waylandmouse.c" />

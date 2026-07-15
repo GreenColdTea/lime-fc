@@ -431,6 +431,7 @@
 
 				<lib name="-lpthread" />
 				<lib name="-lrt" />
+				<lib name='-ludev' />
 
 				<section if="LIME_HASHLINK">
 
@@ -459,12 +460,14 @@
 				<vflag name="-framework" value="CoreMedia" />
 				<vflag name="-framework" value="CoreVideo" />
 				<vflag name="-framework" value="ForceFeedback" />
-				<vflag name="-framework" value="OpenGL" />
 				<vflag name="-framework" value="Foundation" />
 				<vflag name="-framework" value="GameController" />
 				<vflag name="-framework" value="IOKit" />
+				<vflag name="-framework" value="OpenGL" />
+				<vflag name="-framework" value="Security" />
 				<vflag name="-framework" value="SystemConfiguration" />
 				<vflag name="-framework" value="UniformTypeIdentifiers" />
+				<vflag name="-framework" value="UserNotifications" />
 
 				<section if="LIME_HASHLINK">
 
