@@ -1,0 +1,10 @@
+{
+	"InstallScripts" : 
+	[
+		"D:/GitHub/lime-fc/project/lib/sdl_image/external/libtiff/build-android-armv7/cmake_install.cmake",
+		"D:/GitHub/lime-fc/project/lib/sdl_image/external/libtiff/build-android-armv7/port/cmake_install.cmake",
+		"D:/GitHub/lime-fc/project/lib/sdl_image/external/libtiff/build-android-armv7/libtiff/cmake_install.cmake",
+		"D:/GitHub/lime-fc/project/lib/sdl_image/external/libtiff/build-android-armv7/build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

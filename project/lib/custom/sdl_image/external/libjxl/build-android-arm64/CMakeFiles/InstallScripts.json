@@ -1,0 +1,14 @@
+{
+	"InstallScripts" : 
+	[
+		"D:/GitHub/lime-fc/project/lib/sdl_image/external/libjxl/build-android-arm64/cmake_install.cmake",
+		"D:/GitHub/lime-fc/project/lib/sdl_image/external/libjxl/build-android-arm64/third_party/cmake_install.cmake",
+		"D:/GitHub/lime-fc/project/lib/sdl_image/external/libjxl/build-android-arm64/third_party/highway/cmake_install.cmake",
+		"D:/GitHub/lime-fc/project/lib/sdl_image/external/libjxl/build-android-arm64/third_party/brotli/cmake_install.cmake",
+		"D:/GitHub/lime-fc/project/lib/sdl_image/external/libjxl/build-android-arm64/lib/cmake_install.cmake",
+		"D:/GitHub/lime-fc/project/lib/sdl_image/external/libjxl/build-android-arm64/tools/cmake_install.cmake",
+		"D:/GitHub/lime-fc/project/lib/sdl_image/external/libjxl/build-android-arm64/tools/box/cmake_install.cmake",
+		"D:/GitHub/lime-fc/project/lib/sdl_image/external/libjxl/build-android-arm64/tools/conformance/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

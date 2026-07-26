@@ -1,0 +1,9 @@
+{
+	"InstallScripts" : 
+	[
+		"D:/GitHub/lime-fc/project/lib/sdl_image/external/libavif/build-android-arm64/cmake_install.cmake",
+		"D:/GitHub/lime-fc/project/lib/sdl_image/external/libavif/build-android-arm64/contrib/cmake_install.cmake",
+		"D:/GitHub/lime-fc/project/lib/sdl_image/external/libavif/build-android-arm64/contrib/gdk-pixbuf/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

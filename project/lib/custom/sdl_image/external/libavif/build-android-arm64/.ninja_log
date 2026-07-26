@@ -1,0 +1,24 @@
+# ninja log v7
+7	516	8067813499102061	CMakeFiles/avif.dir/src/alpha.c.o	a57caab1cc543c82
+24	558	8067813499263048	CMakeFiles/avif.dir/src/avif.c.o	46fc455d5ff95b3c
+51	590	8067813499542911	CMakeFiles/avif.dir/src/colr.c.o	b574d348f46fdaee
+72	649	8067813499752888	CMakeFiles/avif.dir/src/diag.c.o	87ed1fdac6b6121c
+126	732	8067813500288273	CMakeFiles/avif.dir/src/exif.c.o	dbf30b89625373d0
+147	773	8067813500493530	CMakeFiles/avif.dir/src/io.c.o	be47e4f2c6c4f26d
+171	809	8067813500743542	CMakeFiles/avif.dir/src/mem.c.o	be07444746fb2665
+255	875	8067813501578848	CMakeFiles/avif.dir/src/rawdata.c.o	1c5cad9b6e851dd5
+370	910	8067813502734620	CMakeFiles/avif.dir/src/reformat_libsharpyuv.c.o	53d75761bd507ce4
+412	917	8067813503151261	CMakeFiles/avif.dir/src/reformat_libyuv.c.o	7ed48b2b37516e63
+470	919	8067813503731204	CMakeFiles/avif.dir/src/scale.c.o	25ae0ae99085e599
+558	921	8067813504616572	CMakeFiles/avif.dir/src/utils.c.o	d10f25fa309e10eb
+774	1045	8067813506782862	CMakeFiles/avif.dir/third_party/libyuv/source/scale_any.c.o	679bf52b709f1efa
+202	1079	8067813501048814	CMakeFiles/avif.dir/src/obu.c.o	d3fa4fa4e5d5043a
+521	1126	8067813504236616	CMakeFiles/avif.dir/src/stream.c.o	e3db99658d1688b1
+810	1162	8067813507135803	CMakeFiles/avif.dir/third_party/libyuv/source/row_common.c.o	de3d45b863378411
+876	1175	8067813507795924	CMakeFiles/avif.dir/third_party/libyuv/source/planar_functions.c.o	ee78c4d12f0fd867
+732	1276	8067813506352833	CMakeFiles/avif.dir/third_party/libyuv/source/scale_common.c.o	82c74c528a95931b
+650	1285	8067813505537404	CMakeFiles/avif.dir/third_party/libyuv/source/scale.c.o	1e6a8e9ea64af708
+344	1327	8067813502484364	CMakeFiles/avif.dir/src/reformat.c.o	177a30b42a0c1a60
+591	1540	8067813504936676	CMakeFiles/avif.dir/src/write.c.o	232224af8edb43a9
+302	1890	8067813502054335	CMakeFiles/avif.dir/src/read.c.o	d0e320895d049a17
+1891	2113	8067813517931982	libavif.a	561c6ca23d6da21f

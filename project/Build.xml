@@ -523,46 +523,46 @@
 					<section if="HXCPP_ARM64">
 
 						<lib name="-Wl,--start-group" />
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libwebp/build-android-arm64/libwebp.a" />
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libwebp/build-android-arm64/libwebpdemux.a" />
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libwebp/build-android-arm64/libwebpmux.a" />
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libwebp/build-android-arm64/libsharpyuv.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libwebp/build-android-arm64/libwebp.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libwebp/build-android-arm64/libwebpdemux.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libwebp/build-android-arm64/libwebpmux.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libwebp/build-android-arm64/libsharpyuv.a" />
 						<lib name="-Wl,--end-group" />
 
 						<lib name="-Wl,--start-group" />
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libjxl/build-android-arm64/lib/libjxl.a" />
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libjxl/build-android-arm64/lib/libjxl_threads.a" />
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libjxl/build-android-arm64/third_party/highway/libhwy.a" />
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libjxl/build-android-arm64/third_party/brotli/libbrotlidec.a" />
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libjxl/build-android-arm64/third_party/brotli/libbrotlicommon.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libjxl/build-android-arm64/lib/libjxl.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libjxl/build-android-arm64/lib/libjxl_threads.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libjxl/build-android-arm64/third_party/highway/libhwy.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libjxl/build-android-arm64/third_party/brotli/libbrotlidec.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libjxl/build-android-arm64/third_party/brotli/libbrotlicommon.a" />
 						<lib name="-Wl,--end-group" />
 
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libavif/build-android-arm64/libavif.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libavif/build-android-arm64/libavif.a" />
 
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libtiff/build-android-arm64/libtiff/libtiff.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libtiff/build-android-arm64/libtiff/libtiff.a" />
 
 					</section>
 
 					<section unless="HXCPP_ARM64">
 
 						<lib name="-Wl,--start-group" />
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libwebp/build-android-armv7/libwebp.a" />
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libwebp/build-android-armv7/libwebpdemux.a" />
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libwebp/build-android-armv7/libwebpmux.a" />
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libwebp/build-android-armv7/libsharpyuv.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libwebp/build-android-armv7/libwebp.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libwebp/build-android-armv7/libwebpdemux.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libwebp/build-android-armv7/libwebpmux.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libwebp/build-android-armv7/libsharpyuv.a" />
 						<lib name="-Wl,--end-group" />
 
 						<lib name="-Wl,--start-group" />
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libjxl/build-android-armv7/lib/libjxl.a" />
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libjxl/build-android-armv7/lib/libjxl_threads.a" />
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libjxl/build-android-armv7/third_party/highway/libhwy.a" />
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libjxl/build-android-armv7/third_party/brotli/libbrotlidec.a" />
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libjxl/build-android-armv7/third_party/brotli/libbrotlicommon.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libjxl/build-android-armv7/lib/libjxl.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libjxl/build-android-armv7/lib/libjxl_threads.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libjxl/build-android-armv7/third_party/highway/libhwy.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libjxl/build-android-armv7/third_party/brotli/libbrotlidec.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libjxl/build-android-armv7/third_party/brotli/libbrotlicommon.a" />
 						<lib name="-Wl,--end-group" />
 
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libavif/build-android-armv7/libavif.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libavif/build-android-armv7/libavif.a" />
 
-						<lib name="${NATIVE_TOOLKIT_PATH}/sdl_image/external/libtiff/build-android-armv7/libtiff/libtiff.a" />
+						<lib name="${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libtiff/build-android-armv7/libtiff/libtiff.a" />
 
 					</section>
 

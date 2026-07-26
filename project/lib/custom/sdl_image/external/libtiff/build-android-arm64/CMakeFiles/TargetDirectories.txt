@@ -1,0 +1,15 @@
+D:/GitHub/lime-fc/project/lib/sdl_image/external/libtiff/build-android-arm64/CMakeFiles/tiff_release.dir
+D:/GitHub/lime-fc/project/lib/sdl_image/external/libtiff/build-android-arm64/CMakeFiles/test.dir
+D:/GitHub/lime-fc/project/lib/sdl_image/external/libtiff/build-android-arm64/CMakeFiles/edit_cache.dir
+D:/GitHub/lime-fc/project/lib/sdl_image/external/libtiff/build-android-arm64/CMakeFiles/rebuild_cache.dir
+D:/GitHub/lime-fc/project/lib/sdl_image/external/libtiff/build-android-arm64/port/CMakeFiles/test.dir
+D:/GitHub/lime-fc/project/lib/sdl_image/external/libtiff/build-android-arm64/port/CMakeFiles/edit_cache.dir
+D:/GitHub/lime-fc/project/lib/sdl_image/external/libtiff/build-android-arm64/port/CMakeFiles/rebuild_cache.dir
+D:/GitHub/lime-fc/project/lib/sdl_image/external/libtiff/build-android-arm64/libtiff/CMakeFiles/tiff.dir
+D:/GitHub/lime-fc/project/lib/sdl_image/external/libtiff/build-android-arm64/libtiff/CMakeFiles/tiffxx.dir
+D:/GitHub/lime-fc/project/lib/sdl_image/external/libtiff/build-android-arm64/libtiff/CMakeFiles/test.dir
+D:/GitHub/lime-fc/project/lib/sdl_image/external/libtiff/build-android-arm64/libtiff/CMakeFiles/edit_cache.dir
+D:/GitHub/lime-fc/project/lib/sdl_image/external/libtiff/build-android-arm64/libtiff/CMakeFiles/rebuild_cache.dir
+D:/GitHub/lime-fc/project/lib/sdl_image/external/libtiff/build-android-arm64/build/CMakeFiles/test.dir
+D:/GitHub/lime-fc/project/lib/sdl_image/external/libtiff/build-android-arm64/build/CMakeFiles/edit_cache.dir
+D:/GitHub/lime-fc/project/lib/sdl_image/external/libtiff/build-android-arm64/build/CMakeFiles/rebuild_cache.dir

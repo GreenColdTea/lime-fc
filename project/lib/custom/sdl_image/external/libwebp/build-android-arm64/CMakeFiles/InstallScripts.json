@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"D:/GitHub/lime-fc/project/lib/sdl_image/external/libwebp/build-android-arm64/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
