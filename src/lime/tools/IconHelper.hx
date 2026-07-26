@@ -346,11 +346,9 @@ class IconHelper
 		var image:Image = null;
 		switch (extension)
 		{
-			case "png", "jpg", "jpeg":
+			case "png", "jpg", "jpeg", "svg", "webp", "tga", "bmp", "avif", "tif", "tiff", "jxl", "pcx", 
+				"xcf", "xpm", "qoi", "lbm", "iff", "pnm", "ppm", "pgm", "pbm":
 				image = ImageHelper.resizeImage(Image.fromFile(icon.path), width, height);
-
-			case "svg":
-				image = ImageHelper.rasterizeSVG(icon.path, width, height);
 		}
 		return image;
 		#else

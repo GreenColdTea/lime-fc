@@ -10,17 +10,39 @@
 
 		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl_image/include" />
 		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl_image/src" />
+		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl_image/external/libwebp/src" />
+		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl_image/external/libavif/include" />
+		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl_image/external/libjxl/lib/include" />
+		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl_image/external/libtiff/libtiff" />
+		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl_image/external/libtiff/build-android-arm64/libtiff" if="android" />
 
 		<section>
 
 			<compilerflag value="-DUSE_STBIMAGE" />
+			<compilerflag value="-DJXL_STATIC_DEFINE" />
+			<compilerflag value="-DWEBP_MSC_STATIC" />
+			<compilerflag value="-DWEBP_DLL=0" />
+			<compilerflag value="-DWEBP_EXTERN=extern" />
+			<compilerflag value="-DJXL_STATIC_DEFINE" />
 
 			<section>
 
+				<compilerflag value="-DLOAD_SVG" />
 				<compilerflag value="-DLOAD_BMP" />
+				<compilerflag value="-DLOAD_TGA" />
+				<compilerflag value="-DLOAD_PCX" />
+				<compilerflag value="-DLOAD_XCF" />
+				<compilerflag value="-DLOAD_XPM" />
+				<compilerflag value="-DLOAD_QOI" />
+				<compilerflag value="-DLOAD_LBM" />
+				<compilerflag value="-DLOAD_PNM" />
+
 				<compilerflag value="-DLOAD_JPG" />
 				<compilerflag value="-DLOAD_PNG" />
-				<compilerflag value="-DLOAD_SVG" />
+				<compilerflag value="-DLOAD_WEBP" />
+				<compilerflag value="-DLOAD_AVIF" />
+				<compilerflag value="-DLOAD_JXL" />
+				<compilerflag value="-DLOAD_TIF" />
 
 			</section>
 

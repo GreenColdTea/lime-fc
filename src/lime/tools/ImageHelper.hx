@@ -2,7 +2,6 @@ package lime.tools;
 
 import hxp.*;
 #if (lime && lime_cffi && !macro)
-import lime._internal.format.SVG;
 import lime.graphics.Image;
 import lime.graphics.ImageBuffer;
 import lime.utils.UInt8Array;
@@ -19,10 +18,14 @@ class ImageHelper
 		#if (lime && lime_cffi && !macro)
 		if (path == null) return null;
 
-		var image = SVG.decodeFileSized(path, width, height);
+		var image = Image.fromFile(path);
 
-		if (image.buffer != null)
+		if (image != null && image.buffer != null)
 		{
+			if (image.width != width || image.height != height) 
+			{
+				image.resize(width, height);
+			}
 			return image;
 		}
 		#end

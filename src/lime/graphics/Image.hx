@@ -6,9 +6,6 @@ import haxe.io.BytesInput;
 import haxe.io.BytesOutput;
 import lime._internal.backend.native.NativeCFFI;
 import lime._internal.format.Base64;
-import lime._internal.format.BMP;
-import lime._internal.format.JPEG;
-import lime._internal.format.PNG;
 import lime._internal.graphics.ImageCanvasUtil;
 import lime._internal.graphics.ImageDataUtil;
 import lime.app.Application;
@@ -455,19 +452,50 @@ class Image
 			format = ImageFileFormat.PNG;
 		}
 
-		switch (format)
+		var encodeImage = this;
+		if (encodeImage.premultiplied || encodeImage.format != RGBA32)
 		{
-			case ImageFileFormat.PNG:
-				return PNG.encode(this);
-
-			case ImageFileFormat.JPEG:
-				return JPEG.encode(this, quality);
-
-			case ImageFileFormat.BMP:
-				return BMP.encode(this);
-
-			default:
+			encodeImage = encodeImage.clone();
+			encodeImage.premultiplied = false;
+			encodeImage.format = RGBA32;
 		}
+
+		#if (lime_cffi && !macro)
+		
+		var typeInt = switch (format) {
+			case PNG: 0;
+			case JPEG: 1;
+			case BMP: 2;
+			default: 0;
+		};
+
+		return NativeCFFI.lime_image_encode(encodeImage.buffer, typeInt, quality, Bytes.alloc(0));
+		
+		#elseif (js && html5)
+		
+		ImageCanvasUtil.convertToCanvas(encodeImage, false);
+
+		if (encodeImage.buffer.__srcCanvas != null)
+		{
+			var mimeType = switch (format) {
+				case JPEG: "image/jpeg";
+				case BMP: "image/bmp";
+				default: "image/png";
+			}
+			
+			var data = encodeImage.buffer.__srcCanvas.toDataURL(mimeType, quality / 100);
+			var buffer = Browser.window.atob(data.split(";base64,")[1]);
+			var bytes = Bytes.alloc(buffer.length);
+
+			for (i in 0...buffer.length)
+			{
+				bytes.set(i, buffer.charCodeAt(i));
+			}
+
+			return bytes;
+		}
+		
+		#end
 
 		return null;
 	}
