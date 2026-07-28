@@ -113,8 +113,29 @@ namespace lime {
             case 1: // JPEG
                 success = IMG_SaveJPG_IO(surface, io, false, quality);
                 break;
-            default:
-                success = IMG_SaveTyped_IO(surface, io, false, "PNG");
+            case 2: // BMP
+                success = IMG_SaveBMP_IO(surface, io, false);
+                break;
+            case 3: // WEBP
+                success = IMG_SaveWEBP_IO(surface, io, false, (float)quality);
+                break;
+            case 4: // AVIF
+                success = IMG_SaveAVIF_IO(surface, io, false, quality);
+                break;
+            case 5: // GIF
+                success = IMG_SaveGIF_IO(surface, io, false);
+                break;
+            case 6: // TGA
+                success = IMG_SaveTGA_IO(surface, io, false);
+                break;
+            case 7: // ICO
+                success = IMG_SaveICO_IO(surface, io, false);
+                break;
+            case 8: // CUR
+                success = IMG_SaveCUR_IO(surface, io, false);
+                break;
+            default: // Fallback on PNG
+                success = IMG_SavePNG_IO(surface, io, false);
                 break;
         }
 

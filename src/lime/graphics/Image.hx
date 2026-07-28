@@ -466,6 +466,12 @@ class Image
 			case PNG: 0;
 			case JPEG: 1;
 			case BMP: 2;
+			case WEBP: 3;
+			case AVIF: 4;
+			case GIF: 5;
+			case TGA: 6;
+			case ICO: 7;
+			case CUR: 8;
 			default: 0;
 		};
 
