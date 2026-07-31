@@ -454,57 +454,78 @@
 
 			<section if="linux">
 
-				<lib name="-lpthread" />
-				<lib name="-lrt" />
-				<lib name='-ludev' />
+                <lib name="-lpthread" />
+                <lib name="-lrt" />
+                <lib name='-ludev' />
+                
+                <section if="LIME_SDL_IMAGE">
+                    <lib name="-lwebp" />
+                    <lib name="-lwebpmux" />
+                    <lib name="-lwebpdemux" />
+                    <lib name="-ltiff" />
+                    <lib name="-lavif" />
+                    <lib name="-ljxl" />
+                    <lib name="-ljxl_threads" />
+                </section>
 
-				<section if="LIME_HASHLINK">
+                <section if="LIME_HASHLINK">
 
-					<lib name="-L../templates/bin/hl/${BINDIR}" />
+                    <lib name="-L../templates/bin/hl/${BINDIR}" />
 
-					<lib name="-lhl" />
+                    <lib name="-lhl" />
 
-				</section>
+                </section>
 
-			</section>
+            </section>
 
-			<section if="mac">
-				<vflag name="-rpath" value="/usr/local/lib" />
-				<vflag name="-rpath" value="/opt/homebrew/lib" if="HXCPP_ARM64" />
+            <section if="mac">
+                <vflag name="-rpath" value="/usr/local/lib" />
+                <vflag name="-rpath" value="/opt/homebrew/lib" if="HXCPP_ARM64" />
 
-				<vflag name="-l" value="iconv" />
-				<vflag name="-framework" value="AppKit" />
-				<vflag name="-framework" value="AudioToolbox" />
-				<vflag name="-framework" value="AudioUnit" />
-				<vflag name="-framework" value="AVFoundation" />
-				<vflag name="-framework" value="Carbon" />
-				<vflag name="-framework" value="Cocoa" />
-				<vflag name="-framework" value="CoreAudio" />
-				<vflag name="-framework" value="CoreBluetooth" />
-				<vflag name="-framework" value="CoreHaptics" />
-				<vflag name="-framework" value="CoreMedia" />
-				<vflag name="-framework" value="CoreVideo" />
-				<vflag name="-framework" value="ForceFeedback" />
-				<vflag name="-framework" value="Foundation" />
-				<vflag name="-framework" value="GameController" />
-				<vflag name="-framework" value="IOKit" />
-				<vflag name="-framework" value="OpenGL" />
-				<vflag name="-framework" value="Security" />
-				<vflag name="-framework" value="SystemConfiguration" />
-				<vflag name="-framework" value="UniformTypeIdentifiers" />
-				<vflag name="-framework" value="UserNotifications" />
+                <!-- Tell the linker to find the Homebrew binary files -->
+                <lib name="-L/opt/homebrew/lib" />
+                
+                <!-- Force link the missing image format binaries -->
+                <lib name="-ljxl" />
+                <lib name="-lwebp" />
+                <lib name="-lwebpdemux" />
+                <lib name="-lwebpmux" />
+                <lib name="-lavif" />
+                <lib name="-ltiff" />
 
-				<section if="LIME_HASHLINK">
+                <vflag name="-l" value="iconv" />
+                <vflag name="-framework" value="AppKit" />
+                <vflag name="-framework" value="AudioToolbox" />
+                <vflag name="-framework" value="AudioUnit" />
+                <vflag name="-framework" value="AVFoundation" />
+                <vflag name="-framework" value="Carbon" />
+                <vflag name="-framework" value="Cocoa" />
+                <vflag name="-framework" value="CoreAudio" />
+                <vflag name="-framework" value="CoreBluetooth" />
+                <vflag name="-framework" value="CoreHaptics" />
+                <vflag name="-framework" value="CoreMedia" />
+                <vflag name="-framework" value="CoreVideo" />
+                <vflag name="-framework" value="ForceFeedback" />
+                <vflag name="-framework" value="Foundation" />
+                <vflag name="-framework" value="GameController" />
+                <vflag name="-framework" value="IOKit" />
+                <vflag name="-framework" value="OpenGL" />
+                <vflag name="-framework" value="Security" />
+                <vflag name="-framework" value="SystemConfiguration" />
+                <vflag name="-framework" value="UniformTypeIdentifiers" />
+                <vflag name="-framework" value="UserNotifications" />
 
-					<vflag name="-install_name" value="@executable_path/lime.hdll" />
+                <section if="LIME_HASHLINK">
 
-					<lib name="-L../templates/bin/hl/${BINDIR}" />
+                    <vflag name="-install_name" value="@executable_path/lime.hdll" />
 
-					<lib name="-lhl" />
+                    <lib name="-L../templates/bin/hl/${BINDIR}" />
 
-				</section>
+                    <lib name="-lhl" />
 
-			</section>
+                </section>
+
+            </section>
 
 			<section if="android">
 
