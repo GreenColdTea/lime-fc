@@ -459,6 +459,7 @@
                 <lib name='-ludev' />
                 
                 <section if="LIME_SDL_IMAGE">
+
                     <lib name="-lwebp" />
                     <lib name="-lwebpmux" />
                     <lib name="-lwebpdemux" />
@@ -466,6 +467,7 @@
                     <lib name="-lavif" />
                     <lib name="-ljxl" />
                     <lib name="-ljxl_threads" />
+
                 </section>
 
                 <section if="LIME_HASHLINK">
@@ -482,16 +484,18 @@
                 <vflag name="-rpath" value="/usr/local/lib" />
                 <vflag name="-rpath" value="/opt/homebrew/lib" if="HXCPP_ARM64" />
 
-                <!-- Tell the linker to find the Homebrew binary files -->
                 <lib name="-L/opt/homebrew/lib" />
                 
-                <!-- Force link the missing image format binaries -->
-                <lib name="-ljxl" />
-                <lib name="-lwebp" />
-                <lib name="-lwebpdemux" />
-                <lib name="-lwebpmux" />
-                <lib name="-lavif" />
-                <lib name="-ltiff" />
+                <section if="LIME_SDL_IMAGE">
+
+					<lib name="-ljxl" />
+					<lib name="-lwebp" />
+					<lib name="-lwebpdemux" />
+					<lib name="-lwebpmux" />
+					<lib name="-lavif" />
+					<lib name="-ltiff" />
+
+				</section>
 
                 <vflag name="-l" value="iconv" />
                 <vflag name="-framework" value="AppKit" />
