@@ -366,38 +366,38 @@ namespace lime
 
 	value lime_file_watcher_create(value callback)
 	{
-#ifdef LIME_EFSW
+		#ifdef LIME_EFSW
 		FileWatcher *watcher = new FileWatcher(callback);
 		return CFFIPointer(watcher, gc_file_watcher);
-#else
+		#else
 		return alloc_null();
-#endif
+		#endif
 	}
 
 	value lime_file_watcher_add_directory(value handle, value path, bool recursive)
 	{
-#ifdef LIME_EFSW
+		#ifdef LIME_EFSW
 		FileWatcher *watcher = (FileWatcher *)val_data(handle);
 		return alloc_int(watcher->AddDirectory(val_string(path), recursive));
-#else
+		#else
 		return alloc_int(0);
-#endif
+		#endif
 	}
 
 	void lime_file_watcher_remove_directory(value handle, value watchID)
 	{
-#ifdef LIME_EFSW
+		#ifdef LIME_EFSW
 		FileWatcher *watcher = (FileWatcher *)val_data(handle);
 		watcher->RemoveDirectory(val_int(watchID));
-#endif
+		#endif
 	}
 
 	void lime_file_watcher_update(value handle)
 	{
-#ifdef LIME_EFSW
+		#ifdef LIME_EFSW
 		FileWatcher *watcher = (FileWatcher *)val_data(handle);
 		watcher->Update();
-#endif
+		#endif
 	}
 
 	int lime_font_get_ascender(value fontHandle)
@@ -651,74 +651,30 @@ namespace lime
 
 	void lime_haptic_vibrate(int period, int duration)
 	{
-#ifdef IPHONE
+		#ifdef IPHONE
 		Haptic::Vibrate(period, duration);
-#endif
+		#endif
 	}
 
 	value lime_image_encode(value buffer, int type, int quality, value bytes)
 	{
+		#ifdef LIME_SDL_IMAGE
 		ImageBuffer imageBuffer = ImageBuffer(buffer);
 		Bytes data = Bytes(bytes);
 
-	value lime_gzip_compress (value buffer, value bytes) {
-
-		#ifdef LIME_ZLIB
-		Bytes data (buffer);
-		Bytes result (bytes);
-
-		Zlib::Compress (GZIP, &data, &result);
-
-		return result.Value (bytes);
-		#else
-		return alloc_null ();
-		#endif
-
-	}
-
-
-	value lime_gzip_decompress (value buffer, value bytes) {
-
-		#ifdef LIME_ZLIB
-		Bytes data (buffer);
-		Bytes result (bytes);
-
-		Zlib::Decompress (GZIP, &data, &result);
-
-		return result.Value (bytes);
-		#else
-		return alloc_null ();
-		#endif
-
-	}
-
-
-	void lime_haptic_vibrate (int period, int duration) {
-
-		#ifdef IPHONE
-		Haptic::Vibrate (period, duration);
-		#endif
-
-	}
-
-
-	value lime_image_encode (value buffer, int type, int quality, value bytes) {
-
-		#ifdef LIME_SDL_IMAGE
-		ImageBuffer imageBuffer = ImageBuffer (buffer);
-		Bytes data = Bytes (bytes);
-
-		if (UniversalImage::Encode (&imageBuffer, &data, type, quality)) {
-			return data.Value (bytes);
+		if (UniversalImage::Encode(&imageBuffer, &data, type, quality))
+		{
+			return data.Value(bytes);
 		}
 
-		return alloc_null ();
+		return alloc_null();
+		#else
+		return alloc_null();
 		#endif
-
 	}
 
 
-	value lime_image_load_file (value data, value buffer) {
+	value lime_image_load_file(value data, value buffer) {
 
 		#ifdef LIME_SDL_IMAGE
 		Resource resource = Resource (val_string (data));
@@ -733,7 +689,7 @@ namespace lime
 
 	}
 
-	value lime_image_load_bytes (value data, value buffer) {
+	value lime_image_load_bytes(value data, value buffer) {
 
 		#ifdef LIME_SDL_IMAGE
 		Bytes bytes = Bytes (data);
@@ -954,69 +910,6 @@ namespace lime
 	{
 		OrientationEvent::callback = new ValuePointer(callback);
 		OrientationEvent::eventObject = new ValuePointer(eventObject);
-	}
-
-	value lime_lzma_compress (value buffer, value bytes) {
-
-		#ifdef LIME_LZMA
-		Bytes data (buffer);
-		Bytes result (bytes);
-
-		LZMA::Compress (&data, &result);
-
-		return result.Value (bytes);
-		#else
-		return alloc_null ();
-		#endif
-
-	}
-
-
-	value lime_lzma_decompress (value buffer, value bytes) {
-
-		#ifdef LIME_LZMA
-		Bytes data (buffer);
-		Bytes result (bytes);
-
-		LZMA::Decompress (&data, &result);
-
-		return result.Value (bytes);
-		#else
-		return alloc_null ();
-		#endif
-
-	}
-
-
-	void lime_mouse_event_manager_register (value callback, value eventObject) {
-
-		MouseEvent::callback = new ValuePointer (callback);
-		MouseEvent::eventObject = new ValuePointer (eventObject);
-
-	}
-
-
-	void lime_orientation_event_manager_register (value callback, value eventObject) {
-
-		OrientationEvent::callback = new ValuePointer (callback);
-		OrientationEvent::eventObject = new ValuePointer (eventObject);
-
-	}
-
-
-	void lime_render_event_manager_register (value callback, value eventObject) {
-
-		RenderEvent::callback = new ValuePointer (callback);
-		RenderEvent::eventObject = new ValuePointer (eventObject);
-
-	}
-
-
-	void lime_sensor_event_manager_register (value callback, value eventObject) {
-
-		SensorEvent::callback = new ValuePointer (callback);
-		SensorEvent::eventObject = new ValuePointer (eventObject);
-
 	}
 
 
@@ -1771,9 +1664,6 @@ namespace lime
 	DEFINE_PRIME2(lime_gzip_compress);
 	DEFINE_PRIME2(lime_gzip_decompress);
 	DEFINE_PRIME2v(lime_haptic_vibrate);
-	DEFINE_PRIME3v(lime_image_data_util_color_transform);
-	DEFINE_PRIME6v(lime_image_data_util_copy_channel);
-	DEFINE_PRIME7v(lime_image_data_util_copy_pixels);
 	DEFINE_PRIME4v(lime_image_data_util_fill_rect);
 	DEFINE_PRIME5v(lime_image_data_util_flood_fill);
 	DEFINE_PRIME4v(lime_image_data_util_get_pixels);
@@ -1804,8 +1694,6 @@ namespace lime
 	DEFINE_PRIME2(lime_lzma_decompress);
 	DEFINE_PRIME2v(lime_mouse_event_manager_register);
 	DEFINE_PRIME2v(lime_orientation_event_manager_register);
-	DEFINE_PRIME2v(lime_render_event_manager_register);
-	DEFINE_PRIME2v(lime_sensor_event_manager_register);
 	DEFINE_PRIME0(lime_system_get_allow_screen_timeout);
 	DEFINE_PRIME0(lime_system_get_device_model);
 	DEFINE_PRIME0(lime_system_get_device_vendor);
