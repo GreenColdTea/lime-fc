@@ -1,15 +1,14 @@
 #pragma once
 
-
-#include <system/CFFI.h>
-#include <system/ValuePointer.h>
+#include <hx/CFFIPrime.h>
 #include <stdint.h>
+#include <system/ValuePointer.h>
 
+namespace lime
+{
 
-namespace lime {
-
-
-	enum MouseEventType {
+	enum MouseEventType
+	{
 
 		MOUSE_DOWN,
 		MOUSE_UP,
@@ -18,10 +17,8 @@ namespace lime {
 
 	};
 
-
-	struct MouseEvent {
-
-		hl_type* t;
+	struct MouseEvent
+	{
 		int button;
 		double movementX;
 		double movementY;
@@ -31,14 +28,12 @@ namespace lime {
 		double y;
 		int clickCount;
 
-		static ValuePointer* callback;
-		static ValuePointer* eventObject;
+		static ValuePointer *callback;
+		static ValuePointer *eventObject;
 
-		MouseEvent ();
+		MouseEvent();
 
-		static void Dispatch (MouseEvent* event);
-
+		static void Dispatch(MouseEvent *event);
 	};
 
-
-}
+} // namespace lime

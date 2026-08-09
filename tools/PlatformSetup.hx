@@ -1,16 +1,20 @@
-package utils;
+package;
 
-import haxe.Http;
 import haxe.io.Eof;
-import haxe.zip.Reader;
-import hxp.*;
+
+import hxp.Haxelib;
+import hxp.Log;
+import hxp.Path;
+import hxp.StringTools;
+import hxp.System;
+import hxp.Version;
+
 import lime.tools.CLIHelper;
 import lime.tools.ConfigHelper;
-import lime.tools.Platform;
 import lime.tools.HXProject;
-import sys.io.File;
-import sys.io.Process;
+
 import sys.FileSystem;
+import sys.io.File;
 
 class PlatformSetup
 {
@@ -24,172 +28,10 @@ class PlatformSetup
 	private static var linuxPacman32Packages = "multilib-devel mesa mesa-libgl glu";
 	private static var linuxPacman64Packages = "multilib-devel lib32-mesa lib32-mesa-libgl lib32-glu";
 	private static var visualStudioURL = "https://www.visualstudio.com/downloads/";
-	private static var hashlinkURL = "https://github.com/HaxeFoundation/hashlink/releases";
 	private static var triedSudo:Bool = false;
 	private static var userDefines:Map<String, Dynamic>;
 	private static var targetFlags:Map<String, Dynamic>;
 	private static var setupHaxelibs = new Map<String, Bool>();
-
-	private static function createPath(path:String, defaultPath:String = ""):String
-	{
-		try
-		{
-			if (path == "")
-			{
-				System.mkdir(defaultPath);
-				return defaultPath;
-			}
-			else
-			{
-				System.mkdir(path);
-				return path;
-			}
-		}
-		catch (e:Dynamic)
-		{
-			throwPermissionsError();
-			return "";
-		}
-	}
-
-	private static function downloadFile(remotePath:String, localPath:String = "", followingLocation:Bool = false):Void
-	{
-		if (localPath == "")
-		{
-			localPath = Path.withoutDirectory(remotePath);
-		}
-
-		if (!followingLocation && FileSystem.exists(localPath))
-		{
-			var answer = CLIHelper.ask("File found. Install existing file?");
-
-			if (answer != NO)
-			{
-				return;
-			}
-		}
-
-		var out = File.write(localPath, true);
-		var progress = new Progress(out);
-		var h = new Http(remotePath);
-
-		h.cnxTimeout = 30;
-
-		h.onError = function(e)
-		{
-			progress.close();
-			FileSystem.deleteFile(localPath);
-			throw e;
-		};
-
-		if (!followingLocation)
-		{
-			Log.println("Downloading " + localPath + "...");
-		}
-
-		h.customRequest(false, progress);
-
-		if (h.responseHeaders != null && h.responseHeaders.exists("Location"))
-		{
-			var location = h.responseHeaders.get("Location");
-
-			if (location != remotePath)
-			{
-				downloadFile(location, localPath, true);
-			}
-		}
-	}
-
-	private static function extractFile(sourceZIP:String, targetPath:String, ignoreRootFolder:String = ""):Void
-	{
-		var extension = Path.extension(sourceZIP);
-
-		if (extension != "zip")
-		{
-			var arguments = "xvzf";
-
-			if (extension == "bz2" || extension == "tbz2")
-			{
-				arguments = "xvjf";
-			}
-
-			if (ignoreRootFolder != "")
-			{
-				if (ignoreRootFolder == "*")
-				{
-					for (file in FileSystem.readDirectory(targetPath))
-					{
-						if (FileSystem.isDirectory(targetPath + "/" + file))
-						{
-							ignoreRootFolder = file;
-						}
-					}
-				}
-
-				System.runCommand("", "tar", [arguments, sourceZIP], false);
-				System.runCommand("", "cp", ["-R", ignoreRootFolder + "/.", targetPath], false);
-				Sys.command("rm", ["-r", ignoreRootFolder]);
-			}
-			else
-			{
-				System.runCommand("", "tar", [arguments, sourceZIP, "-C", targetPath], false);
-
-				// InstallTool.runCommand (targetPath, "tar", [ arguments, FileSystem.fullPath (sourceZIP) ]);
-			}
-
-			Sys.command("chmod", ["-R", "755", targetPath]);
-		}
-		else
-		{
-			var file = File.read(sourceZIP, true);
-			var entries = Reader.readZip(file);
-			file.close();
-
-			for (entry in entries)
-			{
-				var fileName = entry.fileName;
-
-				if (fileName.charAt(0) != "/" && fileName.charAt(0) != "\\" && fileName.split("..").length <= 1)
-				{
-					var dirs = ~/[\/\\]/g.split(fileName);
-
-					if ((ignoreRootFolder != "" && dirs.length > 1) || ignoreRootFolder == "")
-					{
-						if (ignoreRootFolder != "")
-						{
-							dirs.shift();
-						}
-
-						var path = "";
-						var file = dirs.pop();
-
-						for (d in dirs)
-						{
-							path += d;
-							System.mkdir(targetPath + "/" + path);
-							path += "/";
-						}
-
-						if (file == "")
-						{
-							if (path != "") Log.println("  Created " + path);
-							continue; // was just a directory
-						}
-
-						path += file;
-						Log.println("  Install " + path);
-
-						var data = Reader.unzip(entry);
-						var f = File.write(targetPath + "/" + path, true);
-						f.write(data);
-						f.close();
-					}
-				}
-			}
-		}
-
-		Log.println("Done");
-	}
 
 	public static function getDefineValue(name:String, description:String):Void
 	{
@@ -212,59 +54,6 @@ class PlatformSetup
 		}
 	}
 
-	// public static function getDefines (names:Array<String> = null, descriptions:Array<String> = null, ignored:Array<String> = null):Map<String, String> {
-	// var config = CommandLineTools.getLimeConfig ();
-	// var defines = null;
-	// var env = Sys.environment ();
-	// var path = "";
-	// if (config != null) {
-	// 	defines = config.environment;
-	// 	for (key in defines.keys ()) {
-	// 		if (defines.get (key) == env.get (key)) {
-	// 			defines.remove (key);
-	// 		}
-	// 	}
-	// } else {
-	// 	defines = new Map<String, String> ();
-	// }
-	// if (!defines.exists ("LIME_CONFIG")) {
-	// 	var home = "";
-	// 	if (env.exists ("HOME")) {
-	// 		home = env.get ("HOME");
-	// 	} else if (env.exists ("USERPROFILE")) {
-	// 		home = env.get ("USERPROFILE");
-	// 	} else {
-	// 		Log.println ("Warning : No 'HOME' variable set - ~/.lime/config.xml might be missing.");
-	// 		return null;
-	// 	}
-	// 	defines.set ("LIME_CONFIG", home + "/.lime/config.xml");
-	// }
-	// if (names == null) {
-	// 	return defines;
-	// }
-	// var values = new Array<String> ();
-	// for (i in 0...names.length) {
-	// 	var name = names[i];
-	// 	var description = descriptions[i];
-	// 	var ignore = "";
-	// 	if (ignored != null && ignored.length > i) {
-	// 		ignore = ignored[i];
-	// 	}
-	// 	var value = "";
-	// 	if (defines.exists (name) && defines.get (name) != ignore) {
-	// 		value = defines.get (name);
-	// 	} else if (env.exists (name)) {
-	// 		value = Sys.getEnv (name);
-	// 	}
-	// 	value = unescapePath (CLIHelper.param ("\x1b[1m" + description + "\x1b[0m \x1b[37;3m[" + value + "]\x1b[0m"));
-	// 	if (value != "") {
-	// 		defines.set (name, value);
-	// 	} else if (value == Sys.getEnv (name)) {
-	// 		defines.remove (name);
-	// 	}
-	// }
-	// return defines;
-	// }
 	public static function installHaxelib(haxelib:Haxelib):Void
 	{
 		var name = haxelib.name;
@@ -364,7 +153,6 @@ class PlatformSetup
 
 				case "html5":
 					Log.println("\x1b[0;3mNo additional configuration is required.\x1b[0m");
-				// setupHTML5 ();
 
 				case "ios", "iphoneos", "iphonesim":
 					if (System.hostPlatform == MAC)
@@ -397,20 +185,11 @@ class PlatformSetup
 						setupWindows();
 					}
 
-				case "hl", "hashlink":
-					setupHL();
-
 				case "lime":
 					setupLime();
 
 				case "openfl":
 					setupOpenFL();
-
-				case "tvos", "tvsim":
-					if (System.hostPlatform == MAC)
-					{
-						setupIOS();
-					}
 
 				case "":
 					switch (CommandLineTools.defaultLibrary)
@@ -425,134 +204,6 @@ class PlatformSetup
 			}
 		}
 		catch (e:Eof) {}
-	}
-
-	private static function runInstaller(path:String, message:String = "Waiting for process to complete..."):Void
-	{
-		if (System.hostPlatform == WINDOWS)
-		{
-			try
-			{
-				Log.println(message);
-				System.runCommand("", "call", [path], false);
-				Log.println("Done");
-			}
-			catch (e:Dynamic) {}
-		}
-		else if (System.hostPlatform == LINUX)
-		{
-			if (Path.extension(path) == "deb")
-			{
-				System.runCommand("", "sudo", ["dpkg", "-i", "--force-architecture", path], false);
-			}
-			else
-			{
-				Log.println(message);
-				Sys.command("chmod", ["755", path]);
-
-				if (path.substr(0, 1) == "/")
-				{
-					System.runCommand("", path, [], false);
-				}
-				else
-				{
-					System.runCommand("", "./" + path, [], false);
-				}
-
-				Log.println("Done");
-			}
-		}
-		else
-		{
-			if (Path.extension(path) == "")
-			{
-				Log.println(message);
-				Sys.command("chmod", ["755", path]);
-				System.runCommand("", path, [], false);
-				Log.println("Done");
-			}
-			else if (Path.extension(path) == "dmg")
-			{
-				var process = new Process("hdiutil", ["mount", path]);
-				var ret = process.stdout.readAll().toString();
-				process.exitCode(); // you need this to wait till the process is closed!
-				process.close();
-
-				var volumePath = "";
-
-				if (ret != null && ret != "")
-				{
-					volumePath = StringTools.trim(ret.substr(ret.indexOf("/Volumes")));
-				}
-
-				if (volumePath != "" && FileSystem.exists(volumePath))
-				{
-					var apps:Array<String> = [];
-					var packages:Array<String> = [];
-					var executables:Array<String> = [];
-
-					var files:Array<String> = FileSystem.readDirectory(volumePath);
-
-					for (file in files)
-					{
-						switch (Path.extension(file))
-						{
-							case "app":
-								apps.push(file);
-
-							case "pkg", "mpkg":
-								packages.push(file);
-
-							case "bin":
-								executables.push(file);
-						}
-					}
-
-					var file = "";
-
-					if (apps.length == 1)
-					{
-						file = apps[0];
-					}
-					else if (packages.length == 1)
-					{
-						file = packages[0];
-					}
-					else if (executables.length == 1)
-					{
-						file = executables[0];
-					}
-
-					if (file != "")
-					{
-						Log.println(message);
-						System.runCommand("", "open", ["-W", volumePath + "/" + file], false);
-						Log.println("Done");
-					}
-
-					try
-					{
-						var process = new Process("hdiutil", ["unmount", path]);
-						process.exitCode(); // you need this to wait till the process is closed!
-						process.close();
-					}
-					catch (e:Dynamic) {}
-
-					if (file == "")
-					{
-						System.runCommand("", "open", [path], false);
-					}
-				}
-				else
-				{
-					System.runCommand("", "open", [path], false);
-				}
-			}
-			else
-			{
-				System.runCommand("", "open", [path], false);
-			}
-		}
 	}
 
 	public static function setupAndroid():Void
@@ -620,7 +271,8 @@ class PlatformSetup
 		{
 			for (lib in project.haxelibs)
 			{
-				if (setupHaxelibs.exists(lib.name)) continue;
+				if (setupHaxelibs.exists(lib.name))
+					continue;
 
 				var path = Haxelib.getPath(lib, false, true);
 
@@ -648,119 +300,9 @@ class PlatformSetup
 		}
 	}
 
-	public static function setupHTML5():Void
-	{
-		// var setApacheCordova = false;
-
-		// var defines = getDefines ();
-		// var answer = CLIHelper.ask ("Download and install Apache Cordova?");
-
-		// if (answer == YES || answer == ALWAYS) {
-
-		// 	var downloadPath = "";
-		// 	var defaultInstallPath = "";
-
-		// 	if (System.hostPlatform == WINDOWS) {
-
-		// 		defaultInstallPath = "C:\\Development\\Apache Cordova";
-
-		// 	} else {
-
-		// 		defaultInstallPath = "/opt/cordova";
-
-		// 	}
-
-		// 	var path = unescapePath (CLIHelper.param ("Output directory [" + defaultInstallPath + "]"));
-		// 	path = createPath (path, defaultInstallPath);
-
-		// 	downloadFile (apacheCordovaPath);
-		// 	extractFile (Path.withoutDirectory (apacheCordovaPath), path, "*");
-
-		// 	var childArchives = [];
-
-		// 	for (file in FileSystem.readDirectory (path)) {
-
-		// 		if (Path.extension (file) == "zip") {
-
-		// 			childArchives.push (file);
-
-		// 		}
-
-		// 	}
-
-		// 	createPath (path + "/lib");
-		// 	var libs = [ "android", "bada-wac", "bada", "ios", "mac", "qt", "tvos", "wp7" ];
-
-		// 	for (archive in childArchives) {
-
-		// 		var name = Path.withoutExtension (archive);
-		// 		name = StringTools.replace (name, "incubator-", "");
-		// 		name = StringTools.replace (name, "cordova-", "");
-
-		// 		var basePath = path + "/";
-
-		// 		for (lib in libs) {
-
-		// 			if (name == lib) {
-
-		// 				basePath += "lib/";
-
-		// 			}
-
-		// 		}
-
-		// 		createPath (basePath + name);
-		// 		extractFile (path + "/" + archive, basePath + name);
-
-		// 	}
-
-		// 	if (System.hostPlatform != WINDOWS) {
-
-		// 		System.runCommand ("", "chmod", [ "-R", "777", path ], false);
-
-		// 	}
-
-		// 	setApacheCordova = true;
-		// 	defines.set ("CORDOVA_PATH", path);
-		// 	writeConfig (defines.get ("LIME_CONFIG"), defines);
-		// 	Log.println ("");
-
-		// }
-
-		// var requiredVariables = [];
-		// var requiredVariableDescriptions = [];
-
-		// if (!setApacheCordova) {
-
-		// 	requiredVariables.push ("CORDOVA_PATH");
-		// 	requiredVariableDescriptions.push ("Path to Apache Cordova");
-
-		// }
-
-		// requiredVariables = requiredVariables.concat ([ "WEBWORKS_SDK", "WEBWORKS_SDK_BBOS", "WEBWORKS_SDK_PLAYBOOK" ]);
-		// requiredVariableDescriptions = requiredVariableDescriptions.concat ([ "Path to WebWorks SDK for BlackBerry 10", "Path to WebWorks SDK for BBOS", "Path to WebWorks SDK for PlayBook" ]);
-
-		// defines = getDefines (requiredVariables, requiredVariableDescriptions);
-
-		// defines.set ("CORDOVA_PATH", unescapePath (defines.get ("CORDOVA_PATH")));
-		// defines.set ("WEBWORKS_SDK_BBOS", unescapePath (defines.get ("WEBWORKS_SDK_BBOS")));
-		// defines.set ("WEBWORKS_SDK_PLAYBOOK", unescapePath (defines.get ("WEBWORKS_SDK_PLAYBOOK")));
-
-		// // temporary hack
-
-		// /*Sys.println ("");
-		// Sys.println ("Setting Apache Cordova install path...");
-		// System.runCommand (defines.get ("CORDOVA_PATH") + "/lib/ios", "make", [ "install" ], true, true);
-		// Sys.println ("Done.");*/
-
-		// writeConfig (defines.get ("LIME_CONFIG"), defines);
-
-		// Haxelib.runCommand ("", [ "install", "cordova" ], true, true);
-	}
-
 	public static function setupIOS():Void
 	{
-		Log.println("\x1b[1mIn order to build applications for iOS and tvOS, you must have");
+		Log.println("\x1b[1mIn order to build applications for iOS, you must have");
 		Log.println("Xcode installed. Xcode is available from Apple as a free download.\x1b[0m");
 		Log.println("");
 		Log.println("\x1b[0;3mNo additional configuration is required.\x1b[0m");
@@ -914,7 +456,7 @@ class PlatformSetup
 
 		if (hasApt)
 		{
-			// check if this is ubuntu saucy 64bit, which uses different packages.
+			// check if this is Ubuntu Saucy 64-bit, which uses different packages.
 			var lsbId = System.runProcess("", "lsb_release", ["-si"], true, true, true);
 			var lsbRelease = System.runProcess("", "lsb_release", ["-sr"], true, true, true);
 			var arch = System.runProcess("", "uname", ["-m"], true, true, true);
@@ -1213,67 +755,6 @@ class PlatformSetup
 		Log.println("Setup complete.");
 	}
 
-	public static function setupHL():Void
-	{
-		var message = "Absolute path to a custom version of HashLink.";
-		if (ConfigHelper.getConfigValue("HL_PATH") == null) {
-			message += " Leave empty to use Lime's default bundled version.";
-		} else {
-			message += " Leave empty to keep the currently configured version. To restore Lime's default bundled version, run the command: lime config remove HL_PATH";
-		}
-		getDefineValue("HL_PATH", message);
-		if (System.hostPlatform == MAC)
-		{
-			Log.println("To use the HashLink debugger on macOS, the hl executable needs to be signed.");
-			if (ConfigHelper.getConfigValue("HL_PATH") != null)
-			{
-				Log.println("When building HashLink from source, you must run `make codesign_osx` before installing.");
-			}
-			else
-			{
-				var answer = CLIHelper.ask("Would you like to do this now? (Requires sudo.)");
-
-				if (answer == YES || answer == ALWAYS)
-				{
-					var openSSLConf = System.getTemporaryFile("cnf");
-					var key = System.getTemporaryFile("pem");
-					var cert = System.getTemporaryFile("cer");
-					var limePath = Haxelib.getPath(new Haxelib("lime"));
-					var hlPath = limePath + "/templates/bin/hl/mac/hl";
-					var entitlementsPath = sys.FileSystem.exists(limePath + "/project") ? (limePath +
-						"/project/lib/hashlink/other/osx/entitlements.xml") : (limePath
-						+ "/templates/bin/hl/entitlements.xml");
-					System.runCommand("", "sudo", ["security", "delete-identity", "-c", "hl-cert"], true, true, true);
-					sys.io.File.saveContent(openSSLConf, [
-						"[req]",
-						"distinguished_name=codesign_dn",
-						"[codesign_dn]",
-						"commonName=hl-cert",
-						"[v3_req]",
-						"keyUsage=critical,digitalSignature",
-						"extendedKeyUsage=critical,codeSigning",
-					].join("\n"));
-					System.runCommand("", "openssl", [
-						"req", "-x509", "-newkey", "rsa:4096", "-keyout", key, "-nodes", "-days", "365", "-subj", "/CN=hl-cert", "-outform", "der", "-out",
-						cert, "-extensions", "v3_req", "-config", openSSLConf
-					], true, false, true);
-					System.runCommand("", "sudo", [
-						"security",
-						"add-trusted-cert",
-						"-d",
-						"-k /Library/Keychains/System.keychain",
-						cert
-					], true, false, true);
-					System.runCommand("", "sudo", ["security", "import", key, "-k", "/Library/Keychains/System.keychain", "-A"], true, false, true);
-					System.runCommand("", "codesign", ["--entitlements", entitlementsPath, "-fs", "hl-cert", hlPath], true, false, true);
-					for (f in [key, cert, openSSLConf])
-						sys.FileSystem.deleteFile(f);
-					Log.println("\nIf you update lime, you will have to run this again to sign the new hl executable");
-				}
-			}
-		}
-	}
-
 	private static function throwPermissionsError()
 	{
 		if (System.hostPlatform == WINDOWS)
@@ -1343,63 +824,5 @@ class PlatformSetup
 				System.runCommand(lib, "git", ["submodule", "update"]);
 			}
 		}
-	}
-}
-
-class Progress extends haxe.io.Output
-{
-	var o:haxe.io.Output;
-	var cur:Int;
-	var max:Null<Int>;
-	var start:Float;
-
-	public function new(o)
-	{
-		this.o = o;
-		cur = 0;
-		start = haxe.Timer.stamp();
-	}
-
-	function bytes(n)
-	{
-		cur += n;
-		if (max == null) Sys.print(cur + " bytes\r");
-		else
-			Sys.print(cur + "/" + max + " (" + Std.int((cur * 100.0) / max) + "%)\r");
-	}
-
-	public override function writeByte(c)
-	{
-		o.writeByte(c);
-		bytes(1);
-	}
-
-	public override function writeBytes(s, p, l)
-	{
-		var r = o.writeBytes(s, p, l);
-		bytes(r);
-		return r;
-	}
-
-	public override function close()
-	{
-		super.close();
-		o.close();
-		var time = haxe.Timer.stamp() - start;
-		var speed = (cur / time) / 1024;
-		time = Std.int(time * 10) / 10;
-		speed = Std.int(speed * 10) / 10;
-
-		// When the path is a redirect, we don't want to display that the download completed
-
-		if (cur > 400)
-		{
-			Sys.print("Download complete : " + cur + " bytes in " + time + "s (" + speed + "KB/s)\n");
-		}
-	}
-
-	public override function prepare(m:Int)
-	{
-		max = m;
 	}
 }

@@ -1,33 +1,28 @@
 #pragma once
 
-
-#include <system/CFFI.h>
+#include <hx/CFFIPrime.h>
 #include <system/ValuePointer.h>
 
+namespace lime
+{
 
-namespace lime {
-
-
-	enum ClipboardEventType {
+	enum ClipboardEventType
+	{
 
 		CLIPBOARD_UPDATE
 
 	};
 
-
-	struct ClipboardEvent {
-
-		hl_type* t;
+	struct ClipboardEvent
+	{
 		ClipboardEventType type;
 
-		static ValuePointer* callback;
-		static ValuePointer* eventObject;
+		static ValuePointer *callback;
+		static ValuePointer *eventObject;
 
-		ClipboardEvent ();
+		ClipboardEvent();
 
-		static void Dispatch (ClipboardEvent* event);
-
+		static void Dispatch(ClipboardEvent *event);
 	};
 
-
-}
+} // namespace lime

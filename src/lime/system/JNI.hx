@@ -8,6 +8,7 @@ import haxe.macro.Type;
 #else
 import lime._internal.backend.native.NativeCFFI;
 #end
+
 #if !lime_doc_gen
 #if target.threaded
 import sys.thread.Thread;
@@ -15,7 +16,6 @@ import sys.thread.Thread;
 import cpp.vm.Thread;
 #end
 #end
-
 using StringTools;
 
 /**
@@ -209,7 +209,8 @@ class JNI
 
 		if (field != null)
 		{
-			if (args == null) args = [];
+			if (args == null)
+				args = [];
 
 			return Reflect.callMethod(object, field, args);
 		}
@@ -412,8 +413,7 @@ class JNISafetyTools
 			}
 
 			// Don't modify functions lacking `@:runOnMainThread`.
-			if (field.meta == null || !Lambda.exists(field.meta,
-				function(meta) return meta.name == ":runOnMainThread"))
+			if (field.meta == null || !Lambda.exists(field.meta, function(meta) return meta.name == ":runOnMainThread"))
 			{
 				continue;
 			}
@@ -427,13 +427,12 @@ class JNISafetyTools
 					// Make sure there's no return value.
 					switch (f.ret)
 					{
-						case macro:Void:
+						case macro :Void:
 							// Good to go.
 						case null:
-							f.ret = macro:Void;
+							f.ret = macro :Void;
 						default:
-							Context.error("Expected return type Void, got "
-								+ new haxe.macro.Printer().printComplexType(f.ret) + ".", field.pos);
+							Context.error("Expected return type Void, got " + new haxe.macro.Printer().printComplexType(f.ret) + ".", field.pos);
 					}
 
 					var args:Array<Expr> = [];
@@ -447,15 +446,15 @@ class JNISafetyTools
 					}
 
 					// Check the thread before running the function.
-					f.expr = macro
-						if (!lime.system.JNI.JNISafetyTools.onMainThread()) {
-							#if haxe5
-							haxe.EventLoop.main.run($i{field.name}.bind($a{args}));
-							#else
-							haxe.MainLoop.runInMainThread($i{field.name}.bind($a{args}));
-							#end
-						} else
-							${f.expr};
+					f.expr = macro if (!lime.system.JNI.JNISafetyTools.onMainThread())
+					{
+						#if haxe5
+						haxe.EventLoop.main.run($i{field.name}.bind($a{args}));
+						#else
+						haxe.MainLoop.runInMainThread($i{field.name}.bind($a{args}));
+						#end
+					}
+					else ${f.expr};
 				default:
 			}
 		}

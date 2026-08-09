@@ -1,20 +1,34 @@
 package lime.tools;
 
-import haxe.io.Eof;
 import haxe.Json;
 import haxe.Serializer;
 import haxe.Unserializer;
-import hxp.*;
+import haxe.io.Eof;
+import haxe.xml.Access;
+
+import hxp.ArrayTools;
+import hxp.Haxelib;
+import hxp.Log;
+import hxp.MapTools;
+import hxp.NDLL;
+import hxp.ObjectTools;
+import hxp.Path;
+import hxp.Script;
+import hxp.StringTools;
+import hxp.System;
+
 import lime.tools.Architecture;
 import lime.tools.AssetType;
 import lime.tools.Platform;
+
 import sys.FileSystem;
 import sys.io.File;
-import sys.io.Process;
-import haxe.xml.Access;
+
 #if (lime && lime_cffi && !macro)
 import lime.text.Font;
+#end
 
+#if (lime && lime_cffi && !macro)
 @:access(lime.text.Font)
 #end
 class HXProject extends Script
@@ -93,9 +107,7 @@ class HXProject extends Script
 		Log.verbose = inputData.logVerbose;
 		Log.enableColor = inputData.logEnableColor;
 
-		#if lime
 		System.dryRun = inputData.processDryRun;
-		#end
 
 		Haxelib.debug = inputData.haxelibDebug;
 
@@ -104,7 +116,7 @@ class HXProject extends Script
 		var classRef = Type.resolveClass(inputData.name);
 		if (classRef == null)
 		{
-			Log.error('Unable to find class ${ inputData.name } in ${ inputData.projectFile }');
+			Log.error('Unable to find class ${inputData.name} in ${inputData.projectFile}');
 			return;
 		}
 		var instance = Type.createInstance(classRef, []);
@@ -138,7 +150,7 @@ class HXProject extends Script
 			case HTML5:
 				PlatformType.WEB;
 
-			case ANDROID, IOS, TVOS:
+			case ANDROID, IOS:
 				PlatformType.MOBILE;
 
 			case WINDOWS, MAC, LINUX:
@@ -177,7 +189,7 @@ class HXProject extends Script
 		else
 		{
 			environment = Sys.environment();
-			for (conflict in ["android", "cpp", "hl", "html5", "ios", "linux", "mac", "windows"])
+			for (conflict in ["android", "cpp", "html5", "ios", "linux", "mac", "windows"])
 			{
 				environment.remove(conflict);
 			}
@@ -200,7 +212,7 @@ class HXProject extends Script
 		splashScreens = new Array<SplashScreen>();
 		targetHandlers = new Map<String, String>();
 
-		config.set("android", { manifest:{}, application:{}, activity:{} });
+		config.set("android", {manifest: {}, application: {}, activity: {}});
 		config.get("android.manifest").xmlChildren = [];
 		config.get("android.application").xmlChildren = [];
 		config.get("android.activity").xmlChildren = [];
@@ -395,12 +407,14 @@ class HXProject extends Script
 
 		var args = [
 			name,
-			#if lime
-			"-lib", "lime",
-			"-lib", "hxp",
-			#end
-			"-cp", tempDirectory,
-			"-cp", Path.combine(Haxelib.getPath(new Haxelib("hxp")), "src")
+			"-lib",
+			"lime",
+			"-lib",
+			"hxp",
+			"-cp",
+			tempDirectory,
+			"-cp",
+			Path.combine(Haxelib.getPath(new Haxelib("hxp")), "src")
 		];
 		var input = File.read(classFile, false);
 		var tag = "@:compiler(";
@@ -427,34 +441,29 @@ class HXProject extends Script
 		var inputFile = Path.combine(tempDirectory, "input.dat");
 		var outputFile = Path.combine(tempDirectory, "output.dat");
 
-		var inputData = Serializer.run(
-			{
-				command: HXProject._command,
-				name: name,
-				target: HXProject._target,
-				debug: HXProject._debug,
-				projectFile: projectFile,
-				targetFlags: HXProject._targetFlags,
-				templatePaths: HXProject._templatePaths,
-				userDefines: HXProject._userDefines,
-				environment: HXProject._environment,
-				logVerbose: Log.verbose,
-				logEnableColor: Log.enableColor,
-				processDryRun: cacheDryRun,
-				haxelibDebug: Haxelib.debug
-			});
+		var inputData = Serializer.run({
+			command: HXProject._command,
+			name: name,
+			target: HXProject._target,
+			debug: HXProject._debug,
+			projectFile: projectFile,
+			targetFlags: HXProject._targetFlags,
+			templatePaths: HXProject._templatePaths,
+			userDefines: HXProject._userDefines,
+			environment: HXProject._environment,
+			logVerbose: Log.verbose,
+			logEnableColor: Log.enableColor,
+			processDryRun: cacheDryRun,
+			haxelibDebug: Haxelib.debug
+		});
 
 		File.saveContent(inputFile, inputData);
 
 		try
 		{
-			#if (lime && !eval)
 			var nekoOutput = Path.combine(tempDirectory, name + ".n");
 			System.runCommand("", "haxe", args.concat(["--main", "lime.tools.HXProject", "-neko", nekoOutput]));
 			System.runCommand("", "neko", [nekoOutput, inputFile, outputFile]);
-			#else
-			System.runCommand("", "haxe", args.concat(["--run", "lime.tools.HXProject", inputFile, outputFile]));
-			#end
 		}
 		catch (e:Dynamic)
 		{
@@ -668,14 +677,12 @@ class HXProject extends Script
 		}
 	}
 
-	// #if lime
 	public function includeXML(xml:String):Void
 	{
 		var projectXML = new ProjectXMLParser();
 		@:privateAccess projectXML.parseXML(new Access(Xml.parse(xml).firstElement()), "");
 		merge(projectXML);
 	}
-	// #end
 
 	private function initializeDefines():Void
 	{
@@ -706,16 +713,6 @@ class HXProject extends Script
 				defines.set("native", "1");
 				defines.set("cpp", "1");
 				defines.set("mingw", "1");
-			}
-		}
-		else if (targetFlags.exists("hl"))
-		{
-			defines.set("targetType", "hl");
-			defines.set("native", "1");
-			defines.set("hl", "1");
-			if (targetFlags.exists("hlc"))
-			{
-				defines.set("hlc", "1");
 			}
 		}
 		else if (targetFlags.exists("cpp") || ((platformType != PlatformType.WEB) && !targetFlags.exists("html5")))
@@ -762,9 +759,7 @@ class HXProject extends Script
 				defines.set("host", "unknown");
 		}
 
-		#if lime
 		defines.set("lime-tools", "1");
-		#end
 
 		defines.set("hxp", "1"); // TODO: Version?
 	}
@@ -894,7 +889,6 @@ class HXProject extends Script
 		}
 	}
 
-	// #if lime
 	@:noCompletion private static function processHaxelibs(project:HXProject, userDefines:Map<String, Dynamic>):Void
 	{
 		var haxelibs = project.haxelibs.copy();
@@ -936,7 +930,6 @@ class HXProject extends Script
 		}
 	}
 
-	// #end
 	public function setenv(name:String, value:String):Void
 	{
 		if (value == null)
@@ -993,8 +986,10 @@ class HXProject extends Script
 	{
 		var context:Dynamic = {};
 
-		if (app == null) app = {};
-		if (meta == null) meta = {};
+		if (app == null)
+			app = {};
+		if (meta == null)
+			meta = {};
 
 		if (window == null)
 		{
@@ -1061,7 +1056,8 @@ class HXProject extends Script
 				Reflect.setField(context, "WINDOW_ORIENTATION_" + i, "");
 			}
 
-			if (windows[i].title == "") windows[i].title = meta.title;
+			if (windows[i].title == "")
+				windows[i].title = meta.title;
 		}
 
 		for (haxeflag in haxeflags)
@@ -1147,16 +1143,12 @@ class HXProject extends Script
 		{
 			var name = haxelib.name;
 
-			// TODO: Handle real version when better/smarter haxelib available
 			var version = haxelib.version;
-			// var version = Haxelib.getVersion (haxelib);
 
 			if (version != null && version != "")
 			{
 				name += ":" + version;
 			}
-
-			// #if lime
 
 			if (Haxelib.pathOverrides.exists(name))
 			{
@@ -1259,12 +1251,6 @@ class HXProject extends Script
 					}
 				}
 			}
-
-			// #else
-
-			// compilerFlags.push ("-lib " + name);
-
-			// #end
 
 			Reflect.setField(context, "LIB_" + StringTools.formatUppercaseVariable(haxelib.name), true);
 

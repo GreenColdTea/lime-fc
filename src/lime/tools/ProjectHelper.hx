@@ -1,8 +1,14 @@
 package lime.tools;
 
-import hxp.*;
+import hxp.NDLL;
+import hxp.Haxelib;
+import hxp.Log;
+import hxp.Path;
+import hxp.System;
+
 import sys.io.File;
 import sys.FileSystem;
+
 #if cpp
 import cpp.Lib;
 #end
@@ -197,9 +203,11 @@ class ProjectHelper
 			else if (substring.indexOf(".") > -1)
 			{
 				var fields = substring.split(".");
-				if (fields[0] == "project") fields.shift();
+				if (fields[0] == "project")
+					fields.shift();
 
 				var object:Dynamic = project;
+
 				while (object != null && fields.length > 0)
 				{
 					object = Reflect.getProperty(object, fields.shift());

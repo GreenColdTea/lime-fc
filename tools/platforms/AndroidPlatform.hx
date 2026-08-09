@@ -1,11 +1,11 @@
 package;
 
 import hxp.ArrayTools;
-import hxp.Haxelib;
 import hxp.HXML;
 import hxp.Log;
 import hxp.Path;
 import hxp.System;
+
 import lime.tools.AndroidHelper;
 import lime.tools.Architecture;
 import lime.tools.AssetHelper;
@@ -14,13 +14,12 @@ import lime.tools.CPPHelper;
 import lime.tools.DeploymentHelper;
 import lime.tools.HXProject;
 import lime.tools.Icon;
-import lime.tools.AdaptiveIcon;
 import lime.tools.IconHelper;
-import lime.tools.Orientation;
 import lime.tools.PlatformTarget;
 import lime.tools.ProjectHelper;
-import sys.io.File;
+
 import sys.FileSystem;
+import sys.io.File;
 
 class AndroidPlatform extends PlatformTarget
 {
@@ -30,73 +29,13 @@ class AndroidPlatform extends PlatformTarget
 	{
 		super(command, _project, targetFlags);
 
-		var defaults = new HXProject();
-
-		defaults.meta =
-			{
-				title: "MyApplication",
-				description: "",
-				packageName: "com.example.myapp",
-				version: "1.0.0",
-				company: "",
-				companyUrl: "",
-				buildNumber: null,
-				companyId: ""
-			};
-
-		defaults.app =
-			{
-				main: "Main",
-				file: "MyApplication",
-				path: "bin",
-				preloader: "",
-				url: "",
-				init: null
-			};
-
-		defaults.window =
-			{
-				width: 0,
-				height: 0,
-				parameters: "{}",
-				background: 0xFFFFFF,
-				fps: 60,
-				hardware: true,
-				display: 0,
-				resizable: true,
-				transparent: false,
-				borderless: false,
-				orientation: Orientation.AUTO,
-				vsync: false,
-				fullscreen: true,
-				allowHighDPI: true,
-				alwaysOnTop: false,
-				antialiasing: 0,
-				allowShaders: true,
-				requireShaders: true,
-				depthBuffer: true,
-				stencilBuffer: true,
-				colorDepth: 32,
-				maximized: false,
-				minimized: false,
-				hidden: false,
-				title: ""
-			};
-
-		if (project.targetFlags.exists("simulator") || project.targetFlags.exists("emulator"))
-		{
-			defaults.architectures = [Architecture.X64, Architecture.ARM64];
-		}
-		else
-		{
-			defaults.architectures = [Architecture.ARM64, Architecture.ARMV7];
-		}
-
-		for (i in 1...project.windows.length)
-		{
-			defaults.windows.push(defaults.window);
-		}
-
+		var defaults:HXProject = createDefaultProject();
+		defaults.window.width = 0;
+		defaults.window.height = 0;
+		defaults.window.fullscreen = true;
+		defaults.window.allowHighDPI = true;
+		defaults.window.requireShaders = true;
+		defaults.architectures = project.targetFlags.exists("simulator") ? [Architecture.X64, Architecture.ARM64] : [Architecture.ARM64, Architecture.ARMV7];
 		defaults.merge(project);
 
 		project = defaults;
@@ -145,10 +84,14 @@ class AndroidPlatform extends PlatformTarget
 		var hasX86 = ArrayTools.containsValue(project.architectures, Architecture.X86);
 		var architectures:Array<Architecture> = [];
 
-		if (hasARM64) architectures.push(Architecture.ARM64);
-		if (hasARMV7) architectures.push(Architecture.ARMV7);
-		if (hasX64) architectures.push(Architecture.X64);
-		if (hasX86) architectures.push(Architecture.X86);
+		if (hasARM64)
+			architectures.push(Architecture.ARM64);
+		if (hasARMV7)
+			architectures.push(Architecture.ARMV7);
+		if (hasX64)
+			architectures.push(Architecture.X64);
+		if (hasX86)
+			architectures.push(Architecture.X86);
 
 		if (architectures.length == 0)
 		{
@@ -162,8 +105,20 @@ class AndroidPlatform extends PlatformTarget
 		for (architecture in architectures)
 		{
 			var minSDKVer = project.config.getInt("android.minimum-sdk-version", 28);
-			var haxeParams = [hxml, "-D", "android", "-D", 'HXCPP_ANDROID_PLATFORM=$minSDKVer', "-D", 'PLATFORM=android-$minSDKVer'];
-			var cppParams = ["-Dandroid", '-DHXCPP_ANDROID_PLATFORM=$minSDKVer', '-DPLATFORM=android-$minSDKVer'];
+			var haxeParams = [
+				hxml,
+				"-D",
+				"android",
+				"-D",
+				'HXCPP_ANDROID_PLATFORM=$minSDKVer',
+				"-D",
+				'PLATFORM=android-$minSDKVer'
+			];
+			var cppParams = [
+				"-Dandroid",
+				'-DHXCPP_ANDROID_PLATFORM=$minSDKVer',
+				'-DPLATFORM=android-$minSDKVer'
+			];
 			var path = sourceSet + "/jniLibs/";
 			var suffix = ".so";
 
@@ -207,7 +162,8 @@ class AndroidPlatform extends PlatformTarget
 
 			System.runCommand("", "haxe", haxeParams);
 
-			if (noOutput) continue;
+			if (noOutput)
+				continue;
 
 			CPPHelper.compile(project, targetDirectory + "/obj", cppParams);
 
@@ -246,7 +202,8 @@ class AndroidPlatform extends PlatformTarget
 			}
 		}
 
-		if (noOutput) return;
+		if (noOutput)
+			return;
 
 		AndroidHelper.build(project, destination);
 	}
@@ -282,11 +239,13 @@ class AndroidPlatform extends PlatformTarget
 			{
 				if (targetFlags.exists("bundle"))
 				{
-					outputDirectory = Path.combine(FileSystem.fullPath(targetDirectory), Path.combine(project.config.getString("android.gradle-project-directory", "bin"), "app/build/outputs/bundle"));
+					outputDirectory = Path.combine(FileSystem.fullPath(targetDirectory),
+						Path.combine(project.config.getString("android.gradle-project-directory", "bin"), "app/build/outputs/bundle"));
 				}
 				else
 				{
-					outputDirectory = Path.combine(FileSystem.fullPath(targetDirectory), Path.combine(project.config.getString("android.gradle-project-directory", "bin"), "app/build/outputs/apk"));
+					outputDirectory = Path.combine(FileSystem.fullPath(targetDirectory),
+						Path.combine(project.config.getString("android.gradle-project-directory", "bin"), "app/build/outputs/apk"));
 				}
 			}
 
@@ -306,7 +265,8 @@ class AndroidPlatform extends PlatformTarget
 		// modified more recently than the .hxml, then the .hxml cannot be
 		// considered valid anymore. it may cause errors in editors like vscode.
 		if (FileSystem.exists(path)
-			&& (project.projectFilePath == null || !FileSystem.exists(project.projectFilePath)
+			&& (project.projectFilePath == null
+				|| !FileSystem.exists(project.projectFilePath)
 				|| (FileSystem.stat(path).mtime.getTime() > FileSystem.stat(project.projectFilePath).mtime.getTime())))
 		{
 			return File.getContent(path);
@@ -317,6 +277,7 @@ class AndroidPlatform extends PlatformTarget
 			var hxml = HXML.fromString(context.HAXE_FLAGS);
 			hxml.addClassName(context.APP_MAIN);
 			hxml.cpp = "_";
+			hxml.define("android");
 			hxml.noOutput = true;
 			return hxml;
 		}
@@ -361,11 +322,13 @@ class AndroidPlatform extends PlatformTarget
 		{
 			if (targetFlags.exists("bundle"))
 			{
-				outputDirectory = Path.combine(FileSystem.fullPath(targetDirectory), Path.combine(project.config.getString("android.gradle-project-directory", "bin"), "app/build/outputs/bundle/" + build));
+				outputDirectory = Path.combine(FileSystem.fullPath(targetDirectory),
+					Path.combine(project.config.getString("android.gradle-project-directory", "bin"), "app/build/outputs/bundle/" + build));
 			}
 			else
 			{
-				outputDirectory = Path.combine(FileSystem.fullPath(targetDirectory), Path.combine(project.config.getString("android.gradle-project-directory", "bin"), "app/build/outputs/apk/" + build));
+				outputDirectory = Path.combine(FileSystem.fullPath(targetDirectory),
+					Path.combine(project.config.getString("android.gradle-project-directory", "bin"), "app/build/outputs/apk/" + build));
 			}
 		}
 
@@ -408,10 +371,14 @@ class AndroidPlatform extends PlatformTarget
 
 		var commands:Array<Array<String>> = [];
 
-		if (arm64) commands.push(["-Dandroid", "-DHXCPP_ARM64", platformDefine, platformNumberDefine]);
-		if (armv7) commands.push(["-Dandroid", "-DHXCPP_ARMV7", platformDefine, platformNumberDefine]);
-		if (x64) commands.push(["-Dandroid", "-DHXCPP_X86_64", platformDefine, platformNumberDefine]);
-		if (x86) commands.push(["-Dandroid", "-DHXCPP_X86", platformDefine, platformNumberDefine]);
+		if (arm64)
+			commands.push(["-Dandroid", "-DHXCPP_ARM64", platformDefine, platformNumberDefine]);
+		if (armv7)
+			commands.push(["-Dandroid", "-DHXCPP_ARMV7", platformDefine, platformNumberDefine]);
+		if (x64)
+			commands.push(["-Dandroid", "-DHXCPP_X86_64", platformDefine, platformNumberDefine]);
+		if (x86)
+			commands.push(["-Dandroid", "-DHXCPP_X86", platformDefine, platformNumberDefine]);
 
 		CPPHelper.rebuild(project, commands);
 	}
@@ -470,7 +437,13 @@ class AndroidPlatform extends PlatformTarget
 
 					var padContext:Dynamic = {};
 					padContext.ANDROID_PLAY_ASSETS_DELIVERY_PACK = asset.deliveryPackName;
-					System.copyFileTemplate(project.templatePaths, "android/asset-pack/build.gradle", targetDirectory + "/" + gradleProject + "/" + asset.deliveryPackName + "/build.gradle", padContext);
+					System.copyFileTemplate(project.templatePaths, "android/asset-pack/build.gradle",
+						targetDirectory
+						+ "/"
+						+ gradleProject
+						+ "/"
+						+ asset.deliveryPackName
+						+ "/build.gradle", padContext);
 
 					context.ANDROID_PLAY_ASSETS_DELIVERY_PACKS.push(asset.deliveryPackName);
 				}
@@ -514,8 +487,18 @@ class AndroidPlatform extends PlatformTarget
 			"android:label": project.meta.title,
 			"android:resizeableActivity": project.window.resizable,
 			"android:configChanges": project.config.getArrayString("android.configChanges",
-				["layoutDirection", "locale", "orientation", "uiMode", "screenLayout", "screenSize", "smallestScreenSize", "keyboard", "keyboardHidden", "navigation"])
-				.join("|"),
+				[
+					"layoutDirection",
+					"locale",
+					"orientation",
+					"uiMode",
+					"screenLayout",
+					"screenSize",
+					"smallestScreenSize",
+					"keyboard",
+					"keyboardHidden",
+					"navigation"
+				]).join("|"),
 			"android:screenOrientation": project.window.orientation == PORTRAIT ? "sensorPortrait" : (project.window.orientation == LANDSCAPE ? "sensorLandscape" : null)
 		});
 		context.ANDROID_ACTIVITY_CHILDREN = project.config.get("android.activity").xmlChildren;
@@ -523,9 +506,10 @@ class AndroidPlatform extends PlatformTarget
 
 		if (!project.environment.exists("ANDROID_SDK") || !project.environment.exists("ANDROID_NDK_ROOT"))
 		{
-			var command = #if lime "lime" #else "hxp" #end;
+			var command = "lime";
 			var toolsBase = Type.resolveClass("CommandLineTools");
-			if (toolsBase != null) command = Reflect.field(toolsBase, "commandName");
+			if (toolsBase != null)
+				command = Reflect.field(toolsBase, "commandName");
 
 			Log.error("You must define ANDROID_SDK and ANDROID_NDK_ROOT to target Android, please run '" + command + " setup android' first");
 			Sys.exit(1);
@@ -593,16 +577,17 @@ class AndroidPlatform extends PlatformTarget
 					}
 				}
 			}
-			catch (e:Dynamic)
-			{
-			}
+			catch (e:Dynamic) {}
 		}
 
-		if (Reflect.hasField(context, "KEY_STORE")) context.KEY_STORE = StringTools.replace(context.KEY_STORE, "\\", "\\\\");
-		if (Reflect.hasField(context, "KEY_STORE_ALIAS")) context.KEY_STORE_ALIAS = StringTools.replace(context.KEY_STORE_ALIAS, "\\", "\\\\");
-		if (Reflect.hasField(context, "KEY_STORE_PASSWORD")) context.KEY_STORE_PASSWORD = StringTools.replace(context.KEY_STORE_PASSWORD, "\\", "\\\\");
-		if (Reflect.hasField(context,
-			"KEY_STORE_ALIAS_PASSWORD")) context.KEY_STORE_ALIAS_PASSWORD = StringTools.replace(context.KEY_STORE_ALIAS_PASSWORD, "\\", "\\\\");
+		if (Reflect.hasField(context, "KEY_STORE"))
+			context.KEY_STORE = StringTools.replace(context.KEY_STORE, "\\", "\\\\");
+		if (Reflect.hasField(context, "KEY_STORE_ALIAS"))
+			context.KEY_STORE_ALIAS = StringTools.replace(context.KEY_STORE_ALIAS, "\\", "\\\\");
+		if (Reflect.hasField(context, "KEY_STORE_PASSWORD"))
+			context.KEY_STORE_PASSWORD = StringTools.replace(context.KEY_STORE_PASSWORD, "\\", "\\\\");
+		if (Reflect.hasField(context, "KEY_STORE_ALIAS_PASSWORD"))
+			context.KEY_STORE_ALIAS_PASSWORD = StringTools.replace(context.KEY_STORE_ALIAS_PASSWORD, "\\", "\\\\");
 
 		context.ANDROID_LIBRARY_PROJECTS = [];
 		context.ANDROID_LIBRARY_DEPENDENCIES = [];
@@ -615,12 +600,11 @@ class AndroidPlatform extends PlatformTarget
 				&& (FileSystem.exists(Path.combine(dependency.path, "project.properties"))
 					|| FileSystem.exists(Path.combine(dependency.path, "build.gradle"))))
 			{
-				context.ANDROID_LIBRARY_PROJECTS.push(
-					{
-						name: dependency.name,
-						path: "deps/" + dependency.name,
-						source: dependency.path
-					});
+				context.ANDROID_LIBRARY_PROJECTS.push({
+					name: dependency.name,
+					path: "deps/" + dependency.name,
+					source: dependency.path
+				});
 			}
 			else if (dependency.name != "")
 			{
@@ -628,48 +612,50 @@ class AndroidPlatform extends PlatformTarget
 			}
 		}
 
-		for (attribute in context.ANDROID_APPLICATION)
-		{
-			if (attribute.key == "android:icon")
-			{
-				context.HAS_ICON = true;
-				break;
-			}
-		}
-
 		if (context.HAS_ICON == null)
 		{
-			var iconTypes = ["ldpi", "mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"];
-			var iconSizes = [36, 48, 72, 96, 144, 192];
-			var icons = project.icons;
-
-			if (project.adaptiveIcon != null)
+			for (attribute in context.ANDROID_APPLICATION)
 			{
-				ProjectHelper.recursiveSmartCopyDirectory(project, project.adaptiveIcon.path, destination + "/app/src/main/res/", context);
-				context.HAS_ICON = true;
-				context.ANDROID_APPLICATION.push({ key: "android:icon", value: "@mipmap/ic_launcher" });
-				if (project.adaptiveIcon.hasRoundIcon)
+				if (attribute.key == "android:icon")
 				{
-					context.ANDROID_APPLICATION.push({ key: "android:roundIcon", value: "@mipmap/ic_launcher_round" });
+					context.HAS_ICON = true;
+					break;
 				}
 			}
-			else
+
+			if (context.HAS_ICON == null)
 			{
-				if (icons.length == 0)
+				var iconTypes = ["ldpi", "mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"];
+				var iconSizes = [36, 48, 72, 96, 144, 192];
+				var icons = project.icons;
+
+				if (project.adaptiveIcon != null)
 				{
-					icons = [new Icon(System.findTemplate(project.templatePaths, "default/icon.svg"))];
-				}
-				for (i in 0...iconTypes.length)
-				{
-					// create multiple icons, only set "android:icon" once
-					if (IconHelper.createIcon(icons, iconSizes[i], iconSizes[i], sourceSet + "/res/drawable-" + iconTypes[i] + "/icon.png")
-						&& !context.HAS_ICON)
+					ProjectHelper.recursiveSmartCopyDirectory(project, project.adaptiveIcon.path, destination + "/app/src/main/res/", context);
+
+					context.ANDROID_APPLICATION.push({key: "android:icon", value: "@mipmap/ic_launcher"});
+
+					if (project.adaptiveIcon.hasRoundIcon)
 					{
-						context.HAS_ICON = true;
-						context.ANDROID_APPLICATION.push({ key: "android:icon", value: "@drawable/icon" });
+						context.ANDROID_APPLICATION.push({key: "android:roundIcon", value: "@mipmap/ic_launcher_round"});
 					}
 				}
-				IconHelper.createIcon(icons, 732, 412, sourceSet + "/res/drawable-xhdpi/ouya_icon.png");
+				else
+				{
+					if (icons.length == 0)
+					{
+						icons = [new Icon(System.findTemplate(project.templatePaths, "default/icon.svg"))];
+					}
+
+					for (i in 0...iconTypes.length)
+					{
+						IconHelper.createIcon(icons, iconSizes[i], iconSizes[i], sourceSet + "/res/drawable-" + iconTypes[i] + "/icon.png");
+					}
+
+					context.ANDROID_APPLICATION.push({key: "android:icon", value: "@drawable/icon"});
+				}
+
+				context.HAS_ICON = true;
 			}
 		}
 
@@ -677,9 +663,7 @@ class AndroidPlatform extends PlatformTarget
 		System.removeDirectory(destination + "/app/libs");
 		System.removeDirectory(destination + "/deps");
 
-		var packageDirectory = project.meta.packageName;
-		packageDirectory = sourceSet + "/java/" + packageDirectory.split(".").join("/");
-		System.mkdir(packageDirectory);
+		System.mkdir(sourceSet + "/java/" + project.meta.packageName.split(".").join("/"));
 
 		for (javaPath in project.javaPaths)
 		{
@@ -702,10 +686,6 @@ class AndroidPlatform extends PlatformTarget
 				}
 			}
 			catch (e:Dynamic) {}
-
-			//	throw"Could not find javaPath " + javaPath +" required by extension.";
-
-			// }
 		}
 
 		for (library in cast(context.ANDROID_LIBRARY_PROJECTS, Array<Dynamic>))
@@ -713,10 +693,15 @@ class AndroidPlatform extends PlatformTarget
 			recursiveCopy(library.source, destination + "/deps/" + library.name, context, true);
 		}
 
-		ProjectHelper.recursiveSmartCopyTemplate(project, "android/template", destination, context);
-		System.copyFileTemplate(project.templatePaths, "android/MainActivity.java", packageDirectory + "/MainActivity.java", context);
 		ProjectHelper.recursiveSmartCopyTemplate(project, "haxe", targetDirectory + "/haxe", context);
-		ProjectHelper.recursiveSmartCopyTemplate(project, "android/hxml", targetDirectory + "/haxe", context);
+		ProjectHelper.recursiveSmartCopyTemplate(project, "cpp/hxml", targetDirectory + "/haxe", context);
+		ProjectHelper.recursiveSmartCopyTemplate(project, "android/template", destination, context);
+
+		System.copyFileTemplate(project.templatePaths, "android/MainActivity.java",
+			sourceSet
+			+ "/java/"
+			+ project.meta.packageName.split(".").join("/")
+			+ "/MainActivity.java", context);
 
 		copyProjectAssets(destination, sourceSet + "/assets/");
 	}
@@ -758,7 +743,9 @@ class AndroidPlatform extends PlatformTarget
 				}
 				else
 				{
-					var path = Path.combine(asset.deliveryPackName != '' ? (outputDirectory + "/" + asset.deliveryPackName + "/src/main/assets/") : assetDirectory, asset.targetPath);
+					var path = Path.combine(asset.deliveryPackName != '' ? (outputDirectory + "/" + asset.deliveryPackName +
+						"/src/main/assets/") : assetDirectory,
+						asset.targetPath);
 					System.mkdir(Path.directory(path));
 					AssetHelper.copyAssetIfNewer(asset, path);
 				}

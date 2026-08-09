@@ -1,6 +1,10 @@
 package lime.tools;
 
-import hxp.*;
+import hxp.Haxelib;
+import hxp.Log;
+import hxp.Path;
+import hxp.System;
+
 import sys.io.File;
 import sys.FileSystem;
 
@@ -90,12 +94,11 @@ class AndroidHelper
 				continue;
 			}
 
-			var newVersion =
-				{
-					major: Std.parseInt(version.matched(1)),
-					minor: Std.parseInt(version.matched(2)),
-					micro: Std.parseInt(version.matched(3))
-				};
+			var newVersion = {
+				major: Std.parseInt(version.matched(1)),
+				minor: Std.parseInt(version.matched(2)),
+				micro: Std.parseInt(version.matched(3))
+			};
 
 			if (newVersion.major != current.major)
 			{
@@ -217,7 +220,7 @@ class AndroidHelper
 			Log.error("adb not found in Android SDK: " + project.environment.get("ANDROID_SDK"));
 		}
 
-		if (project.targetFlags.exists("emulator") || project.targetFlags.exists("simulator"))
+		if (project.targetFlags.exists("simulator"))
 		{
 			if (!FileSystem.exists(emulatorPath + emulatorName))
 			{
@@ -415,7 +418,15 @@ class AndroidHelper
 
 		System.runCommand(adbPath, adbName, args.concat(["force-stop", activityName]));
 
-		System.runCommand(adbPath, adbName, args.concat(["start", "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "-n", activityName]));
+		System.runCommand(adbPath, adbName, args.concat([
+			"start",
+			"-a",
+			"android.intent.action.MAIN",
+			"-c",
+			"android.intent.category.LAUNCHER",
+			"-n",
+			activityName
+		]));
 	}
 
 	public static function trace(project:HXProject, debug:Bool, deviceID:String = null, customFilter:String = null):Void

@@ -66,8 +66,10 @@ abstract Int16Array(JSInt16Array) from JSInt16Array to JSInt16Array
 	// non spec haxe conversions
 	inline public static function fromBytes(bytes:haxe.io.Bytes, ?byteOffset:Int = 0, ?len:Int):Int16Array
 	{
-		if (byteOffset == null) return new JSInt16Array(cast bytes.getData());
-		if (len == null) return new JSInt16Array(cast bytes.getData(), byteOffset);
+		if (byteOffset == null)
+			return new JSInt16Array(cast bytes.getData());
+		if (len == null)
+			return new JSInt16Array(cast bytes.getData(), byteOffset);
 		return new JSInt16Array(cast bytes.getData(), byteOffset, len);
 	}
 

@@ -66,8 +66,10 @@ abstract UInt8ClampedArray(JSUInt8ClampedArray) from JSUInt8ClampedArray to JSUI
 	// non spec haxe conversions
 	inline public static function fromBytes(bytes:haxe.io.Bytes, ?byteOffset:Int = 0, ?len:Int):UInt8ClampedArray
 	{
-		if (byteOffset == null) return new JSUInt8ClampedArray(cast bytes.getData());
-		if (len == null) return new JSUInt8ClampedArray(cast bytes.getData(), byteOffset);
+		if (byteOffset == null)
+			return new JSUInt8ClampedArray(cast bytes.getData());
+		if (len == null)
+			return new JSUInt8ClampedArray(cast bytes.getData(), byteOffset);
 		return new JSUInt8ClampedArray(cast bytes.getData(), byteOffset, len);
 	}
 
@@ -80,7 +82,7 @@ abstract UInt8ClampedArray(JSUInt8ClampedArray) from JSUInt8ClampedArray to JSUI
 		return this != null ? 'UInt8ClampedArray [byteLength:${this.byteLength}, length:${this.length}]' : null;
 
 	// internal
-	// clamp a Int to a 0-255 Uint8
+	// clamp an Int to a 0-255 Uint8
 	static function _clamp(_in:Float):Int
 	{
 		var _out = Std.int(_in);

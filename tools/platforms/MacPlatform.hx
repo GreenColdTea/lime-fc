@@ -1,29 +1,22 @@
 package;
 
-import haxe.io.Eof;
-import hxp.Haxelib;
 import hxp.HXML;
 import hxp.Log;
 import hxp.Path;
-import hxp.NDLL;
 import hxp.System;
+
 import lime.tools.Architecture;
 import lime.tools.AssetHelper;
-import lime.tools.AssetType;
 import lime.tools.CPPHelper;
 import lime.tools.DeploymentHelper;
-import lime.tools.GUID;
-import lime.tools.HashlinkHelper;
 import lime.tools.HXProject;
 import lime.tools.Icon;
 import lime.tools.IconHelper;
-import lime.tools.Orientation;
-import lime.tools.Platform;
 import lime.tools.PlatformTarget;
 import lime.tools.ProjectHelper;
-import sys.io.File;
-import sys.io.Process;
+
 import sys.FileSystem;
+import sys.io.File;
 
 class MacPlatform extends PlatformTarget
 {
@@ -32,7 +25,6 @@ class MacPlatform extends PlatformTarget
 	private var executableDirectory:String;
 	private var executablePath:String;
 	private var targetArchitecture:Architecture;
-	private var targetType:String;
 
 	private var dirSuffix(get, never):String;
 
@@ -40,63 +32,7 @@ class MacPlatform extends PlatformTarget
 	{
 		super(command, _project, targetFlags);
 
-		var defaults = new HXProject();
-
-		defaults.meta =
-			{
-				title: "MyApplication",
-				description: "",
-				packageName: "com.example.myapp",
-				version: "1.0.0",
-				company: "",
-				companyUrl: "",
-				buildNumber: null,
-				companyId: ""
-			};
-
-		defaults.app =
-			{
-				main: "Main",
-				file: "MyApplication",
-				path: "bin",
-				preloader: "",
-				url: "",
-				init: null
-			};
-
-		defaults.window =
-			{
-				width: 800,
-				height: 600,
-				parameters: "{}",
-				background: 0xFFFFFF,
-				fps: 60,
-				hardware: true,
-				display: 0,
-				resizable: true,
-				transparent: false,
-				borderless: false,
-				orientation: Orientation.AUTO,
-				vsync: false,
-				fullscreen: false,
-				allowHighDPI: false,
-				alwaysOnTop: false,
-				antialiasing: 0,
-				allowShaders: true,
-				requireShaders: false,
-				depthBuffer: true,
-				stencilBuffer: true,
-				colorDepth: 32,
-				maximized: false,
-				minimized: false,
-				hidden: false,
-				title: ""
-			};
-
-		for (i in 1...project.windows.length)
-		{
-			defaults.windows.push(defaults.window);
-		}
+		var defaults:HXProject = createDefaultProject();
 
 		defaults.merge(project);
 
@@ -108,6 +44,7 @@ class MacPlatform extends PlatformTarget
 		}
 
 		targetArchitecture = System.hostArchitecture;
+
 		for (architecture in project.architectures)
 		{
 			if (architecture.isARM() || architecture.isX())
@@ -117,35 +54,7 @@ class MacPlatform extends PlatformTarget
 			}
 		}
 
-		if (project.targetFlags.exists("hl") || project.targetFlags.exists("hlc"))
-		{
-			targetType = "hl";
-			var hlVer = project.haxedefs.get("hl-ver");
-			if (hlVer == null)
-			{
-				var hlPath = project.defines.get("HL_PATH");
-				if (hlPath == null)
-				{
-					// Haxe's default target version for HashLink may be
-					// different (newer even) than the build of HashLink that
-					// is bundled with Lime. if using Lime's bundled HashLink,
-					// set hl-ver to the correct version
-					project.haxedefs.set("hl-ver", HashlinkHelper.BUNDLED_HL_VER);
-				}
-			}
-		}
-		else
-		{
-			targetType = "cpp";
-		}
-
-		var defaultTargetDirectory = switch (targetType)
-		{
-			case "cpp": "macos";
-			case "hl": project.targetFlags.exists("hlc") ? "hlc" : targetType;
-			default: targetType;
-		}
-		targetDirectory = Path.combine(project.app.path, project.config.getString("mac.output-directory", defaultTargetDirectory));
+		targetDirectory = Path.combine(project.app.path, project.config.getString("mac.output-directory", "macos"));
 		targetDirectory = StringTools.replace(targetDirectory, "arch64", dirSuffix);
 		applicationDirectory = targetDirectory + "/bin/" + project.app.file + ".app";
 		contentDirectory = applicationDirectory + "/Contents/Resources";
@@ -167,114 +76,43 @@ class MacPlatform extends PlatformTarget
 			}
 			else
 			{
-				copyIfNewer(Path.combine(dependency.path, "Mac" + dirSuffix + "/" + dependency.name + ".dylib"), executableDirectory + "/" + dependency.name + ".dylib");
+				copyIfNewer(Path.combine(dependency.path, "Mac" + dirSuffix + "/" + dependency.name + ".dylib"),
+					executableDirectory
+					+ "/"
+					+ dependency.name
+					+ ".dylib");
 			}
 		}
 
 		for (ndll in project.ndlls)
 		{
-			if (targetType == "hl")
-			{
-				ProjectHelper.copyLibrary(project, ndll, "Mac" + dirSuffix, "", ".hdll", executableDirectory, project.debug, ".hdll");
-			}
-			else
-			{
-				ProjectHelper.copyLibrary(project, ndll, "Mac" + dirSuffix, "", ".ndll", executableDirectory, project.debug);
-			}
+			ProjectHelper.copyLibrary(project, ndll, "Mac" + dirSuffix, "", ".ndll", executableDirectory, project.debug);
 		}
 
-		if (targetType == "hl")
+		var haxeArgs = [hxml, "-D", "HXCPP_CLANG"];
+		var flags = ["-DHXCPP_CLANG"];
+
+		if (targetArchitecture == X64)
 		{
-			System.runCommand("", "haxe", [hxml]);
-
-			if (noOutput) return;
-
-			// ensure that the shell script is replaced by the template executable
-			System.deleteFile(executablePath);
-
-			HashlinkHelper.copyHashlink(project, targetDirectory, executableDirectory, executablePath, true);
-
-			if (project.targetFlags.exists("hlc"))
-			{
-				var compiler = project.targetFlags.exists("clang") ? "clang" : "gcc";
-				// the libraries were compiled as x86_64, so if the build is
-				// happening on ARM64 instead, we need to ensure that the
-				// same architecture is used for the executable, so we wrap our
-				// compiler command with the `arch -x86_64` command.
-				// if we ever support ARM or Universal binaries, this will
-				// need to be handled differently.
-				var command = ["arch", "-x86_64", compiler, "-O3", "-o", executablePath, "-std=c11", "-Wl,-rpath,@executable_path", "-I", Path.combine(targetDirectory, "obj"), Path.combine(targetDirectory, "obj/ApplicationMain.c")];
-				for (file in System.readDirectory(executableDirectory))
-				{
-					switch Path.extension(file)
-					{
-						case "dylib", "hdll":
-							// ensure the executable knows about every library
-							command.push(file);
-						default:
-					}
-				}
-				System.runCommand("", command.shift(), command);
-
-				for (file in System.readDirectory(executableDirectory))
-				{
-					switch Path.extension(file)
-					{
-						case "dylib", "hdll":
-							// when launched inside an .app file, the executable
-							// can't find the library files unless we tell
-							// it to search specifically from @executable_path
-							System.runCommand("", "install_name_tool", ["-change", Path.withoutDirectory(file), "@executable_path/" + Path.withoutDirectory(file), executablePath]);
-						default:
-					}
-				}
-			}
-			else
-			{
-				// HashLink JIT looks for hlboot.dat and libraries in the current
-				// working directory, so the .app file won't work properly if it
-				// tries to run the HashLink executable directly.
-				// when the .app file is launched, we can tell it to run a shell
-				// script instead of the HashLink executable. the shell script
-				// tells the HL where to find everything.
-
-				// we want to keep the original "hl" file name because our
-				// shell script will use the app name
-				var hlExecutablePath = Path.combine(executableDirectory, "hl");
-				System.renameFile(executablePath, hlExecutablePath);
-				System.runCommand("", "chmod", ["755", hlExecutablePath]);
-
-				// then we can use the executable name for the shell script
-				System.copyFileTemplate(project.templatePaths, 'hl/mac-launch.sh', executablePath);
-				System.runCommand("", "chmod", ["755", executablePath]);
-			}
+			haxeArgs.push("-D");
+			haxeArgs.push("HXCPP_M64");
+			flags.push("-DHXCPP_M64");
 		}
-		else
+		else if (targetArchitecture == ARM64)
 		{
-			var haxeArgs = [hxml, "-D", "HXCPP_CLANG"];
-			var flags = ["-DHXCPP_CLANG"];
-
-			if (targetArchitecture == X64)
-			{
-				haxeArgs.push("-D");
-				haxeArgs.push("HXCPP_M64");
-				flags.push("-DHXCPP_M64");
-			}
-			else if (targetArchitecture == ARM64)
-			{
-				haxeArgs.push("-D");
-				haxeArgs.push("HXCPP_ARM64");
-				flags.push("-DHXCPP_ARM64");
-			}
-
-			System.runCommand("", "haxe", haxeArgs);
-
-			if (noOutput) return;
-
-			CPPHelper.compile(project, targetDirectory + "/obj", flags);
-
-			System.copyFile(targetDirectory + "/obj/ApplicationMain" + (project.debug ? "-debug" : ""), executablePath);
+			haxeArgs.push("-D");
+			haxeArgs.push("HXCPP_ARM64");
+			flags.push("-DHXCPP_ARM64");
 		}
+
+		System.runCommand("", "haxe", haxeArgs);
+
+		if (noOutput)
+			return;
+
+		CPPHelper.compile(project, targetDirectory + "/obj", flags);
+
+		System.copyFile(targetDirectory + "/obj/ApplicationMain" + (project.debug ? "-debug" : ""), executablePath);
 
 		if (System.hostPlatform != WINDOWS && sys.FileSystem.exists(executablePath))
 		{
@@ -302,12 +140,7 @@ class MacPlatform extends PlatformTarget
 	private function generateContext():Dynamic
 	{
 		var context = project.templateContext;
-		context.NEKO_FILE = targetDirectory + "/obj/ApplicationMain.n";
-		context.NODE_FILE = executableDirectory + "/ApplicationMain.js";
-		context.HL_FILE = targetDirectory + "/obj/ApplicationMain" + (project.defines.exists("hlc") ? ".c" : ".hl");
-		context.CPP_DIR = targetDirectory + "/obj/";
-		context.BUILD_DIR = project.app.path + "/mac" + dirSuffix.toLowerCase();
-
+		context.CPP_DIR = targetDirectory + "/obj";
 		return context;
 	}
 
@@ -319,7 +152,8 @@ class MacPlatform extends PlatformTarget
 		// modified more recently than the .hxml, then the .hxml cannot be
 		// considered valid anymore. it may cause errors in editors like vscode.
 		if (FileSystem.exists(path)
-			&& (project.projectFilePath == null || !FileSystem.exists(project.projectFilePath)
+			&& (project.projectFilePath == null
+				|| !FileSystem.exists(project.projectFilePath)
 				|| (FileSystem.stat(path).mtime.getTime() > FileSystem.stat(project.projectFilePath).mtime.getTime())))
 		{
 			return File.getContent(path);
@@ -329,13 +163,7 @@ class MacPlatform extends PlatformTarget
 			var context = project.templateContext;
 			var hxml = HXML.fromString(context.HAXE_FLAGS);
 			hxml.addClassName(context.APP_MAIN);
-			switch (targetType)
-			{
-				case "hl":
-					hxml.hl = "_.hl";
-				default:
-					hxml.cpp = "_";
-			}
+			hxml.cpp = "_";
 			hxml.noOutput = true;
 			return hxml;
 		}
@@ -348,12 +176,7 @@ class MacPlatform extends PlatformTarget
 		switch (System.hostArchitecture)
 		{
 			case X64:
-				if (targetFlags.exists("hl"))
-				{
-					// TODO: Support single binary
-					commands.push(["-Dmac", "-DHXCPP_CLANG", "-DHXCPP_M64", "-Dhashlink"]);
-				}
-				else if (targetFlags.exists("arm64"))
+				if (targetFlags.exists("arm64"))
 				{
 					commands.push(["-Dmac", "-DHXCPP_CLANG", "-DHXCPP_ARM64"]);
 				}
@@ -368,12 +191,7 @@ class MacPlatform extends PlatformTarget
 			case X86:
 				commands.push(["-Dmac", "-DHXCPP_CLANG", "-DHXCPP_M32"]);
 			case ARM64:
-				if (targetFlags.exists("hl"))
-				{
-					// hashlink doesn't support arm64 macs yet
-					commands.push(["-Dmac", "-DHXCPP_CLANG", "-DHXCPP_ARCH=x86_64", "-Dhashlink"]);
-				}
-				else if (targetFlags.exists("64") || targetFlags.exists("x86_64"))
+				if (targetFlags.exists("64") || targetFlags.exists("x86_64"))
 				{
 					commands.push(["-Dmac", "-DHXCPP_CLANG", "-DHXCPP_ARCH=x86_64"]);
 				}
@@ -382,12 +200,6 @@ class MacPlatform extends PlatformTarget
 					commands.push(["-Dmac", "-DHXCPP_CLANG", "-DHXCPP_ARM64"]);
 				}
 			default:
-		}
-
-		if (targetFlags.exists("hl"))
-		{
-			CPPHelper.rebuild(project, commands, null, "BuildHashlink.xml");
-			copyAndFixHashLinkHomebrewDependencies();
 		}
 
 		CPPHelper.rebuild(project, commands);
@@ -433,10 +245,14 @@ class MacPlatform extends PlatformTarget
 		System.mkdir(contentDirectory);
 
 		ProjectHelper.recursiveSmartCopyTemplate(project, "haxe", targetDirectory + "/haxe", context);
-		ProjectHelper.recursiveSmartCopyTemplate(project, targetType + "/hxml", targetDirectory + "/haxe", context);
+		ProjectHelper.recursiveSmartCopyTemplate(project, "cpp/hxml", targetDirectory + "/haxe", context);
 
 		System.copyFileTemplate(project.templatePaths, "mac/Info.plist", targetDirectory + "/bin/" + project.app.file + ".app/Contents/Info.plist", context);
-		System.copyFileTemplate(project.templatePaths, "mac/Entitlements.plist", targetDirectory + "/bin/" + project.app.file + ".app/Contents/Entitlements.plist", context);
+		System.copyFileTemplate(project.templatePaths, "mac/Entitlements.plist",
+			targetDirectory
+			+ "/bin/"
+			+ project.app.file
+			+ ".app/Contents/Entitlements.plist", context);
 
 		var icons = project.icons;
 
@@ -445,11 +261,12 @@ class MacPlatform extends PlatformTarget
 			icons = [new Icon(System.findTemplate(project.templatePaths, "default/icon.svg"))];
 		}
 
-		context.HAS_ICON = IconHelper.createMacIcon(icons, Path.combine(contentDirectory, "icon.icns"));
+		IconHelper.createMacIcon(icons, Path.combine(contentDirectory, "icon.icns"));
 
 		copyProjectAssets(targetDirectory, contentDirectory);
 
-		if (project.adaptiveIcon != null && project.adaptiveIcon.iconComposerFile) {
+		if (project.adaptiveIcon != null && project.adaptiveIcon.iconComposerFile)
+		{
 			context.MACOS_ADAPTIVE_ICON = project.adaptiveIcon.path;
 			ProjectHelper.recursiveSmartCopyDirectory(project, project.adaptiveIcon.path, Path.combine(contentDirectory, "icon.icon"), context);
 		}
@@ -465,155 +282,6 @@ class MacPlatform extends PlatformTarget
 
 	private inline function get_dirSuffix():String
 	{
-		if (targetFlags.exists("hl"))
-		{
-			// hashlink doesn't support arm64 macs yet
-			return "64";
-		}
 		return targetArchitecture == X64 ? "64" : targetArchitecture == ARM64 ? "Arm64" : "";
-	}
-
-	/**
-		Finds and copies all Homebrew dependencies of the HashLink executable,
-		its .hdll files, and its .dylib files. We need to bundle these
-		dependencies, or the resulting .app file won't launch on systems that
-		don't have them installed. We also don't want to have to ask random
-		users to install Homebrew and the dependencies manually.
-
-		This process involves copying the dependencies to the same directory as
-		our bundled HashLink executable. Then, we use install_name_tool to
-		update the paths to those dependencies. We change the paths to use
-		@executable_path so that they can be found in the .app bundle and not at
-		their original locations.
-	**/
-	private function copyAndFixHashLinkHomebrewDependencies():Void
-	{
-		var limeDirectory = Haxelib.getPath(new Haxelib("lime"), true);
-		var bindir = "Mac64";
-		var bundledHLDirectory = Path.combine(limeDirectory, 'templates/bin/hl/$bindir');
-		if (!FileSystem.exists(bundledHLDirectory))
-		{
-			Log.error('Directory does not exist: $bundledHLDirectory');
-			return;
-		}
-		if (!FileSystem.isDirectory(bundledHLDirectory))
-		{
-			Log.error('Not a directory: $bundledHLDirectory');
-			return;
-		}
-
-		// these are the known directories where Homebrew installs its dependencies
-		// we may need to add more in the future, but this seems to be enough for now
-		var homebrewDirs = [
-			"/usr/local/opt/",
-			"/usr/local/Cellar/"
-		];
-
-		// first, collect all executables, hdlls, and dylibs that were built
-		// by BuildHashlink.xml
-		var bundledPaths:Array<String> = [];
-		for (fileName in FileSystem.readDirectory(bundledHLDirectory))
-		{
-			var ext = Path.extension(fileName);
-			if (ext != "dylib" && ext != "hdll" && fileName != "hl")
-			{
-				// ignore files that aren't executables or libraries
-				continue;
-			}
-			var srcPath = Path.join([bundledHLDirectory, fileName]);
-			bundledPaths.push(srcPath);
-		}
-
-		var homebrewDependencyPaths:Array<String> = [];
-
-		// then find and copy all dependencies of those executables/libraries
-		// that come from Homebrew. keep searching all newly found Homebrew
-		// libraries for additional Homebrew dependendencies too.
-		var pathsToSearchForHomebrewDependencies = bundledPaths.copy();
-		while (pathsToSearchForHomebrewDependencies.length > 0)
-		{
-			var srcPath = pathsToSearchForHomebrewDependencies.shift();
-			var destPath = Path.join([bundledHLDirectory, Path.withoutDirectory(srcPath)]);
-			if (bundledPaths.indexOf(srcPath) == -1)
-			{
-				// copy files that don't exist yet
-				File.copy(srcPath, destPath);
-			}
-
-			var process = new Process("otool", ["-L", destPath]);
-			var exitCode = process.exitCode(true);
-			if (exitCode != 0)
-			{
-				Log.error('otool -L process exited with code: <${exitCode}> for file <${destPath}>');
-				continue;
-			}
-
-			while (true)
-			{
-				try
-				{
-					var line = process.stdout.readLine();
-					var ereg = ~/^\s+(.+?\.\w+?)\s\(/;
-					if (ereg.match(line))
-					{
-						var libPath = StringTools.trim(ereg.matched(1));
-						if (homebrewDependencyPaths.indexOf(libPath) != -1)
-						{
-							// already processed this file
-							continue;
-						}
-						var resolvedLibPath = libPath;
-						if (StringTools.startsWith(libPath, "@rpath/"))
-						{
-							resolvedLibPath = Path.join([Path.directory(srcPath), Path.withoutDirectory(libPath)]);
-							if (!FileSystem.exists(resolvedLibPath))
-							{
-								Log.error("Failed to resolve library to real path: " + libPath);
-								continue;
-							}
-						}
-						if (Lambda.exists(homebrewDirs, function(dirPath:String):Bool { return StringTools.startsWith(resolvedLibPath, dirPath); }))
-						{
-							homebrewDependencyPaths.push(libPath);
-							pathsToSearchForHomebrewDependencies.push(resolvedLibPath);
-						}
-					}
-				}
-				catch (e:Eof)
-				{
-					// no more output
-					break;
-				}
-			}
-		}
-
-		// finally, go through all executables and libraries that were either
-		// built by BuildHashlink.xml or were copied in the previous step,
-		// and replace any Homebrew library paths with @executable_path.
-		for (fileName in FileSystem.readDirectory(bundledHLDirectory))
-		{
-			var ext = Path.extension(fileName);
-			var isLibrary = ext == "dylib" || ext == "hdll";
-
-			if (fileName != "hl" && !isLibrary)
-			{
-				// ignore files that aren't executables or libraries
-				continue;
-			}
-
-			var absoluteFilePath = Path.join([bundledHLDirectory, fileName]);
-
-			if (isLibrary)
-			{
-				var newId = "@executable_path/" + fileName;
-				System.runCommand("", "install_name_tool", ["-id", newId, absoluteFilePath]);
-			}
-
-			for (homebrewPath in homebrewDependencyPaths)
-			{
-				var newPath = "@executable_path/" + Path.withoutDirectory(homebrewPath);
-				System.runCommand("", "install_name_tool", ["-change", homebrewPath, newPath, absoluteFilePath]);
-			}
-		}
 	}
 }

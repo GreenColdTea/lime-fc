@@ -1,21 +1,31 @@
 package;
 
-// import openfl.text.Font;
-// import openfl.utils.ByteArray;
-// import openfl.utils.CompressionAlgorithm;
 import haxe.Serializer;
-import haxe.Unserializer;
-import haxe.rtti.Meta;
-import hxp.*;
+
+import hxp.Haxelib;
+import hxp.Log;
+import hxp.MapTools;
+import hxp.Path;
+import hxp.StringTools;
+import hxp.System;
+
 import lime.system.CFFI;
+import lime.tools.ApplicationData;
+import lime.tools.Architecture;
+import lime.tools.CommandHelper;
+import lime.tools.ConfigHelper;
+import lime.tools.Dependency;
 import lime.tools.HXProject;
-import lime.tools.*;
+import lime.tools.Keystore;
+import lime.tools.MetaData;
+import lime.tools.Platform;
+import lime.tools.PlatformTarget;
+import lime.tools.ProjectXMLParser;
+import lime.tools.WindowData;
+
+import sys.FileSystem;
 import sys.io.File;
 import sys.io.Process;
-import sys.FileSystem;
-import utils.publish.*;
-import utils.CreateTemplate;
-import utils.PlatformSetup;
 
 @:access(lime.tools.HXProject)
 class CommandLineTools
@@ -233,10 +243,6 @@ class CommandLineTools
 							target = System.hostPlatform;
 							targetFlags.set("cpp", "");
 
-						case "hl", "hashlink":
-							target = System.hostPlatform;
-							targetFlags.set("hl", "");
-
 						case "iphone", "iphoneos":
 							target = Platform.IOS;
 
@@ -248,19 +254,8 @@ class CommandLineTools
 							target = Platform.HTML5;
 							targetFlags.set("electron", "");
 
-						case "appletv", "appletvos":
-							target = Platform.TVOS;
-
-						case "appletvsim":
-							target = Platform.TVOS;
-							targetFlags.set("simulator", "");
-
 						case "mac", "macos":
 							target = Platform.MAC;
-
-						case "rpi", "raspberrypi":
-							target = Platform.LINUX;
-							targetFlags.set("rpi", "");
 
 						default:
 							target = cast targetName.toLowerCase();
@@ -379,8 +374,7 @@ class CommandLineTools
 				}
 
 			case "installer", "copy-if-newer":
-
-			// deprecated?
+				// deprecated?
 
 			default:
 				Log.error("'" + command + "' is not a valid command");
@@ -465,7 +459,7 @@ class CommandLineTools
 			case LINUX:
 				var arguments = Sys.args();
 
-				if (System.hostArchitecture == ARMV7 )
+				if (System.hostArchitecture == ARMV7)
 				{
 					untyped $loader.path = $array(path + "LinuxArm/", $loader.path);
 				}
@@ -514,9 +508,12 @@ class CommandLineTools
 
 			var args = [command, temporaryFile];
 
-			if (Log.verbose) args.push("-verbose");
-			if (!Log.enableColor) args.push("-nocolor");
-			if (!traceEnabled) args.push("-notrace");
+			if (Log.verbose)
+				args.push("-verbose");
+			if (!Log.enableColor)
+				args.push("-nocolor");
+			if (!traceEnabled)
+				args.push("-notrace");
 
 			if (additionalArguments.length > 0)
 			{
@@ -567,9 +564,6 @@ class CommandLineTools
 
 				case HTML5:
 					platform = new HTML5Platform(command, project, targetFlags);
-
-				case TVOS:
-					platform = new TVOSPlatform(command, project, targetFlags);
 
 				default:
 			}
@@ -624,52 +618,41 @@ class CommandLineTools
 				sampleName = words[0].substr(colonIndex + 1);
 			}
 
-			if (projectName == "project" || sampleName == "project")
+			if (sampleName == null)
 			{
-				CreateTemplate.createProject(words, userDefines, overrides);
-			}
-			else if (projectName == "extension" || sampleName == "extension")
-			{
-				CreateTemplate.createExtension(words, userDefines);
-			}
-			else
-			{
-				if (sampleName == null)
+				var sampleExists = false;
+				var defines = new Map<String, Dynamic>();
+				defines.set("create", 1);
+				var project = HXProject.fromHaxelib(new Haxelib(defaultLibrary), defines);
+
+				for (samplePath in project.samplePaths)
 				{
-					var sampleExists = false;
-					var defines = new Map<String, Dynamic>();
-					defines.set("create", 1);
-					var project = HXProject.fromHaxelib(new Haxelib(defaultLibrary), defines);
-
-					for (samplePath in project.samplePaths)
+					if (FileSystem.exists(Path.combine(samplePath, projectName)))
 					{
-						if (FileSystem.exists(Path.combine(samplePath, projectName)))
-						{
-							sampleExists = true;
-						}
-					}
-
-					if (sampleExists)
-					{
-						CreateTemplate.createSample(words, userDefines);
-					}
-					else if (Haxelib.getPath(new Haxelib(projectName)) != "")
-					{
-						CreateTemplate.listSamples(projectName, userDefines);
-					}
-					else if (projectName == "" || projectName == null)
-					{
-						CreateTemplate.listSamples(defaultLibrary, userDefines);
-					}
-					else
-					{
-						CreateTemplate.listSamples(null, userDefines);
+						sampleExists = true;
 					}
 				}
-				else
+
+				if (sampleExists)
 				{
 					CreateTemplate.createSample(words, userDefines);
 				}
+				else if (Haxelib.getPath(new Haxelib(projectName)) != "")
+				{
+					CreateTemplate.listSamples(projectName, userDefines);
+				}
+				else if (projectName == "" || projectName == null)
+				{
+					CreateTemplate.listSamples(defaultLibrary, userDefines);
+				}
+				else
+				{
+					CreateTemplate.listSamples(null, userDefines);
+				}
+			}
+			else
+			{
+				CreateTemplate.createSample(words, userDefines);
 			}
 		}
 		else
@@ -717,14 +700,22 @@ class CommandLineTools
 	{
 		var commands = [
 
-			         "config" => "Display or set command-line configuration values",    "create" => "Create a new project or extension using templates",
-			                    "clean" => "Clean the specified project and target",     "update" => "Copy assets for the specified project and target",
-			  "build" => "Compile and package for the specified project and target",    "run" => "Install and run for the specified project and target",
-			                       "test" => "Update, build and run in one command",                                  "help" => "Show this information",
-			          "trace" => "Trace output for the specifed project and target",                            "deploy" => "Archive and upload builds",
-			"display" => "Display information for the specified project and target",             "rebuild" => "Recompile native binaries for libraries",
-			       "install" => "Install a library from haxelib, plus dependencies",                        "remove" => "Remove a library from haxelib",
-			                          "upgrade" => "Upgrade a library from haxelib", "setup" => "Setup " + defaultLibraryName + " or a specific platform"
+			"config" => "Display or set command-line configuration values",
+			"create" => "Create a new project or extension using templates",
+			"clean" => "Clean the specified project and target",
+			"update" => "Copy assets for the specified project and target",
+			"build" => "Compile and package for the specified project and target",
+			"run" => "Install and run for the specified project and target",
+			"test" => "Update, build and run in one command",
+			"help" => "Show this information",
+			"trace" => "Trace output for the specifed project and target",
+			"deploy" => "Archive and upload builds",
+			"display" => "Display information for the specified project and target",
+			"rebuild" => "Recompile native binaries for libraries",
+			"install" => "Install a library from haxelib, plus dependencies",
+			"remove" => "Remove a library from haxelib",
+			"upgrade" => "Upgrade a library from haxelib",
+			"setup" => "Setup " + defaultLibraryName + " or a specific platform"
 
 		];
 
@@ -858,7 +849,6 @@ class CommandLineTools
 			Log.println("  \x1b[1mios\x1b[0m -- Create an iOS application");
 			Log.println("  \x1b[1mlinux\x1b[0m -- Create a Linux application");
 			Log.println("  \x1b[1mmac\x1b[0m -- Create a macOS application");
-			Log.println("  \x1b[1mtvos\x1b[0m -- Create a tvOS application");
 			Log.println("  \x1b[1mwindows\x1b[0m -- Create a Windows application");
 
 			Log.println("");
@@ -866,9 +856,6 @@ class CommandLineTools
 			Log.println("");
 			Log.println("  \x1b[1mcpp\x1b[0m -- Alias for host platform (using \x1b[1m-cpp\x1b[0m)");
 			Log.println("  \x1b[1mmacos\x1b[0m -- Alias for \x1b[1mmac\x1b[0m");
-			Log.println("  \x1b[1mhl/hashlink\x1b[0m -- Alias for host platform (using \x1b[1m-hl\x1b[0m)");
-			Log.println("  \x1b[1mhlc\x1b[0m -- Alias for host platform (using \x1b[1m-hlc\x1b[0m)");
-			Log.println("  \x1b[1mrpi\x1b[0;3m/\x1b[0m\x1b[1mraspberrypi\x1b[0m -- Alias for \x1b[1mlinux -rpi\x1b[0m");
 			Log.println("  \x1b[1melectron\x1b[0m -- Alias for \x1b[1mhtml5 -electron\x1b[0m");
 		}
 
@@ -925,9 +912,7 @@ class CommandLineTools
 			Log.println("  \x1b[3m(windows|mac|linux|android)\x1b[0m \x1b[1m-static\x1b[0m -- Compile as a static C++ executable");
 			Log.println("  \x1b[3m(windows|mac|linux)\x1b[0m \x1b[1m-x86_32\x1b[0m -- Compile for x86_32 instead of the OS default");
 			Log.println("  \x1b[3m(windows|mac|linux)\x1b[0m \x1b[1m-x86_64\x1b[0m -- Compile for x86_64 instead of the OS default");
-			Log.println("  \x1b[3m(ios|android)\x1b[0m \x1b[1m-armv6\x1b[0m -- Compile for ARMv6 instead of the OS defaults");
 			Log.println("  \x1b[3m(ios|android)\x1b[0m \x1b[1m-armv7\x1b[0m -- Compile for ARMv7 instead of the OS defaults");
-			Log.println("  \x1b[3m(ios|android)\x1b[0m \x1b[1m-armv7s\x1b[0m -- Compile for ARMv7s instead of the OS defaults");
 			Log.println("  \x1b[3m(mac|ios|android)\x1b[0m \x1b[1m-arm64\x1b[0m -- Compile for ARM64 instead of the OS defaults");
 			Log.println("  \x1b[3m(ios)\x1b[0m \x1b[1m-nosign\x1b[0m -- Compile executable, but skip codesigning");
 		}
@@ -944,9 +929,8 @@ class CommandLineTools
 				Log.println("  \x1b[3m(ios)\x1b[0m \x1b[1m-xcode\x1b[0m -- Launch the generated Xcode project");
 			}
 
-			Log.println("  \x1b[3m(ios|tvos)\x1b[0m \x1b[1m-simulator\x1b[0m -- Target the device simulator");
+			Log.println("  \x1b[3m(ios|android)\x1b[0m \x1b[1m-simulator\x1b[0m -- Target the device simulator");
 			Log.println("  \x1b[3m(ios)\x1b[0m \x1b[1m-simulator -ipad\x1b[0m -- Build/test for the iPad Simulator");
-			Log.println("  \x1b[3m(android)\x1b[0m \x1b[1m-emulator\x1b[0m -- Target the device emulator");
 			Log.println("  \x1b[3m(html5)\x1b[0m \x1b[1m-npm\x1b[0m -- Target HTML5 using an NPM project structure");
 
 			if (command == "run" || command == "test")
@@ -959,9 +943,6 @@ class CommandLineTools
 			Log.println(" " + Log.accentColor + "Experimental Options:" + Log.resetColor);
 			Log.println("");
 			Log.println("  \x1b[1m-watch\x1b[0m -- Execute the current command when the source changes");
-			Log.println("  \x1b[3m(linux)\x1b[0m \x1b[1m-rpi\x1b[0m -- Build for Raspberry Pi");
-			Log.println("  \x1b[3m(windows|mac|linux)\x1b[0m \x1b[1m-hl\x1b[0m -- Build for HashLink/JIT instead of C++");
-			Log.println("  \x1b[3m(windows|mac|linux)\x1b[0m \x1b[1m-hlc\x1b[0m -- Build for HashLink/C instead of C++");
 			Log.println("  \x1b[3m(html5)\x1b[0m \x1b[1m-electron\x1b[0m -- Target Electron instead of the browser");
 
 			if (command != "run" && command != "trace")
@@ -1274,7 +1255,8 @@ class CommandLineTools
 
 	private function getToolsVersion(version:String = null):String
 	{
-		if (version == null) version = this.version;
+		if (version == null)
+			version = this.version;
 
 		if (targetFlags.exists("openfl"))
 		{
@@ -1396,15 +1378,6 @@ class CommandLineTools
 					overrides.haxedefs.set("macos", "");
 				}
 
-			case "hl", "hashlink":
-				target = System.hostPlatform;
-				targetFlags.set("hl", "");
-
-			case "hlc":
-				target = cast System.hostPlatform;
-				targetFlags.set("hl", "");
-				targetFlags.set("hlc", "");
-
 			case "iphone", "iphoneos":
 				target = Platform.IOS;
 
@@ -1419,10 +1392,6 @@ class CommandLineTools
 			case "mac", "macos":
 				target = Platform.MAC;
 				overrides.haxedefs.set("macos", "");
-
-			case "rpi", "raspberrypi":
-				target = Platform.LINUX;
-				targetFlags.set("rpi", "");
 
 			default:
 				target = cast targetName.toLowerCase();
@@ -1660,7 +1629,9 @@ class CommandLineTools
 
 					var projectDirectory = Path.directory(projectFile);
 					var localRepository = Path.combine(projectDirectory, ".haxelib");
-					if (FileSystem.exists(localRepository) && FileSystem.isDirectory(localRepository) && StringTools.startsWith(path, localRepository))
+					if (FileSystem.exists(localRepository)
+						&& FileSystem.isDirectory(localRepository)
+						&& StringTools.startsWith(path, localRepository))
 					{
 						args.push("-nolocalrepocheck");
 					}
@@ -1798,7 +1769,8 @@ class CommandLineTools
 			for (i in 0...arguments.length)
 			{
 				lastArgument = arguments.pop();
-				if (lastArgument.length > 0) break;
+				if (lastArgument.length > 0)
+					break;
 			}
 
 			lastArgument = new Path(lastArgument).toString();
@@ -1952,7 +1924,8 @@ class CommandLineTools
 
 						field = StringTools.replace(field, "certificate-", "");
 
-						if (field == "alias-password") field = "aliasPassword";
+						if (field == "alias-password")
+							field = "aliasPassword";
 
 						if (Reflect.hasField(overrides.keystore, field))
 						{
@@ -1962,12 +1935,10 @@ class CommandLineTools
 						if (field == "identity")
 						{
 							overrides.config.set("ios.identity", argValue);
-							overrides.config.set("tvos.identity", argValue);
 						}
 						else if (field == "team-id")
 						{
 							overrides.config.set("ios.team-id", argValue);
-							overrides.config.set("tvos.team-id", argValue);
 						}
 					}
 					else if (StringTools.startsWith(field, "app-")
@@ -1984,9 +1955,12 @@ class CommandLineTools
 							property += split[i].substr(0, 1).toUpperCase() + split[i].substr(1, split[i].length - 1);
 						}
 
-						if (field == "window-allow-high-dpi") property = "allowHighDPI";
-						if (field == "window-color-depth") property = "colorDepth";
-						if (field == "meta-build-number") property = "buildNumber";
+						if (field == "window-allow-high-dpi")
+							property = "allowHighDPI";
+						if (field == "window-color-depth")
+							property = "colorDepth";
+						if (field == "meta-build-number")
+							property = "buildNumber";
 
 						var fieldReference = Reflect.field(overrides, fieldName);
 						var typeValue:Dynamic = switch (fieldName)

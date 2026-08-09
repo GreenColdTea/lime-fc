@@ -2,7 +2,9 @@ package lime.system;
 
 #if (!lime_doc_gen || lime_cffi)
 import haxe.io.Path;
+
 import lime._internal.macros.CFFIMacro;
+
 #if (sys && !macro)
 import sys.io.Process;
 #end
@@ -20,7 +22,7 @@ class CFFI
 	{
 		#if lime_cffi
 		available = true;
-		enabled = #if disable_cffi false; #else true; #end
+		enabled = true;
 		#else
 		available = false;
 		enabled = false;
@@ -44,7 +46,7 @@ class CFFI
 	 */
 	public static function load(library:String, method:String, args:Int = 0, lazy:Bool = false):Dynamic
 	{
-		#if (disable_cffi || macro || hl)
+		#if macro
 		var enabled = false;
 		#end
 
@@ -62,9 +64,10 @@ class CFFI
 
 		var result:Dynamic = null;
 
-		#if (!disable_cffi && !macro)
+		#if !macro
 		#if (sys && !html5)
-		if (__moduleNames == null) __moduleNames = new Map<String, String>();
+		if (__moduleNames == null)
+			__moduleNames = new Map<String, String>();
 
 		if (lazy)
 		{
@@ -82,7 +85,7 @@ class CFFI
 		}
 		else
 		{
-			#if (cpp && (iphone || android || static_link || tvos))
+			#if (cpp && (iphone || android || static_link))
 			return cpp.Lib.load(library, method, args);
 			#end
 
@@ -93,7 +96,8 @@ class CFFI
 				#elseif neko
 				#if neko_cffi_trace
 				var result:Dynamic = neko.Lib.load(__moduleNames.get(library), method, args);
-				if (result == null) return null;
+				if (result == null)
+					return null;
 
 				return Reflect.makeVarArgs(function(args)
 				{
@@ -169,7 +173,7 @@ class CFFI
 
 	public static macro function loadPrime(library:String, method:String, signature:String, lazy:Bool = false):Dynamic
 	{
-		#if (!display && !macro && cpp && !disable_cffi)
+		#if (!display && !macro && cpp)
 		return cpp.Prime.load(library, method, signature, lazy);
 		#else
 		var args = signature.length - 1;
@@ -180,15 +184,6 @@ class CFFI
 		}
 
 		return {call: CFFI.load(library, method, args, lazy)};
-		#end
-	}
-
-	@:dox(hide) #if !hl inline #end public static function stringValue(#if hl value:hl.Bytes #else value:String #end):String
-	{
-		#if hl
-		return value != null ? @:privateAccess String.fromUTF8(value) : null;
-		#else
-		return value;
 		#end
 	}
 
@@ -252,7 +247,8 @@ class CFFI
 				init(function(s) return new String(s), function(len:Int)
 				{
 					var r = [];
-					if (len > 0) r[len - 1] = null;
+					if (len > 0)
+						r[len - 1] = null;
 					return r;
 				}, null, true, false);
 
@@ -263,7 +259,10 @@ class CFFI
 				var ndllFolder = __findNDLLFolder() + __sysName();
 				throw "Could not load lime.ndll. This file is provided with Lime's Haxelib releases, but not via Git. "
 					+ "Please copy it from Lime's latest Haxelib release into either "
-					+ ndllFolder + " or " + ndllFolder + "64, as appropriate for your system. "
+					+ ndllFolder
+					+ " or "
+					+ ndllFolder
+					+ "64, as appropriate for your system. "
 					+ "Advanced users may run `lime rebuild cpp` instead."
 					+ (error != null ? '\nInternal error: $error' : "");
 			}

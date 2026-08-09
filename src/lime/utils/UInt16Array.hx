@@ -66,8 +66,10 @@ abstract UInt16Array(JSUInt16Array) from JSUInt16Array to JSUInt16Array
 	// non spec haxe conversions
 	inline public static function fromBytes(bytes:haxe.io.Bytes, ?byteOffset:Int = 0, ?len:Int):UInt16Array
 	{
-		if (byteOffset == null) return new JSUInt16Array(cast bytes.getData());
-		if (len == null) return new JSUInt16Array(cast bytes.getData(), byteOffset);
+		if (byteOffset == null)
+			return new JSUInt16Array(cast bytes.getData());
+		if (len == null)
+			return new JSUInt16Array(cast bytes.getData(), byteOffset);
 		return new JSUInt16Array(cast bytes.getData(), byteOffset, len);
 	}
 

@@ -2,6 +2,7 @@ package lime.system;
 
 import haxe.io.Path;
 import haxe.Constraints;
+
 import lime._internal.backend.native.NativeCFFI;
 import lime.app.Application;
 import lime.graphics.RenderContextAttributes;
@@ -10,10 +11,12 @@ import lime.ui.WindowAttributes;
 import lime.utils.ArrayBuffer;
 import lime.utils.UInt8Array;
 import lime.utils.UInt16Array;
+
 #if ((js && html5) || electron)
 import js.html.Element;
 import js.Browser;
 #end
+
 #if sys
 import sys.io.Process;
 #end
@@ -117,7 +120,8 @@ class System
 	@:keep @:expose("lime.embed")
 	public static function embed(projectName:String, element:Dynamic, width:Null<Int> = null, height:Null<Int> = null, config:Dynamic = null):Void
 	{
-		if (__applicationEntryPoint == null) return;
+		if (__applicationEntryPoint == null)
+			return;
 
 		if (__applicationEntryPoint.exists(projectName))
 		{
@@ -126,10 +130,6 @@ class System
 			if ((element is String))
 			{
 				htmlElement = cast Browser.document.getElementById(element);
-			}
-			else if (element == null)
-			{
-				htmlElement = cast Browser.document.createElement("div");
 			}
 			else
 			{
@@ -152,7 +152,8 @@ class System
 				height = 0;
 			}
 
-			if (config == null) config = {};
+			if (config == null)
+				config = {};
 
 			if (Reflect.hasField(config, "background") && (config.background is String))
 			{
@@ -232,7 +233,7 @@ class System
 		{
 			var display = new Display();
 			display.id = id;
-			display.name = CFFI.stringValue(displayInfo.name);
+			display.name = displayInfo.name;
 			display.bounds = new Rectangle(displayInfo.bounds.x, displayInfo.bounds.y, displayInfo.bounds.width, displayInfo.bounds.height);
 			display.orientation = displayInfo.orientation;
 			display.safeArea = new Rectangle(displayInfo.safeArea.x, displayInfo.safeArea.y, displayInfo.safeArea.width, displayInfo.safeArea.height);
@@ -241,11 +242,8 @@ class System
 
 			var displayMode;
 
-			#if hl
-			var supportedModes:hl.NativeArray<Dynamic> = displayInfo.supportedModes;
-			#else
 			var supportedModes:Array<Dynamic> = displayInfo.supportedModes;
-			#end
+
 			for (mode in supportedModes)
 			{
 				displayMode = new DisplayMode(mode.width, mode.height, mode.refreshRate, mode.pixelFormat);
@@ -408,7 +406,7 @@ class System
 		if (key != null)
 		{
 			#if (lime_cffi && !macro)
-			return CFFI.stringValue(NativeCFFI.lime_system_get_hint(key));
+			return NativeCFFI.lime_system_get_hint(key);
 			#end
 		}
 
@@ -427,7 +425,8 @@ class System
 
 	@:noCompletion private static function __copyMissingFields(target:Dynamic, source:Dynamic):Void
 	{
-		if (source == null || target == null) return;
+		if (source == null || target == null)
+			return;
 
 		for (field in Reflect.fields(source))
 		{
@@ -467,11 +466,11 @@ class System
 					}
 				}
 
-				path = CFFI.stringValue(NativeCFFI.lime_system_get_directory(type, company, file));
+				path = NativeCFFI.lime_system_get_directory(type, company, file);
 			}
 			else
 			{
-				path = CFFI.stringValue(NativeCFFI.lime_system_get_directory(type, null, null));
+				path = NativeCFFI.lime_system_get_directory(type, null, null);
 			}
 
 			#if windows
@@ -493,113 +492,6 @@ class System
 		return null;
 	}
 
-	#if sys
-	private static function __parseArguments(attributes:WindowAttributes):Void
-	{
-		// TODO: Handle default arguments, like --window-fps=60
-
-		var arguments = Sys.args();
-		var stripQuotes = ~/^['"](.*)['"]$/;
-		var equals, argValue, parameters = null;
-		var windowParamPrefix = "--window-";
-
-		if (arguments != null)
-		{
-			for (argument in arguments)
-			{
-				equals = argument.indexOf("=");
-
-				if (equals > 0)
-				{
-					argValue = argument.substr(equals + 1);
-
-					if (stripQuotes.match(argValue))
-					{
-						argValue = stripQuotes.matched(1);
-					}
-
-					if (parameters == null) parameters = new Map<String, String>();
-					parameters.set(argument.substr(0, equals), argValue);
-				}
-			}
-		}
-
-		if (parameters != null)
-		{
-			if (attributes.parameters == null) attributes.parameters = {};
-			if (attributes.context == null) attributes.context = {};
-
-			for (parameter in parameters.keys())
-			{
-				argValue = parameters.get(parameter);
-
-				if (#if lime_disable_window_override false && #end StringTools.startsWith(parameter, windowParamPrefix))
-				{
-					switch (parameter.substr(windowParamPrefix.length))
-					{
-						case "allow-high-dpi":
-							attributes.allowHighDPI = __parseBool(argValue);
-						case "always-on-top":
-							attributes.alwaysOnTop = __parseBool(argValue);
-						case "antialiasing":
-							attributes.context.antialiasing = Std.parseInt(argValue);
-						case "background":
-							attributes.context.background = (argValue == "" || argValue == "null") ? null : Std.parseInt(argValue);
-						case "transparent":
-							attributes.transparent = __parseBool(argValue);
-						case "borderless":
-							attributes.borderless = __parseBool(argValue);
-						case "colorDepth":
-							attributes.context.colorDepth = Std.parseInt(argValue);
-						case "depth", "depth-buffer":
-							attributes.context.depth = __parseBool(argValue);
-						// case "display": windowConfig.display = Std.parseInt (argValue);
-						case "fullscreen":
-							attributes.fullscreen = __parseBool(argValue);
-						case "hardware":
-							attributes.context.hardware = __parseBool(argValue);
-						case "height":
-							attributes.height = Std.parseInt(argValue);
-						case "hidden":
-							attributes.hidden = __parseBool(argValue);
-						case "maximized":
-							attributes.maximized = __parseBool(argValue);
-						case "minimized":
-							attributes.minimized = __parseBool(argValue);
-						case "render-type", "renderer":
-							attributes.context.type = argValue;
-						case "render-version", "renderer-version":
-							attributes.context.version = argValue;
-						case "resizable":
-							attributes.resizable = __parseBool(argValue);
-						case "stencil", "stencil-buffer":
-							attributes.context.stencil = __parseBool(argValue);
-						// case "title": windowConfig.title = argValue;
-						case "vsync":
-							attributes.context.vsync = __parseBool(argValue);
-						case "width":
-							attributes.width = Std.parseInt(argValue);
-						case "x":
-							attributes.x = Std.parseInt(argValue);
-						case "y":
-							attributes.y = Std.parseInt(argValue);
-						default:
-					}
-				}
-				else if (!Reflect.hasField(attributes.parameters, parameter))
-				{
-					Reflect.setField(attributes.parameters, parameter, argValue);
-				}
-			}
-		}
-	}
-	#end
-
-	@:noCompletion private static inline function __parseBool(value:String):Bool
-	{
-		return (value == "true");
-	}
-
 	@:noCompletion private static function __registerEntryPoint(projectName:String, entryPoint:Function):Void
 	{
 		if (__applicationEntryPoint == null)
@@ -615,7 +507,8 @@ class System
 		#if sys
 		try
 		{
-			if (args == null) args = [];
+			if (args == null)
+				args = [];
 
 			var process = new Process(command, args);
 			var value = StringTools.trim(process.stdout.readLine().toString());
@@ -670,8 +563,8 @@ class System
 	{
 		if (__deviceModel == null)
 		{
-			#if (lime_cffi && !macro && (windows || ios || tvos))
-			__deviceModel = CFFI.stringValue(NativeCFFI.lime_system_get_device_model());
+			#if (lime_cffi && !macro && (windows || ios))
+			__deviceModel = NativeCFFI.lime_system_get_device_model();
 			#elseif android
 			var manufacturer:String = JNI.createStaticField("android/os/Build", "MANUFACTURER", "Ljava/lang/String;").get();
 			var model:String = JNI.createStaticField("android/os/Build", "MODEL", "Ljava/lang/String;").get();
@@ -702,14 +595,14 @@ class System
 		if (__deviceVendor == null)
 		{
 			#if (lime_cffi && !macro && windows && !html5)
-			__deviceVendor = CFFI.stringValue(NativeCFFI.lime_system_get_device_vendor());
+			__deviceVendor = NativeCFFI.lime_system_get_device_vendor();
 			#elseif android
 			var vendor:String = JNI.createStaticField("android/os/Build", "MANUFACTURER", "Ljava/lang/String;").get();
 			if (vendor != null)
 			{
 				__deviceVendor = vendor.charAt(0).toUpperCase() + vendor.substr(1);
 			}
-			#elseif (ios || mac || tvos)
+			#elseif (ios || mac)
 			__deviceVendor = "Apple";
 			#elseif linux
 			__deviceVendor = __runProcess("cat", ["/sys/devices/virtual/dmi/id/product_name"]);
@@ -751,7 +644,8 @@ class System
 			var uint16array = new UInt16Array(arrayBuffer);
 			uint8Array[0] = 0xAA;
 			uint8Array[1] = 0xBB;
-			if (uint16array[0] == 0xAABB) __endianness = BIG_ENDIAN;
+			if (uint16array[0] == 0xAABB)
+				__endianness = BIG_ENDIAN;
 			else
 				__endianness = LITTLE_ENDIAN;
 			#end
@@ -768,7 +662,7 @@ class System
 			__fontsDirectory = Path.join([Sys.getEnv("WINDIR"), "Fonts"]);
 			#elseif mac
 			__fontsDirectory = "/Library/Fonts";
-			#elseif (ios || tvos)
+			#elseif ios
 			__fontsDirectory = "/System/Library/Fonts";
 			#elseif android
 			__fontsDirectory = "/system/fonts";
@@ -794,15 +688,18 @@ class System
 		if (__platformLabel == null)
 		{
 			#if (lime_cffi && !macro && windows && !html5)
-			var label:String = CFFI.stringValue(NativeCFFI.lime_system_get_platform_label());
-			if (label != null) __platformLabel = StringTools.trim(label);
+			var label:String = NativeCFFI.lime_system_get_platform_label();
+			if (label != null)
+				__platformLabel = StringTools.trim(label);
 			#elseif linux
 			__platformLabel = __runProcess("lsb_release", ["-ds"]);
 			#else
 			var name = System.platformName;
 			var version = System.platformVersion;
-			if (name != null && version != null) __platformLabel = name + " " + version;
-			else if (name != null) __platformLabel = name;
+			if (name != null && version != null)
+				__platformLabel = name + " " + version;
+			else if (name != null)
+				__platformLabel = name;
 			#end
 		}
 
@@ -823,8 +720,6 @@ class System
 			__platformName = "iOS";
 			#elseif android
 			__platformName = "Android";
-			#elseif tvos
-			__platformName = "tvOS";
 			#elseif js
 			__platformName = "HTML5";
 			#end
@@ -838,12 +733,13 @@ class System
 		if (__platformVersion == null)
 		{
 			#if (lime_cffi && !macro && windows && !html5)
-			__platformVersion = CFFI.stringValue(NativeCFFI.lime_system_get_platform_version());
+			__platformVersion = NativeCFFI.lime_system_get_platform_version();
 			#elseif android
 			var release = JNI.createStaticField("android/os/Build$VERSION", "RELEASE", "Ljava/lang/String;").get();
 			var api = JNI.createStaticField("android/os/Build$VERSION", "SDK_INT", "I").get();
-			if (release != null && api != null) __platformVersion = release + " (API " + api + ")";
-			#elseif (lime_cffi && !macro && (ios || tvos))
+			if (release != null && api != null)
+				__platformVersion = release + " (API " + api + ")";
+			#elseif (lime_cffi && !macro && ios)
 			__platformVersion = NativeCFFI.lime_system_get_platform_version();
 			#elseif mac
 			__platformVersion = __runProcess("sw_vers", ["-productVersion"]);

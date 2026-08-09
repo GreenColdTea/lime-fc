@@ -1,44 +1,27 @@
 #include <events/RenderEvent.h>
-#include <system/CFFI.h>
+#include <hx/CFFIPrime.h>
 
+namespace lime
+{
 
-namespace lime {
+	ValuePointer *RenderEvent::callback = 0;
+	ValuePointer *RenderEvent::eventObject = 0;
 
-
-	ValuePointer* RenderEvent::callback = 0;
-	ValuePointer* RenderEvent::eventObject = 0;
-
-
-	RenderEvent::RenderEvent () {
-
+	RenderEvent::RenderEvent()
+	{
 		type = RENDER;
-
 	}
 
+	void RenderEvent::Dispatch(RenderEvent *event)
+	{
+		if (RenderEvent::callback)
+		{
+			value object = (value)RenderEvent::eventObject->Get();
 
-	void RenderEvent::Dispatch (RenderEvent* event) {
+			alloc_field(object, val_id("type"), alloc_int(event->type));
 
-		if (RenderEvent::callback) {
-
-			if (RenderEvent::eventObject->IsCFFIValue ()) {
-
-				value object = (value)RenderEvent::eventObject->Get ();
-
-				alloc_field (object, val_id ("type"), alloc_int (event->type));
-
-			} else {
-
-				RenderEvent* eventObject = (RenderEvent*)RenderEvent::eventObject->Get ();
-
-				eventObject->type = event->type;
-
-			}
-
-			RenderEvent::callback->Call ();
-
+			RenderEvent::callback->Call();
 		}
-
 	}
 
-
-}
+} // namespace lime

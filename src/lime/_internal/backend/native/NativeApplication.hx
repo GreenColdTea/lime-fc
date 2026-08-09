@@ -2,6 +2,7 @@ package lime._internal.backend.native;
 
 import haxe.Int64;
 import haxe.Timer;
+
 import lime._internal.backend.native.NativeCFFI;
 import lime.app.Application;
 import lime.graphics.opengl.GL;
@@ -104,7 +105,8 @@ class NativeApplication
 			var offset = System.getTimer() - pauseTimer;
 			for (timer in Timer.sRunningTimers)
 			{
-				if (timer.mRunning) timer.mFireAt += offset;
+				if (timer.mRunning)
+					timer.mFireAt += offset;
 			}
 			pauseTimer = -1;
 		}
@@ -175,7 +177,7 @@ class NativeApplication
 
 				parent.onUpdate.dispatch(applicationEventInfo.deltaTime);
 
-				#if HXCPP_TRACY
+				#if (!macro && HXCPP_TRACY)
 				cpp.vm.tracy.TracyProfiler.frameMark();
 				#end
 
@@ -197,9 +199,9 @@ class NativeApplication
 			switch (dropEventInfo.type)
 			{
 				case DROP_FILE:
-					window.onDropFile.dispatch(CFFI.stringValue(dropEventInfo.data), CFFI.stringValue(dropEventInfo.source), dropEventInfo.x, dropEventInfo.y);
+					window.onDropFile.dispatch(dropEventInfo.data, dropEventInfo.source, dropEventInfo.x, dropEventInfo.y);
 				case DROP_TEXT:
-					window.onDropText.dispatch(CFFI.stringValue(dropEventInfo.data), CFFI.stringValue(dropEventInfo.source), dropEventInfo.x, dropEventInfo.y);
+					window.onDropText.dispatch(dropEventInfo.data, dropEventInfo.source, dropEventInfo.x, dropEventInfo.y);
 				case DROP_BEGIN:
 					window.onDropBegin.dispatch();
 				case DROP_COMPLETE:
@@ -252,19 +254,23 @@ class NativeApplication
 		{
 			case AXIS_MOVE:
 				var joystick = Joystick.devices.get(joystickEventInfo.id);
-				if (joystick != null) joystick.onAxisMove.dispatch(joystickEventInfo.index, joystickEventInfo.x);
+				if (joystick != null)
+					joystick.onAxisMove.dispatch(joystickEventInfo.index, joystickEventInfo.x);
 
 			case HAT_MOVE:
 				var joystick = Joystick.devices.get(joystickEventInfo.id);
-				if (joystick != null) joystick.onHatMove.dispatch(joystickEventInfo.index, joystickEventInfo.eventValue);
+				if (joystick != null)
+					joystick.onHatMove.dispatch(joystickEventInfo.index, joystickEventInfo.eventValue);
 
 			case BUTTON_DOWN:
 				var joystick = Joystick.devices.get(joystickEventInfo.id);
-				if (joystick != null) joystick.onButtonDown.dispatch(joystickEventInfo.index);
+				if (joystick != null)
+					joystick.onButtonDown.dispatch(joystickEventInfo.index);
 
 			case BUTTON_UP:
 				var joystick = Joystick.devices.get(joystickEventInfo.id);
-				if (joystick != null) joystick.onButtonUp.dispatch(joystickEventInfo.index);
+				if (joystick != null)
+					joystick.onButtonUp.dispatch(joystickEventInfo.index);
 
 			case CONNECT:
 				Joystick.__connect(joystickEventInfo.id);
@@ -303,33 +309,6 @@ class NativeApplication
 				if (type == KEY_DOWN)
 				{
 					if (toggleFullscreen && modifier.altKey && (!modifier.ctrlKey && !modifier.shiftKey && !modifier.metaKey))
-					{
-						toggleFullscreen = false;
-
-						if (!window.onKeyDown.canceled)
-						{
-							window.fullscreen = !window.fullscreen;
-						}
-					}
-				}
-				else
-				{
-					toggleFullscreen = true;
-				}
-			}
-
-			#if rpi
-			if (keyCode == ESCAPE && modifier.ctrlKey && type == KEY_DOWN)
-			{
-				System.exit(0);
-			}
-			#end
-			#elseif mac
-			if (keyCode == F)
-			{
-				if (type == KEY_DOWN)
-				{
-					if (toggleFullscreen && (modifier.ctrlKey && modifier.metaKey) && (!modifier.altKey && !modifier.shiftKey))
 					{
 						toggleFullscreen = false;
 
@@ -405,7 +384,8 @@ class NativeApplication
 
 		for (window in parent.__windows)
 		{
-			if (window == null) continue;
+			if (window == null)
+				continue;
 
 			// parent.renderer = renderer;
 
@@ -432,7 +412,8 @@ class NativeApplication
 								#if (lime_cffi && (lime_opengl || lime_opengles) && !display)
 								var gl = window.context.gl;
 								(gl : NativeOpenGLRenderContext).__contextLost();
-								if (GL.context == gl) GL.context = null;
+								if (GL.context == gl)
+									GL.context = null;
 								#end
 
 							default:
@@ -467,10 +448,10 @@ class NativeApplication
 			switch (textEventInfo.type)
 			{
 				case TEXT_INPUT:
-					window.onTextInput.dispatch(CFFI.stringValue(textEventInfo.text));
+					window.onTextInput.dispatch(textEventInfo.text);
 
 				case TEXT_EDIT:
-					window.onTextEdit.dispatch(CFFI.stringValue(textEventInfo.text), textEventInfo.start, textEventInfo.length);
+					window.onTextEdit.dispatch(textEventInfo.text, textEventInfo.start, textEventInfo.length);
 
 				default:
 			}
@@ -778,8 +759,8 @@ private enum abstract ClipboardEventType(Int)
 
 @:keep /*private*/ class DropEventInfo
 {
-	public var data:#if hl hl.Bytes #else String #end;
-	public var source:#if hl hl.Bytes #else String #end;
+	public var data:String;
+	public var source:String;
 	public var windowID:Int;
 	public var x:Float;
 	public var y:Float;
@@ -1002,7 +983,7 @@ private enum abstract SensorEventType(Int)
 	public var id:Int;
 	public var length:Int;
 	public var start:Int;
-	public var text:#if hl hl.Bytes #else String #end;
+	public var text:String;
 	public var type:TextEventType;
 	public var windowID:Int;
 
@@ -1080,8 +1061,8 @@ private enum abstract TouchEventType(Int)
 	public var momentumScrollY:Float;
 
 	public function new(x:Float = 0.0, y:Float = 0.0, state:GestureEventType = GESTURE_END, magnification:Float = 0.0, rotation:Float = 0.0,
-			panTranslationX:Float = 0.0, panTranslationY:Float = 0.0, panVelocityX:Float = 0.0, panVelocityY:Float = 0.0,
-			scrollX:Float = 0.0, scrollY:Float = 0.0, momentumScrollX:Float = 0.0, momentumScrollY:Float = 0.0)
+			panTranslationX:Float = 0.0, panTranslationY:Float = 0.0, panVelocityX:Float = 0.0, panVelocityY:Float = 0.0, scrollX:Float = 0.0,
+			scrollY:Float = 0.0, momentumScrollX:Float = 0.0, momentumScrollY:Float = 0.0)
 	{
 		this.x = 0.0;
 		this.y = 0.0;

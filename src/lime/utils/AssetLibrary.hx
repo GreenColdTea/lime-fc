@@ -1,6 +1,7 @@
 package lime.utils;
 
 import haxe.io.Path;
+
 import lime.app.Event;
 import lime.app.Future;
 import lime.app.Promise;
@@ -116,7 +117,8 @@ class AssetLibrary
 
 	public static function fromManifest(manifest:AssetManifest):AssetLibrary
 	{
-		if (manifest == null) return null;
+		if (manifest == null)
+			return null;
 
 		var library:AssetLibrary = null;
 
@@ -279,8 +281,11 @@ class AssetLibrary
 		return switch (cast(type, AssetType))
 		{
 			case null:
-				cachedBytes.exists(id) || cachedText.exists(id) || cachedImages.exists(id)
-					|| cachedAudioBuffers.exists(id) || cachedFonts.exists(id);
+				cachedBytes.exists(id)
+				|| cachedText.exists(id)
+				|| cachedImages.exists(id)
+				|| cachedAudioBuffers.exists(id)
+				|| cachedFonts.exists(id);
 
 			case IMAGE:
 				cachedImages.exists(id);
@@ -291,8 +296,7 @@ class AssetLibrary
 			case FONT:
 				cachedFonts.exists(id);
 
-			default:
-				cachedBytes.exists(id) || cachedText.exists(id);
+			default: cachedBytes.exists(id) || cachedText.exists(id);
 		}
 		#end
 	}
@@ -345,7 +349,8 @@ class AssetLibrary
 
 			for (id in preload.keys())
 			{
-				if (!preload.get(id)) continue;
+				if (!preload.get(id))
+					continue;
 
 				Log.verbose("Preloading asset: " + id + " [" + types.get(id) + "]");
 
@@ -658,8 +663,10 @@ class AssetLibrary
 		var size, id, pathGroup:Array<String>, classRef;
 
 		var basePath = manifest.rootPath;
-		if (basePath == null) basePath = "";
-		if (basePath != "") basePath += "/";
+		if (basePath == null)
+			basePath = "";
+		if (basePath != "")
+			basePath += "/";
 
 		for (asset in manifest.assets)
 		{
@@ -781,7 +788,8 @@ class AssetLibrary
 
 			for (otherID in pathGroups.keys())
 			{
-				if (otherID == id) continue;
+				if (otherID == id)
+					continue;
 
 				for (path in pathGroup)
 				{
@@ -863,7 +871,8 @@ class AssetLibrary
 				// Use a ratio in case the real bytesTotal is different than our precomputed total
 
 				percent = (bytesLoaded / bytesTotal);
-				if (percent > 1) percent = 1;
+				if (percent > 1)
+					percent = 1;
 				bytesLoaded = Math.floor(percent * size);
 			}
 			else if (bytesLoaded > size)

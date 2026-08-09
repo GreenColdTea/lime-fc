@@ -1,47 +1,29 @@
 #include <events/ApplicationEvent.h>
-#include <system/CFFI.h>
+#include <hx/CFFIPrime.h>
 
+namespace lime
+{
 
-namespace lime {
+	ValuePointer *ApplicationEvent::callback = 0;
+	ValuePointer *ApplicationEvent::eventObject = 0;
 
-
-	ValuePointer* ApplicationEvent::callback = 0;
-	ValuePointer* ApplicationEvent::eventObject = 0;
-
-
-	ApplicationEvent::ApplicationEvent () {
-
+	ApplicationEvent::ApplicationEvent()
+	{
 		deltaTime = 0.0;
 		type = UPDATE;
-
 	}
 
+	void ApplicationEvent::Dispatch(ApplicationEvent *event)
+	{
+		if (ApplicationEvent::callback)
+		{
+			value object = (value)ApplicationEvent::eventObject->Get();
 
-	void ApplicationEvent::Dispatch (ApplicationEvent* event) {
+			alloc_field(object, val_id("deltaTime"), alloc_float(event->deltaTime));
+			alloc_field(object, val_id("type"), alloc_int(event->type));
 
-		if (ApplicationEvent::callback) {
-
-			if (ApplicationEvent::eventObject->IsCFFIValue ()) {
-
-				value object = (value)ApplicationEvent::eventObject->Get ();
-
-				alloc_field (object, val_id ("deltaTime"), alloc_float (event->deltaTime));
-				alloc_field (object, val_id ("type"), alloc_int (event->type));
-
-			} else {
-
-				ApplicationEvent* eventObject = (ApplicationEvent*)ApplicationEvent::eventObject->Get ();
-
-				eventObject->deltaTime = event->deltaTime;
-				eventObject->type = event->type;
-
-			}
-
-			ApplicationEvent::callback->Call ();
-
+			ApplicationEvent::callback->Call();
 		}
-
 	}
 
-
-}
+} // namespace lime

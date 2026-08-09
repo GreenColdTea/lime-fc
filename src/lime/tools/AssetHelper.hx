@@ -1,20 +1,25 @@
 package lime.tools;
 
-#if lime
-import haxe.io.Bytes as HaxeBytes;
 import haxe.Serializer;
 import haxe.Unserializer;
-import hxp.*;
+import haxe.io.Bytes as HaxeBytes;
+
+import hxp.Haxelib;
+import hxp.Log;
+import hxp.Path;
+import hxp.System;
+
 import lime._internal.format.Base64;
-import lime.tools.AssetType;
 import lime.tools.Asset;
+import lime.tools.AssetType;
 import lime.tools.HXProject;
 import lime.tools.Library;
 import lime.utils.AssetManifest;
 import lime.utils.Bytes;
+
+import sys.FileSystem;
 import sys.io.File;
 import sys.io.FileOutput;
-import sys.FileSystem;
 
 class AssetHelper
 {
@@ -117,7 +122,8 @@ class AssetHelper
 		var pathGroups = new Map<String, Array<String>>();
 
 		var libraries = new Map<String, Library>();
-		if (library == null) library = DEFAULT_LIBRARY_NAME;
+		if (library == null)
+			library = DEFAULT_LIBRARY_NAME;
 
 		for (lib in project.libraries)
 		{
@@ -203,8 +209,10 @@ class AssetHelper
 	private static function getAssetData(project:HXProject, pathGroups:Map<String, Array<String>>, libraries:Map<String, Library>, library:String,
 			asset:Asset):Dynamic
 	{
-		if ((asset.library != null && asset.library != library) || asset.type == TEMPLATE) return null;
-		if (asset.library == null && library != DEFAULT_LIBRARY_NAME) return null;
+		if ((asset.library != null && asset.library != library) || asset.type == TEMPLATE)
+			return null;
+		if (asset.library == null && library != DEFAULT_LIBRARY_NAME)
+			return null;
 
 		var size = 100;
 
@@ -213,12 +221,11 @@ class AssetHelper
 			size = FileSystem.stat(asset.sourcePath).size;
 		}
 
-		var assetData:Dynamic =
-			{
-				id: asset.id,
-				size: size,
-				type: Std.string(asset.type)
-			};
+		var assetData:Dynamic = {
+			id: asset.id,
+			size: size,
+			type: Std.string(asset.type)
+		};
 
 		if (project.target == HTML5)
 		{
@@ -278,7 +285,8 @@ class AssetHelper
 			return getAssetData(project, pathGroups, libraries, library.name, asset);
 		}
 
-		if (asset.type == TEMPLATE) return null;
+		if (asset.type == TEMPLATE)
+			return null;
 		if (asset.library == library.name || (asset.library == null && library.name == DEFAULT_LIBRARY_NAME))
 		{
 			if (output.tell() == 0)
@@ -288,13 +296,12 @@ class AssetHelper
 				output.writeString("lime-asset-pack");
 			}
 
-			var assetData:Dynamic =
-				{
-					id: asset.id,
-					size: 0,
-					type: Std.string(asset.type),
-					position: output.tell()
-				};
+			var assetData:Dynamic = {
+				id: asset.id,
+				size: 0,
+				type: Std.string(asset.type),
+				position: output.tell()
+			};
 
 			if (project.target == HTML5 && asset.type == FONT)
 			{
@@ -567,7 +574,8 @@ class AssetHelper
 							}
 						}
 
-						if (allEmbedded) embed = true;
+						if (allEmbedded)
+							embed = true;
 					}
 
 					asset = new Asset("", "manifest/" + library.name + ".json", AssetType.MANIFEST);
@@ -614,7 +622,8 @@ class AssetHelper
 			if (isPackedLibrary(project, library))
 			{
 				// TODO
-				if (type == "zip") type = "deflate";
+				if (type == "zip")
+					type = "deflate";
 
 				// TODO: Support library.embed=true by embedding all the assets instead of packing
 
@@ -691,4 +700,3 @@ class AssetHelper
 		}
 	}
 }
-#end

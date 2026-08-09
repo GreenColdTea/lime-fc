@@ -1,95 +1,35 @@
 package;
 
-import lime.tools.HashlinkHelper;
-import hxp.Haxelib;
 import hxp.HXML;
-import hxp.Path;
 import hxp.Log;
-import hxp.NDLL;
+import hxp.Path;
 import hxp.System;
+
 import lime.tools.Architecture;
 import lime.tools.AssetHelper;
-import lime.tools.AssetType;
 import lime.tools.CPPHelper;
 import lime.tools.DeploymentHelper;
 import lime.tools.HXProject;
-import lime.tools.Orientation;
-import lime.tools.Platform;
 import lime.tools.PlatformTarget;
 import lime.tools.ProjectHelper;
-import sys.io.File;
-import sys.io.Process;
+
 import sys.FileSystem;
+import sys.io.File;
 
 class LinuxPlatform extends PlatformTarget
 {
 	private var applicationDirectory:String;
 	private var executablePath:String;
 	private var is64:Bool;
-	private var isRaspberryPi:Bool;
-	private var targetType:String;
 
 	public function new(command:String, _project:HXProject, targetFlags:Map<String, String>)
 	{
 		super(command, _project, targetFlags);
 
-		var defaults = new HXProject();
-
-		defaults.meta =
-			{
-				title: "MyApplication",
-				description: "",
-				packageName: "com.example.myapp",
-				version: "1.0.0",
-				company: "",
-				companyUrl: "",
-				buildNumber: null,
-				companyId: ""
-			};
-
-		defaults.app =
-			{
-				main: "Main",
-				file: "MyApplication",
-				path: "bin",
-				preloader: "",
-				url: "",
-				init: null
-			};
-
-		defaults.window =
-			{
-				width: 800,
-				height: 600,
-				parameters: "{}",
-				background: 0xFFFFFF,
-				fps: 60,
-				hardware: true,
-				display: 0,
-				resizable: true,
-				transparent: false,
-				borderless: false,
-				orientation: Orientation.AUTO,
-				vsync: false,
-				fullscreen: false,
-				allowHighDPI: false,
-				alwaysOnTop: false,
-				antialiasing: 0,
-				allowShaders: true,
-				requireShaders: false,
-				depthBuffer: true,
-				stencilBuffer: true,
-				colorDepth: 32,
-				maximized: false,
-				minimized: false,
-				hidden: false,
-				title: ""
-			};
+		var defaults:HXProject = createDefaultProject();
 
 		switch (System.hostArchitecture)
 		{
-			case ARMV6:
-				defaults.architectures = [ARMV6];
 			case ARMV7:
 				defaults.architectures = [ARMV7];
 			case ARM64:
@@ -100,11 +40,6 @@ class LinuxPlatform extends PlatformTarget
 				defaults.architectures = [X64];
 			default:
 				defaults.architectures = [];
-		}
-
-		for (i in 1...project.windows.length)
-		{
-			defaults.windows.push(defaults.window);
 		}
 
 		defaults.merge(project);
@@ -118,7 +53,9 @@ class LinuxPlatform extends PlatformTarget
 
 		for (architecture in project.architectures)
 		{
-			if (!targetFlags.exists("32") && !targetFlags.exists("x86_32") && (architecture == Architecture.X64 || architecture == Architecture.ARM64))
+			if (!targetFlags.exists("32")
+				&& !targetFlags.exists("x86_32")
+				&& (architecture == Architecture.X64 || architecture == Architecture.ARM64))
 			{
 				is64 = true;
 			}
@@ -128,36 +65,7 @@ class LinuxPlatform extends PlatformTarget
 			}
 		}
 
-		if (project.targetFlags.exists("hl") || targetFlags.exists("hlc"))
-		{
-			targetType = "hl";
-			is64 = true;
-			var hlVer = project.haxedefs.get("hl-ver");
-			if (hlVer == null)
-			{
-				var hlPath = project.defines.get("HL_PATH");
-				if (hlPath == null)
-				{
-					// Haxe's default target version for HashLink may be
-					// different (newer even) than the build of HashLink that
-					// is bundled with Lime. if using Lime's bundled HashLink,
-					// set hl-ver to the correct version
-					project.haxedefs.set("hl-ver", HashlinkHelper.BUNDLED_HL_VER);
-				}
-			}
-		}
-		else
-		{
-			targetType = "cpp";
-		}
-
-		var defaultTargetDirectory = switch (targetType)
-		{
-			case "cpp": "linux";
-			case "hl": project.targetFlags.exists("hlc") ? "hlc" : targetType;
-			default: targetType;
-		}
-		targetDirectory = Path.combine(project.app.path, project.config.getString("linux.output-directory", defaultTargetDirectory));
+		targetDirectory = Path.combine(project.app.path, project.config.getString("linux.output-directory", "linux"));
 		targetDirectory = StringTools.replace(targetDirectory, "arch64", is64 ? "64" : "");
 		applicationDirectory = targetDirectory + "/bin/";
 		executablePath = Path.combine(applicationDirectory, project.app.file);
@@ -177,136 +85,113 @@ class LinuxPlatform extends PlatformTarget
 			}
 			else
 			{
-				copyIfNewer(Path.combine(dependency.path, "Linux" + (( System.hostArchitecture == ARMV7 || System.hostArchitecture == ARM64)?"Arm":"") + (is64 ? "64" : "") + "/" + dependency.name + ".so"), applicationDirectory + "/" + dependency.name + ".so");
+				copyIfNewer(Path.combine(dependency.path,
+					"Linux"
+					+ ((System.hostArchitecture == ARMV7 || System.hostArchitecture == ARM64) ? "Arm" : "")
+					+ (is64 ? "64" : "")
+					+ "/"
+					+ dependency.name
+					+ ".so"),
+					applicationDirectory
+					+ "/"
+					+ dependency.name
+					+ ".so");
 			}
 		}
 
 		for (ndll in project.ndlls)
 		{
-			if (targetType == "hl")
-			{
-				ProjectHelper.copyLibrary(project, ndll, "Linux" + (is64 ? "64" : ""), "", ".hdll", applicationDirectory, project.debug, ".hdll");
-			}
-			else
-			{
-				ProjectHelper.copyLibrary(project, ndll, "Linux" + (( System.hostArchitecture == ARMV7 || System.hostArchitecture == ARM64)?"Arm":"") + (is64 ? "64" : ""), "", ".ndll", applicationDirectory, project.debug);
-			}
+			ProjectHelper.copyLibrary(project, ndll,
+				"Linux" + ((System.hostArchitecture == ARMV7 || System.hostArchitecture == ARM64) ? "Arm" : "") + (is64 ? "64" : ""), "", ".ndll",
+				applicationDirectory, project.debug);
 		}
 
-		if (targetType == "hl")
+		var haxeArgs:Array<String> = [hxml];
+		var flags:Array<String> = [];
+
+		if (is64)
 		{
-			System.runCommand("", "haxe", [hxml]);
-
-			if (noOutput) return;
-
-			HashlinkHelper.copyHashlink(project, targetDirectory, applicationDirectory, executablePath, is64);
-
-			if (project.targetFlags.exists("hlc"))
+			if (System.hostArchitecture == ARM64)
 			{
-				var compiler = project.targetFlags.exists("clang") ? "clang" : "gcc";
-				var command = [compiler, "-O3", "-o", executablePath, "-std=c11", "-Wl,-rpath,$ORIGIN", "-I", Path.combine(targetDirectory, "obj"), Path.combine(targetDirectory, "obj/ApplicationMain.c"), "-L", applicationDirectory];
-				for (file in System.readDirectory(applicationDirectory))
-				{
-					switch Path.extension(file)
-					{
-						case "so", "hdll":
-							// ensure the executable knows about every library
-							command.push("-l:" + Path.withoutDirectory(file));
-						default:
-					}
-				}
-				command.push("-lm");
-				System.runCommand("", command.shift(), command);
-			}
-		}
-		else
-		{
-			var haxeArgs:Array<String> = [hxml];
-			var flags:Array<String> = [];
-
-			if (is64)
-			{
-				if (System.hostArchitecture == ARM64)
-				{
-					haxeArgs.push("-D");
-					haxeArgs.push("HXCPP_ARM64");
-					flags.push("-DHXCPP_ARM64");
-				}
-				else
-				{
-					haxeArgs.push("-D");
-					haxeArgs.push("HXCPP_M64");
-					flags.push("-DHXCPP_M64");
-				}
+				haxeArgs.push("-D");
+				haxeArgs.push("HXCPP_ARM64");
+				flags.push("-DHXCPP_ARM64");
 			}
 			else
 			{
 				haxeArgs.push("-D");
-				haxeArgs.push("HXCPP_M32");
-				flags.push("-DHXCPP_M32");
+				haxeArgs.push("HXCPP_M64");
+				flags.push("-DHXCPP_M64");
 			}
-
-			if (project.target != System.hostPlatform)
-			{
-				var hxcpp_xlinux64_cxx = project.defines.get("HXCPP_XLINUX64_CXX");
-				if (hxcpp_xlinux64_cxx == null)
-				{
-					hxcpp_xlinux64_cxx = "x86_64-unknown-linux-gnu-g++";
-				}
-				var hxcpp_xlinux64_strip = project.defines.get("HXCPP_XLINUX64_STRIP");
-				if (hxcpp_xlinux64_strip == null)
-				{
-					hxcpp_xlinux64_strip = "x86_64-unknown-linux-gnu-strip";
-				}
-				var hxcpp_xlinux64_ranlib = project.defines.get("HXCPP_XLINUX64_RANLIB");
-				if (hxcpp_xlinux64_ranlib == null)
-				{
-					hxcpp_xlinux64_ranlib = "x86_64-unknown-linux-gnu-ranlib";
-				}
-				var hxcpp_xlinux64_ar = project.defines.get("HXCPP_XLINUX64_AR");
-				if (hxcpp_xlinux64_ar == null)
-				{
-					hxcpp_xlinux64_ar = "x86_64-unknown-linux-gnu-ar";
-				}
-				flags.push('-DHXCPP_XLINUX64_CXX=$hxcpp_xlinux64_cxx');
-				flags.push('-DHXCPP_XLINUX64_STRIP=$hxcpp_xlinux64_strip');
-				flags.push('-DHXCPP_XLINUX64_RANLIB=$hxcpp_xlinux64_ranlib');
-				flags.push('-DHXCPP_XLINUX64_AR=$hxcpp_xlinux64_ar');
-
-				var hxcpp_xlinux32_cxx = project.defines.get("HXCPP_XLINUX32_CXX");
-				if (hxcpp_xlinux32_cxx == null)
-				{
-					hxcpp_xlinux32_cxx = "i686-unknown-linux-gnu-g++";
-				}
-				var hxcpp_xlinux32_strip = project.defines.get("HXCPP_XLINUX32_STRIP");
-				if (hxcpp_xlinux32_strip == null)
-				{
-					hxcpp_xlinux32_strip = "i686-unknown-linux-gnu-strip";
-				}
-				var hxcpp_xlinux32_ranlib = project.defines.get("HXCPP_XLINUX32_RANLIB");
-				if (hxcpp_xlinux32_ranlib == null)
-				{
-					hxcpp_xlinux32_ranlib = "i686-unknown-linux-gnu-ranlib";
-				}
-				var hxcpp_xlinux32_ar = project.defines.get("HXCPP_XLINUX32AR");
-				if (hxcpp_xlinux32_ar == null)
-				{
-					hxcpp_xlinux32_ar = "i686-unknown-linux-gnu-ar";
-				}
-				flags.push('-DHXCPP_XLINUX32_CXX=$hxcpp_xlinux32_cxx');
-				flags.push('-DHXCPP_XLINUX32_STRIP=$hxcpp_xlinux32_strip');
-				flags.push('-DHXCPP_XLINUX32_RANLIB=$hxcpp_xlinux32_ranlib');
-				flags.push('-DHXCPP_XLINUX32_AR=$hxcpp_xlinux32_ar');
-			}
-
-			System.runCommand("", "haxe", haxeArgs);
-
-			if (noOutput) return;
-
-			CPPHelper.compile(project, targetDirectory + "/obj", flags);
-
-			System.copyFile(targetDirectory + "/obj/ApplicationMain" + (project.debug ? "-debug" : ""), executablePath);
 		}
+		else
+		{
+			haxeArgs.push("-D");
+			haxeArgs.push("HXCPP_M32");
+			flags.push("-DHXCPP_M32");
+		}
+
+		if (project.target != System.hostPlatform)
+		{
+			var hxcpp_xlinux64_cxx = project.defines.get("HXCPP_XLINUX64_CXX");
+			if (hxcpp_xlinux64_cxx == null)
+			{
+				hxcpp_xlinux64_cxx = "x86_64-unknown-linux-gnu-g++";
+			}
+			var hxcpp_xlinux64_strip = project.defines.get("HXCPP_XLINUX64_STRIP");
+			if (hxcpp_xlinux64_strip == null)
+			{
+				hxcpp_xlinux64_strip = "x86_64-unknown-linux-gnu-strip";
+			}
+			var hxcpp_xlinux64_ranlib = project.defines.get("HXCPP_XLINUX64_RANLIB");
+			if (hxcpp_xlinux64_ranlib == null)
+			{
+				hxcpp_xlinux64_ranlib = "x86_64-unknown-linux-gnu-ranlib";
+			}
+			var hxcpp_xlinux64_ar = project.defines.get("HXCPP_XLINUX64_AR");
+			if (hxcpp_xlinux64_ar == null)
+			{
+				hxcpp_xlinux64_ar = "x86_64-unknown-linux-gnu-ar";
+			}
+			flags.push('-DHXCPP_XLINUX64_CXX=$hxcpp_xlinux64_cxx');
+			flags.push('-DHXCPP_XLINUX64_STRIP=$hxcpp_xlinux64_strip');
+			flags.push('-DHXCPP_XLINUX64_RANLIB=$hxcpp_xlinux64_ranlib');
+			flags.push('-DHXCPP_XLINUX64_AR=$hxcpp_xlinux64_ar');
+
+			var hxcpp_xlinux32_cxx = project.defines.get("HXCPP_XLINUX32_CXX");
+			if (hxcpp_xlinux32_cxx == null)
+			{
+				hxcpp_xlinux32_cxx = "i686-unknown-linux-gnu-g++";
+			}
+			var hxcpp_xlinux32_strip = project.defines.get("HXCPP_XLINUX32_STRIP");
+			if (hxcpp_xlinux32_strip == null)
+			{
+				hxcpp_xlinux32_strip = "i686-unknown-linux-gnu-strip";
+			}
+			var hxcpp_xlinux32_ranlib = project.defines.get("HXCPP_XLINUX32_RANLIB");
+			if (hxcpp_xlinux32_ranlib == null)
+			{
+				hxcpp_xlinux32_ranlib = "i686-unknown-linux-gnu-ranlib";
+			}
+			var hxcpp_xlinux32_ar = project.defines.get("HXCPP_XLINUX32AR");
+			if (hxcpp_xlinux32_ar == null)
+			{
+				hxcpp_xlinux32_ar = "i686-unknown-linux-gnu-ar";
+			}
+			flags.push('-DHXCPP_XLINUX32_CXX=$hxcpp_xlinux32_cxx');
+			flags.push('-DHXCPP_XLINUX32_STRIP=$hxcpp_xlinux32_strip');
+			flags.push('-DHXCPP_XLINUX32_RANLIB=$hxcpp_xlinux32_ranlib');
+			flags.push('-DHXCPP_XLINUX32_AR=$hxcpp_xlinux32_ar');
+		}
+
+		System.runCommand("", "haxe", haxeArgs);
+
+		if (noOutput)
+			return;
+
+		CPPHelper.compile(project, targetDirectory + "/obj", flags);
+
+		System.copyFile(targetDirectory + "/obj/ApplicationMain" + (project.debug ? "-debug" : ""), executablePath);
 
 		if (System.hostPlatform != WINDOWS)
 		{
@@ -333,20 +218,8 @@ class LinuxPlatform extends PlatformTarget
 
 	private function generateContext():Dynamic
 	{
-		if(targetFlags.exists('rpi'))
-		{
-			project.haxedefs.set("rpi", 1);
-		}
-
 		var context = project.templateContext;
-
-		context.NEKO_FILE = targetDirectory + "/obj/ApplicationMain.n";
-		context.NODE_FILE = targetDirectory + "/bin/ApplicationMain.js";
-		context.HL_FILE = targetDirectory + "/obj/ApplicationMain" + (project.defines.exists("hlc") ? ".c" : ".hl");
-		context.CPP_DIR = targetDirectory + "/obj/";
-		context.BUILD_DIR = project.app.path + "/linux" + (is64 ? "64" : "") + (isRaspberryPi ? "-rpi" : "");
-		context.WIN_ALLOW_SHADERS = false;
-
+		context.CPP_DIR = targetDirectory + "/obj";
 		return context;
 	}
 
@@ -381,7 +254,8 @@ class LinuxPlatform extends PlatformTarget
 
 				var output:String = Path.combine(waylandOutputPath, '${haxe.io.Path.withoutExtension(xml)}-client-protocol');
 
-				if (FileSystem.exists(haxe.io.Path.withExtension(output, "h")) && FileSystem.exists(haxe.io.Path.withExtension(output, "c")))
+				if (FileSystem.exists(haxe.io.Path.withExtension(output, "h"))
+					&& FileSystem.exists(haxe.io.Path.withExtension(output, "c")))
 				{
 					return false;
 				}
@@ -397,7 +271,8 @@ class LinuxPlatform extends PlatformTarget
 				{
 					var output:String = Path.combine(waylandOutputPath, '${haxe.io.Path.withoutExtension(xml)}-client-protocol');
 
-					if (FileSystem.exists(haxe.io.Path.withExtension(output, "h")) && FileSystem.exists(haxe.io.Path.withExtension(output, "c")))
+					if (FileSystem.exists(haxe.io.Path.withExtension(output, "h"))
+						&& FileSystem.exists(haxe.io.Path.withExtension(output, "c")))
 					{
 						continue;
 					}
@@ -406,9 +281,17 @@ class LinuxPlatform extends PlatformTarget
 
 					Log.println(' - \x1b[1;33m$file\x1b[0m');
 
-					System.runCommand("", "wayland-scanner", ["client-header", Path.combine(waylandProtocolsPath, xml), haxe.io.Path.withExtension(output, "h")]);
+					System.runCommand("", "wayland-scanner", [
+						"client-header",
+						Path.combine(waylandProtocolsPath, xml),
+						haxe.io.Path.withExtension(output, "h")
+					]);
 
-					System.runCommand("", "wayland-scanner", ["private-code", Path.combine(waylandProtocolsPath, xml), haxe.io.Path.withExtension(output, "c")]);
+					System.runCommand("", "wayland-scanner", [
+						"private-code",
+						Path.combine(waylandProtocolsPath, xml),
+						haxe.io.Path.withExtension(output, "c")
+					]);
 				}
 			}
 		}
@@ -422,7 +305,8 @@ class LinuxPlatform extends PlatformTarget
 		// modified more recently than the .hxml, then the .hxml cannot be
 		// considered valid anymore. it may cause errors in editors like vscode.
 		if (FileSystem.exists(path)
-			&& (project.projectFilePath == null || !FileSystem.exists(project.projectFilePath)
+			&& (project.projectFilePath == null
+				|| !FileSystem.exists(project.projectFilePath)
 				|| (FileSystem.stat(path).mtime.getTime() > FileSystem.stat(project.projectFilePath).mtime.getTime())))
 		{
 			return File.getContent(path);
@@ -432,13 +316,7 @@ class LinuxPlatform extends PlatformTarget
 			var context = project.templateContext;
 			var hxml = HXML.fromString(context.HAXE_FLAGS);
 			hxml.addClassName(context.APP_MAIN);
-			switch (targetType)
-			{
-				case "hl":
-					hxml.hl = "_.hl";
-				default:
-					hxml.cpp = "_";
-			}
+			hxml.cpp = "_";
 			hxml.noOutput = true;
 			return hxml;
 		}
@@ -448,80 +326,37 @@ class LinuxPlatform extends PlatformTarget
 	{
 		if (project.haxelibs.length == 0)
 		{
-			// If there are no haxelibs, we know its only lime that is being rebuilt (weird hack but works),
-			// Wayland shoudnt be rebuilt for anything else other than lime!
+			// If there are no haxelibs, we know it's only lime that is being rebuilt (weird hack but works),
+			// Wayland shouldn't be rebuilt for anything else other than lime!
 			generateWaylandProtocols();
 		}
 
 		var commands:Array<Array<String>> = [];
 
-		if (targetFlags.exists('rpi') && System.hostArchitecture == ARM64 )
-		{
-			commands.push([
-				"-Dlinux",
-				"-Drpi",
-				"-Dtoolchain=linux",
-				"-DBINDIR=LinuxArm64",
-				"-DHXCPP_ARM64",
-				"-DCXX=aarch64-linux-gnu-g++",
-				"-DHXCPP_STRIP=aarch64-linux-gnu-strip",
-				"-DHXCPP_AR=aarch64-linux-gnu-ar",
-				"-DHXCPP_RANLIB=aarch64-linux-gnu-ranlib"
-			]);
-		}
-		else if (targetFlags.exists('rpi') && System.hostArchitecture == ARMV7)
-		{
-			commands.push([
-				"-Dlinux",
-				"-Drpi",
-				"-Dtoolchain=linux",
-				"-DBINDIR=LinuxArm",
-				"-DHXCPP_M32",
-				"-DCXX=arm-linux-gnueabihf-g++",
-				"-DHXCPP_STRIP=arm-linux-gnueabihf-strip",
-				"-DHXCPP_AR=arm-linux-gnueabihf-ar",
-				"-DHXCPP_RANLIB=arm-linux-gnueabihf-ranlib"
-			]);
-		}
-		else if (targetFlags.exists("hl") && System.hostArchitecture == X64)
-		{
-			// TODO: Support single binary
-			commands.push(["-Dlinux", "-DHXCPP_M64", "-Dhashlink"]);
-		}
-		else if (System.hostArchitecture == ARM64 )
-		{
-			commands.push([
-				"-Dlinux",
-				"-Dtoolchain=linux",
-				"-DBINDIR=LinuxArm64",
-				"-DHXCPP_ARM64",
-			]);
-		}
-		else
-		{
-			var x86_64:Bool = targetFlags.exists("64") || targetFlags.exists("x86_64");
-			var x86_32:Bool = targetFlags.exists("32") || targetFlags.exists("x86_32");
+		var arm64:Bool = targetFlags.exists("arm64");
+		var x86_64:Bool = targetFlags.exists("64") || targetFlags.exists("x86_64");
+		var x86_32:Bool = targetFlags.exists("32") || targetFlags.exists("x86_32");
 
-			if (!x86_64 && !x86_32)
-			{
-				x86_64 = System.hostArchitecture == X64;
-				x86_32 = System.hostArchitecture == X86;
-			}
-
-			if (x86_64)
-			{
-				commands.push(["-Dlinux", "-DHXCPP_M64"]);
-			}
-
-			if (x86_32)
-			{
-				commands.push(["-Dlinux", "-DHXCPP_M32"]);
-			}
+		if (!arm64 && !x86_64 && !x86_32)
+		{
+			arm64 = System.hostArchitecture == ARM64;
+			x86_64 = System.hostArchitecture == X64;
+			x86_32 = System.hostArchitecture == X86;
 		}
 
-		if (targetFlags.exists("hl"))
+		if (arm64)
 		{
-			CPPHelper.rebuild(project, commands, null, "BuildHashlink.xml");
+			commands.push(["-Dlinux", "-DHXCPP_ARM64"]);
+		}
+
+		if (x86_64)
+		{
+			commands.push(["-Dlinux", "-DHXCPP_M64"]);
+		}
+
+		if (x86_32)
+		{
+			commands.push(["-Dlinux", "-DHXCPP_M32"]);
 		}
 
 		CPPHelper.rebuild(project, commands);
@@ -566,7 +401,7 @@ class LinuxPlatform extends PlatformTarget
 		System.mkdir(applicationDirectory);
 
 		ProjectHelper.recursiveSmartCopyTemplate(project, "haxe", targetDirectory + "/haxe", context);
-		ProjectHelper.recursiveSmartCopyTemplate(project, targetType + "/hxml", targetDirectory + "/haxe", context);
+		ProjectHelper.recursiveSmartCopyTemplate(project, "cpp/hxml", targetDirectory + "/haxe", context);
 
 		copyProjectAssets(applicationDirectory);
 	}

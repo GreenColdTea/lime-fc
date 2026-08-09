@@ -4,6 +4,7 @@ import lime.app.Application;
 import lime.app.Event;
 import lime.system.WorkOutput;
 import lime.utils.Log;
+
 #if target.threaded
 import sys.thread.Deque;
 import sys.thread.Thread;
@@ -463,21 +464,21 @@ class ThreadPool extends WorkOutput
 			}
 		}
 		#end
-		else if (event.jobID != null)
+	else if (event.jobID != null)
+	{
+		#if (lime_threads && lime_threads_deque)
+		// `cancelJob()` can't remove the job from the queue, so instead it
+		// marks it to be canceled later. (And "later" is now.)
+		if (event.event == WORK && event.threadID != null)
 		{
-			#if (lime_threads && lime_threads_deque)
-			// `cancelJob()` can't remove the job from the queue, so instead it
-			// marks it to be canceled later. (And "later" is now.)
-			if (event.event == WORK && event.threadID != null)
-			{
-				__threads[event.threadID].thread.sendMessage({event: IDLE});
-				__queuedWorkEvents--;
-			}
-			#end
-
-			activeJob = oldActiveJob;
-			return;
+			__threads[event.threadID].thread.sendMessage({event: IDLE});
+			__queuedWorkEvents--;
 		}
+		#end
+
+		activeJob = oldActiveJob;
+		return;
+	}
 
 		switch (event.event)
 		{
@@ -502,7 +503,7 @@ class ThreadPool extends WorkOutput
 					}
 					else
 					{
-						message = (event.message:Exception).details();
+						message = (event.message : Exception).details();
 					}
 				}
 				else
@@ -821,7 +822,6 @@ class ThreadPool extends WorkOutput
 	}
 
 	#if lime_threads
-
 	/**
 		Handles a thread that just became idle. Depending on the circumstances,
 		this may do one of three things:
@@ -990,7 +990,6 @@ class ThreadPool extends WorkOutput
 
 		return thread;
 	}
-
 	#end
 
 	// Getters & Setters
@@ -1013,7 +1012,7 @@ class ThreadPool extends WorkOutput
 	private inline function get_idleThreads():Int
 	{
 		return __idleThreads
-			#if lime_threads - __queuedExitEvents #end;
+		#if lime_threads - __queuedExitEvents #end;
 	}
 
 	private inline function set___singleThreadedJobRunning(value:Bool):Bool
@@ -1242,7 +1241,8 @@ private abstract JobQueue(Deque<ThreadEvent>) from Deque<ThreadEvent>
 }
 #end
 
-private typedef ThreadArguments = {
+private typedef ThreadArguments =
+{
 	#if !html5
 	var output:WorkOutput;
 	#end
@@ -1255,7 +1255,8 @@ private typedef ThreadArguments = {
 };
 
 #if lime_threads
-private typedef ThreadData = {
+private typedef ThreadData =
+{
 	var thread:Thread;
 	@:optional var jobID:Int;
 };

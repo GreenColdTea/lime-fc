@@ -1,33 +1,27 @@
 #pragma once
 
-
 #include <graphics/ImageBuffer.h>
+#include <hx/CFFIPrime.h>
 #include <math/Rectangle.h>
-#include <system/CFFI.h>
 
+namespace lime
+{
 
-namespace lime {
-
-
-	struct Image {
-
-		hl_type* t;
-		ImageBuffer* buffer;
+	struct Image
+	{
+		ImageBuffer *buffer;
 		bool dirty;
 		int height;
 		int offsetX;
 		int offsetY;
-		Rectangle* rect;
-		venum* type;
+		Rectangle *rect;
 		int version;
 		int width;
 		double x;
 		double y;
 
-		Image (value image);
-		~Image ();
-
+		Image(value image);
+		~Image();
 	};
 
-
-}
+} // namespace lime

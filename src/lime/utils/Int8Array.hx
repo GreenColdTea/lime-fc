@@ -126,8 +126,10 @@ abstract Int8Array(ArrayBufferView) from ArrayBufferView to ArrayBufferView
 	// non spec haxe conversions
 	inline public static function fromBytes(bytes:haxe.io.Bytes, ?byteOffset:Int = 0, ?len:Int):Int8Array
 	{
-		if (byteOffset == null) return new Int8Array(null, null, cast bytes.getData());
-		if (len == null) return new Int8Array(null, null, cast bytes.getData(), byteOffset);
+		if (byteOffset == null)
+			return new Int8Array(null, null, cast bytes.getData());
+		if (len == null)
+			return new Int8Array(null, null, cast bytes.getData(), byteOffset);
 		return new Int8Array(null, null, cast bytes.getData(), byteOffset, len);
 	}
 

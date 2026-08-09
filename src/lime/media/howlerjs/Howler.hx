@@ -48,12 +48,14 @@ class Howler
 	 */
 	public static function volume(?vol:Float):Dynamic
 	{
-		if (vol != null) return Howler;
+		if (vol != null)
+			return Howler;
 		return vol;
 	}
 }
 #else
 import haxe.extern.EitherType;
+
 import js.html.audio.GainNode;
 
 #if commonjs

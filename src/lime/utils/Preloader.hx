@@ -5,6 +5,7 @@ import haxe.io.Bytes;
 import haxe.io.Path;
 import haxe.macro.Compiler;
 import haxe.Timer;
+
 import lime.app.Event;
 import lime.media.AudioBuffer;
 import lime.system.System;
@@ -12,10 +13,12 @@ import lime.utils.AssetLibrary;
 import lime.utils.Assets;
 import lime.utils.AssetType;
 import lime.utils.Log;
+
 #if (js && html5)
 import js.html.Image;
 import js.html.SpanElement;
 import js.Browser;
+
 import lime.net.HTTPRequest;
 #end
 
@@ -27,12 +30,12 @@ class Preloader
 	public var onProgress = new Event<Int->Int->Void>();
 
 	@:noCompletion private var bytesLoaded:Int;
-	@:noCompletion private var bytesLoadedCache = new ObjectMap<#if !disable_preloader_assets AssetLibrary #else Dynamic #end, Int>();
+	@:noCompletion private var bytesLoadedCache = new ObjectMap< #if !disable_preloader_assets AssetLibrary #else Dynamic #end, Int>();
 	@:noCompletion private var bytesLoadedCache2 = new Map<String, Int>();
 	@:noCompletion private var bytesTotal:Int;
 	@:noCompletion private var bytesTotalCache = new Map<String, Int>();
 	@:noCompletion private var initLibraryNames:Bool;
-	@:noCompletion private var libraries:Array<#if !disable_preloader_assets AssetLibrary #else Dynamic #end>;
+	@:noCompletion private var libraries:Array< #if !disable_preloader_assets AssetLibrary #else Dynamic #end>;
 	@:noCompletion private var libraryNames:Array<String>;
 	@:noCompletion private var loadedLibraries:Int;
 	@:noCompletion private var loadedStage:Bool;
@@ -47,7 +50,7 @@ class Preloader
 		bytesLoaded = 0;
 		bytesTotal = 0;
 
-		libraries = new Array<#if !disable_preloader_assets AssetLibrary #else Dynamic #end>();
+		libraries = new Array< #if !disable_preloader_assets AssetLibrary #else Dynamic #end>();
 		libraryNames = new Array<String>();
 
 		onProgress.add(update);
@@ -70,7 +73,8 @@ class Preloader
 		timer.run = function()
 		{
 			currentTime = System.getTimer() - startTime;
-			if (currentTime > preloadTime) currentTime = preloadTime;
+			if (currentTime > preloadTime)
+				currentTime = preloadTime;
 			onProgress.dispatch(currentTime, preloadTime);
 
 			if (currentTime >= preloadTime)
@@ -166,7 +170,8 @@ class Preloader
 		loadedLibraries++;
 
 		var current = loadedLibraries;
-		if (!preloadStarted) current++;
+		if (!preloadStarted)
+			current++;
 
 		var totalLibraries = libraries.length + libraryNames.length;
 
@@ -184,7 +189,8 @@ class Preloader
 
 	@:noCompletion private function start():Void
 	{
-		if (complete || simulateProgress || !preloadComplete) return;
+		if (complete || simulateProgress || !preloadComplete)
+			return;
 
 		complete = true;
 
@@ -220,7 +226,8 @@ class Preloader
 								bytesTotal += (total - 200);
 							}
 
-							if (loaded > total) loaded = total;
+							if (loaded > total)
+								loaded = total;
 
 							if (!bytesLoadedCache2.exists(name))
 							{

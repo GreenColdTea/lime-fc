@@ -1,33 +1,19 @@
 #pragma once
 
+#include <hx/CFFIPrime.h>
 
-#include <system/CFFI.h>
-
-
-namespace hx {
+namespace hx
+{
 
 	class Object;
 	typedef void (*finalizer)(value v);
 
-}
+} // namespace hx
 
+namespace lime
+{
 
-namespace lime {
+	value CFFIPointer(void *ptr, hx::finalizer finalizer = 0);
+	value CFFIPointer(value handle, hx::finalizer finalizer = 0);
 
-
-	struct HL_CFFIPointer {
-
-		void* finalizer;
-		void* ptr;
-
-	};
-
-	typedef void (*hl_finalizer)(void* v);
-
-
-	value CFFIPointer (void* ptr, hx::finalizer finalizer = 0);
-	value CFFIPointer (value handle, hx::finalizer finalizer = 0);
-	HL_CFFIPointer* HLCFFIPointer (void* ptr, hl_finalizer finalizer = 0);
-
-
-}
+} // namespace lime

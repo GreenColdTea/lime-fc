@@ -1,14 +1,13 @@
 #pragma once
 
-
-#include <system/CFFI.h>
+#include <hx/CFFIPrime.h>
 #include <system/ValuePointer.h>
 
+namespace lime
+{
 
-namespace lime {
-
-
-	enum RenderEventType {
+	enum RenderEventType
+	{
 
 		RENDER,
 		RENDER_CONTEXT_LOST,
@@ -16,20 +15,16 @@ namespace lime {
 
 	};
 
-
-	struct RenderEvent {
-
-		hl_type* t;
+	struct RenderEvent
+	{
 		RenderEventType type;
 
-		static ValuePointer* callback;
-		static ValuePointer* eventObject;
+		static ValuePointer *callback;
+		static ValuePointer *eventObject;
 
-		RenderEvent ();
+		RenderEvent();
 
-		static void Dispatch (RenderEvent* event);
-
+		static void Dispatch(RenderEvent *event);
 	};
 
-
-}
+} // namespace lime

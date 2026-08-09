@@ -5,15 +5,14 @@ import ::APP_MAIN::;
 @:dox(hide)
 @:access(lime.app.Application)
 @:access(lime.system.System)
-#if (static_link || ios || tvos)
-@:cppFileCode("\nextern \"C\" int zlib_register_prims ();\nextern \"C\" int lime_register_prims ();\n::foreach ndlls::::if (registerStatics)::extern \"C\" int ::nameSafe::_register_prims ();::end::::end::")
+#if (static_link || ios)
+@:cppFileCode("\nextern \"C\" int lime_register_prims ();\n::foreach ndlls::::if (registerStatics)::extern \"C\" int ::nameSafe::_register_prims ();::end::::end::")
 #end
 class ApplicationMain
 {
 	public static function main():Void
 	{
-		#if (static_link || ios || tvos)
-		untyped __cpp__("zlib_register_prims ()");
+		#if (static_link || ios)
 		untyped __cpp__("lime_register_prims ()");
 		::foreach ndlls::::if (registerStatics)::untyped __cpp__("::nameSafe::_register_prims ()");::end::::end::
 		#end
@@ -42,10 +41,6 @@ class ApplicationMain
 
 		var app = new ::APP_MAIN::(appMeta);
 
-		#if !disable_preloader_assets
-		ManifestResources.init(config);
-		#end
-
 		::foreach windows::
 		var attributes:lime.ui.WindowAttributes =
 			{
@@ -53,7 +48,6 @@ class ApplicationMain
 				alwaysOnTop: ::alwaysOnTop::,
 				transparent: ::transparent::,
 				borderless: ::borderless::,
-				// display: ::display::,
 				element: null,
 				frameRate: ::fps::,
 				#if !web
@@ -99,18 +93,14 @@ class ApplicationMain
 					}
 				}
 			}
-
-			#if sys
-			lime.system.System.__parseArguments(attributes);
-			#end
 		}
 
 		app.createWindow(attributes);
 		::end::
 
-		// preloader.create ();
-
 		#if !disable_preloader_assets
+		ManifestResources.init(config);
+
 		for (library in ManifestResources.preloadLibraries)
 		{
 			app.preloader.addLibrary(library);

@@ -19,7 +19,6 @@ endif
 CONFIG := $(CONFIG)-$(HAXE_OS)
 
 LIB_DEST := $(DEBUG)/libApplicationMain.a
-LIB_MBEDTLS_DEST := $(DEBUG)/libmbedtls_hxcpp.a
 
 SIMULATOR_ARCH = arm64 x86_64
 
@@ -52,15 +51,13 @@ debug_print:
 
 $(HAXE_BUILDS): build-haxe-%:
 	@echo "Haxe $(if $(filter $*,$(SIMULATOR_ARCH)),simulator,device) build: $(CONFIG)$(SUFFIX_$*)"
-	haxe Build.hxml $(HXCPP_FLAGS_$*) -cpp build/$(CONFIG)$(SUFFIX_$*) $(DEBUG)
+	haxe Build.hxml -D message.no-color $(HXCPP_FLAGS_$*) -cpp build/$(CONFIG)$(SUFFIX_$*) $(DEBUG)
 	cd build/$(CONFIG)$(SUFFIX_$*); ::HAXELIB_PATH:: export HXCPP_NO_COLOR=1; \
-		haxelib run ::CPP_BUILD_LIBRARY:: Build.xml haxe -Ddestination="$(CURDIR)/../lib/$(BUILD_NAME_$*)$(LIB_DEST)" \
+		haxelib run hxcpp Build.xml haxe -Ddestination="$(CURDIR)/../lib/$(BUILD_NAME_$*)$(LIB_DEST)" \
 		-options Options.txt $(DEBUG)
-	touch ../Classes/Main.mm
-	cd build/$(CONFIG)$(SUFFIX_$*); ::HAXELIB_PATH:: export HXCPP_NO_COLOR=1; \
-		::CPP_CACHE_WORKAROUND:: haxelib run ::CPP_BUILD_LIBRARY:: "$(CURDIR)/BuildHxcppMbedtls.xml" \
-		-Ddestination="$(CURDIR)/../lib/$(BUILD_NAME_$*)$(LIB_MBEDTLS_DEST)" \
-		-options "$(CURDIR)/build/$(CONFIG)$(SUFFIX_$*)/Options.txt" $(DEBUG)
+	::if (IOS_CLASS_FILES)::::foreach (IOS_CLASS_FILES)::
+	touch ../Classes/::__current__::
+	::end::::end::
 
 clean:
 	rm -rf build

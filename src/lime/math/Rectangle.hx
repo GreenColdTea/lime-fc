@@ -4,9 +4,6 @@ package lime.math;
 	The `Rectangle` class provides a simple object for storing
 	and manipulating a logical rectangle for calculations
 **/
-#if hl
-@:keep
-#end
 class Rectangle
 {
 	/**
@@ -191,7 +188,8 @@ class Rectangle
 	**/
 	public function intersection(toIntersect:Rectangle, result:Rectangle = null):Rectangle
 	{
-		if (result == null) result = new Rectangle();
+		if (result == null)
+			result = new Rectangle();
 
 		var x0 = x < toIntersect.x ? toIntersect.x : x;
 		var x1 = right > toIntersect.right ? toIntersect.right : right;
@@ -301,7 +299,8 @@ class Rectangle
 	**/
 	public function union(toUnion:Rectangle, result:Rectangle = null):Rectangle
 	{
-		if (result == null) result = new Rectangle();
+		if (result == null)
+			result = new Rectangle();
 
 		if (width == 0 || height == 0)
 		{

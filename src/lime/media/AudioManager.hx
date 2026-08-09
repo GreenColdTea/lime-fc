@@ -1,20 +1,26 @@
 package lime.media;
 
 import lime.system.CFFIPointer;
+
 import haxe.MainLoop;
 #if (windows || mac || linux || android || ios)
 import haxe.io.Path;
+
 import lime.system.System;
+
 import sys.FileSystem;
 import sys.io.File;
 #end
+
 import haxe.Timer;
+
 import lime._internal.backend.native.NativeCFFI;
 import lime.media.openal.AL;
 import lime.media.openal.ALC;
 import lime.media.openal.ALContext;
 import lime.media.openal.ALDevice;
 import lime.app.Application;
+
 #if (js && html5)
 import js.Browser;
 #end
@@ -60,12 +66,17 @@ class AudioManager
 						alc.makeContextCurrent(ctx);
 						alc.processContext(ctx);
 
-						if (alc.isExtensionPresent('ALC_SOFT_system_events', device) && alc.isExtensionPresent('ALC_SOFT_reopen_device', device))
+						if (alc.isExtensionPresent('ALC_SOFT_system_events', device)
+							&& alc.isExtensionPresent('ALC_SOFT_reopen_device', device))
 						{
 							if (alc.isExtensionPresent('AL_SOFT_hold_on_disconnect'))
 								alc.disable(AL.STOP_SOURCES_ON_DISCONNECT_SOFT);
 
-							alc.eventControlSOFT([ALC.EVENT_TYPE_DEFAULT_DEVICE_CHANGED_SOFT, ALC.EVENT_TYPE_DEVICE_ADDED_SOFT, ALC.EVENT_TYPE_DEVICE_REMOVED_SOFT], true);
+							alc.eventControlSOFT([
+								ALC.EVENT_TYPE_DEFAULT_DEVICE_CHANGED_SOFT,
+								ALC.EVENT_TYPE_DEVICE_ADDED_SOFT,
+								ALC.EVENT_TYPE_DEVICE_REMOVED_SOFT
+							], true);
 
 							alc.eventCallbackSOFT(deviceEventCallback);
 						}
@@ -167,13 +178,13 @@ class AudioManager
 	@:noCompletion
 	private static function onDeactivate():Void
 	{
-		resumeOnFocus = AudioManager.active;
+		resumeOnFocus = resumeOnFocus || AudioManager.active;
 
 		AudioManager.suspend();
 	}
 
 	@:noCompletion
-	private static function deviceEventCallback(eventType:Int, deviceType:Int, handle:CFFIPointer, message:#if hl hl.Bytes #else String #end):Void
+	private static function deviceEventCallback(eventType:Int, deviceType:Int, handle:CFFIPointer, message:String):Void
 	{
 		#if !lime_doc_gen
 		if (eventType == ALC.EVENT_TYPE_DEFAULT_DEVICE_CHANGED_SOFT && deviceType == ALC.PLAYBACK_DEVICE_SOFT)
@@ -197,7 +208,6 @@ class AudioManager
 				{
 					alc.reopenDeviceSOFT(device, null, null);
 				}
-
 			});
 		}
 		#end
@@ -236,9 +246,11 @@ class AudioManager
 			final path:String = Path.withExtension(Path.join([directory, 'audio-config-${AUDIO_CONFIG_VERSION}']), #if windows 'ini' #else 'conf' #end);
 			final content:String = alConfig.join('\n');
 
-			if (!FileSystem.exists(directory)) FileSystem.createDirectory(directory);
+			if (!FileSystem.exists(directory))
+				FileSystem.createDirectory(directory);
 
-			if (!FileSystem.exists(path)) File.saveContent(path, content);
+			if (!FileSystem.exists(path))
+				File.saveContent(path, content);
 
 			Sys.putEnv("ALSOFT_CONF", path);
 		}

@@ -66,8 +66,10 @@ abstract Int32Array(JSInt32Array) from JSInt32Array to JSInt32Array
 	// non spec haxe conversions
 	inline public static function fromBytes(bytes:haxe.io.Bytes, ?byteOffset:Int = 0, ?len:Int):Int32Array
 	{
-		if (byteOffset == null) return new JSInt32Array(cast bytes.getData());
-		if (len == null) return new JSInt32Array(cast bytes.getData(), byteOffset);
+		if (byteOffset == null)
+			return new JSInt32Array(cast bytes.getData());
+		if (len == null)
+			return new JSInt32Array(cast bytes.getData(), byteOffset);
 		return new JSInt32Array(cast bytes.getData(), byteOffset, len);
 	}
 

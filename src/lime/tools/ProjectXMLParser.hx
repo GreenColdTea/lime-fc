@@ -1,18 +1,23 @@
 package lime.tools;
 
-import hxp.*;
-import lime.tools.CommandHelper;
-import lime.tools.ModuleHelper;
+import haxe.xml.Access;
+
+import hxp.ArrayTools;
+import hxp.Haxelib;
+import hxp.Log;
+import hxp.NDLL;
+import hxp.Path;
+
 import lime.tools.Asset;
 import lime.tools.AssetType;
+import lime.tools.CommandHelper;
 import lime.tools.Dependency;
 import lime.tools.HXProject;
-#if lime
+import lime.tools.ModuleHelper;
 import lime.utils.AssetManifest;
-#end
-import sys.io.File;
+
 import sys.FileSystem;
-import haxe.xml.Access;
+import sys.io.File;
 
 class ProjectXMLParser extends HXProject
 {
@@ -233,7 +238,8 @@ class ProjectXMLParser extends HXProject
 	public static function fromFile(path:String, defines:Map<String, Dynamic> = null, includePaths:Array<String> = null,
 			useExtensionPath:Bool = false):ProjectXMLParser
 	{
-		if (path == null) return null;
+		if (path == null)
+			return null;
 
 		if (FileSystem.exists(path))
 		{
@@ -555,7 +561,8 @@ class ProjectXMLParser extends HXProject
 				{
 					if (filter(file, ["*"], exclude.split("|")))
 					{
-						parseAssetsElementDirectory(path + "/" + file, targetPath + file, include, exclude, type, embed, library, glyphs, true, deliveryPackName);
+						parseAssetsElementDirectory(path + "/" + file, targetPath + file, include, exclude, type, embed, library, glyphs, true,
+							deliveryPackName);
 					}
 				}
 			}
@@ -594,7 +601,6 @@ class ProjectXMLParser extends HXProject
 
 		if (FileSystem.exists(jsonPath))
 		{
-			#if lime
 			try
 			{
 				var manifest = AssetManifest.fromFile(jsonPath);
@@ -628,7 +634,6 @@ class ProjectXMLParser extends HXProject
 				}
 			}
 			catch (e:Dynamic) {}
-			#end
 		}
 
 		if (!processedLibrary)
@@ -686,7 +691,7 @@ class ProjectXMLParser extends HXProject
 		{
 			switch (attribute)
 			{
-				case "title", "description", "package", "version", "company", "company-id", "build-number", "company-url", "copyright-years":
+				case "title", "description", "package", "version", "company", "build-number", "copyright-years":
 					var value = substitute(element.att.resolve(attribute));
 
 					defines.set("APP_" + StringTools.replace(attribute, "-", "_").toUpperCase(), value);
@@ -822,7 +827,8 @@ class ProjectXMLParser extends HXProject
 	{
 		for (element in xml.elements)
 		{
-			if (!isValidElement(element, section)) continue;
+			if (!isValidElement(element, section))
+				continue;
 
 			switch (element.name)
 			{
@@ -885,7 +891,8 @@ class ProjectXMLParser extends HXProject
 					environment.set(name, value);
 					setenv(name, value);
 
-					if (needRerun) return;
+					if (needRerun)
+						return;
 
 				case "error":
 					Log.error(substitute(element.att.value));
@@ -956,7 +963,8 @@ class ProjectXMLParser extends HXProject
 					else if (element.has.path)
 					{
 						var subPath = substitute(element.att.path);
-						if (subPath == "") subPath = element.att.path;
+						if (subPath == "")
+							subPath = element.att.path;
 
 						path = findIncludeFile(Path.combine(extensionPath, subPath));
 					}
@@ -1035,7 +1043,8 @@ class ProjectXMLParser extends HXProject
 					if (element.has.repository)
 					{
 						setenv("HAXELIB_PATH", Path.combine(Sys.getCwd(), element.att.repository));
-						if (needRerun) return;
+						if (needRerun)
+							return;
 						continue;
 					}
 
@@ -1145,8 +1154,10 @@ class ProjectXMLParser extends HXProject
 					if (element.has.type)
 					{
 						var typeString = substitute(element.att.type).toLowerCase();
-						if (typeString == "static") staticLink = true;
-						if (typeString == "dynamic") staticLink = false;
+						if (typeString == "static")
+							staticLink = true;
+						if (typeString == "dynamic")
+							staticLink = false;
 					}
 
 					if (element.has.register)
@@ -1268,7 +1279,8 @@ class ProjectXMLParser extends HXProject
 
 						for (attr in element.x.attributes())
 						{
-							if (attr == "assetsPath") continue;
+							if (attr == "assetsPath")
+								continue;
 
 							var valueType = "String";
 							var valueName = attr;
@@ -1312,7 +1324,8 @@ class ProjectXMLParser extends HXProject
 
 					for (childElement in element.elements)
 					{
-						if (!isValidElement(childElement, "")) continue;
+						if (!isValidElement(childElement, ""))
+							continue;
 
 						if (childElement.name == "imageset")
 						{
@@ -1438,7 +1451,6 @@ class ProjectXMLParser extends HXProject
 					sources.push(path);
 
 				case "extension":
-
 					// deprecated
 
 				case "haxedef":
@@ -1540,7 +1552,6 @@ class ProjectXMLParser extends HXProject
 					parseModuleElement(element, extensionPath);
 
 				case "ssl":
-
 					// if (wantSslCertificate())
 					// parseSsl (element);
 
@@ -1652,13 +1663,11 @@ class ProjectXMLParser extends HXProject
 					if (element.has.identity)
 					{
 						config.set("ios.identity", element.att.identity);
-						config.set("tvos.identity", element.att.identity);
 					}
 
 					if (element.has.resolve("team-id"))
 					{
 						config.set("ios.team-id", element.att.resolve("team-id"));
-						config.set("tvos.team-id", element.att.resolve("team-id"));
 					}
 
 				case "dependency":
@@ -1806,7 +1815,8 @@ class ProjectXMLParser extends HXProject
 				case "ios":
 					// deprecated
 
-					if (target != Platform.IOS) continue;
+					if (target != Platform.IOS)
+						continue;
 
 					if (element.has.deployment)
 					{
@@ -1814,26 +1824,6 @@ class ProjectXMLParser extends HXProject
 
 						// If it is specified, assume the dev knows what he is doing!
 						config.set("ios.deployment", deployment);
-					}
-
-					if (element.has.binaries)
-					{
-						var binaries = substitute(element.att.binaries);
-
-						switch (binaries)
-						{
-							case "fat":
-								ArrayTools.addUnique(architectures, Architecture.ARMV6);
-								ArrayTools.addUnique(architectures, Architecture.ARMV7);
-
-							case "armv6":
-								ArrayTools.addUnique(architectures, Architecture.ARMV6);
-								architectures.remove(Architecture.ARMV7);
-
-							case "armv7":
-								ArrayTools.addUnique(architectures, Architecture.ARMV7);
-								architectures.remove(Architecture.ARMV6);
-						}
 					}
 
 					if (element.has.devices)
@@ -1846,6 +1836,11 @@ class ProjectXMLParser extends HXProject
 						config.set("ios.compiler", substitute(element.att.compiler));
 					}
 
+					if (element.has.resolve("class"))
+					{
+						config.set("ios.class", substitute(element.att.resolve("class")));
+					}
+
 					if (element.has.resolve("prerendered-icon"))
 					{
 						config.set("ios.prerenderedIcon", substitute(element.att.resolve("prerendered-icon")));
@@ -1854,50 +1849,6 @@ class ProjectXMLParser extends HXProject
 					if (element.has.resolve("linker-flags"))
 					{
 						config.push("ios.linker-flags", substitute(element.att.resolve("linker-flags")));
-					}
-
-				case "tvos":
-					// deprecated
-
-					if (target != Platform.TVOS) continue;
-
-					if (element.has.deployment)
-					{
-						var deployment = Std.parseFloat(substitute(element.att.deployment));
-
-						// If it is specified, assume the dev knows what he is doing!
-						config.set("tvos.deployment", deployment);
-					}
-
-					if (element.has.binaries)
-					{
-						var binaries = substitute(element.att.binaries);
-
-						switch (binaries)
-						{
-							case "arm64":
-								ArrayTools.addUnique(architectures, Architecture.ARM64);
-						}
-					}
-
-					if (element.has.devices)
-					{
-						config.set("tvos.device", substitute(element.att.devices).toLowerCase());
-					}
-
-					if (element.has.compiler)
-					{
-						config.set("tvos.compiler", substitute(element.att.compiler));
-					}
-
-					if (element.has.resolve("prerendered-icon"))
-					{
-						config.set("tvos.prerenderedIcon", substitute(element.att.resolve("prerendered-icon")));
-					}
-
-					if (element.has.resolve("linker-flags"))
-					{
-						config.push("tvos.linker-flags", substitute(element.att.resolve("linker-flags")));
 					}
 
 				case "config":
@@ -1956,7 +1907,8 @@ class ProjectXMLParser extends HXProject
 					}
 					else
 					{
-						if (value.indexOf("0x") == -1) value = "0x" + value;
+						if (value.indexOf("0x") == -1)
+							value = "0x" + value;
 
 						if (value.length == 10 && StringTools.startsWith(value, "0x00"))
 						{

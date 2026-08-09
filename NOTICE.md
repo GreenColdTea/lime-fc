@@ -7,9 +7,6 @@ Copyright (c) 2013-2025 Joshua Granick and other Lime contributors
 This product bundles cairo 1.15.2, which is available under an
 "MPL 1.1" license. For details, see [project/lib/cairo/](project/lib).
 
-This product bundles libcurl 7.56.1, which is available under an
-"MIT/X derivate" license. For details, see [project/lib/curl/](project/lib).
-
 This product bundles efsw, which is available under an
 "MIT" license. For details, see [project/lib/efsw/](project/lib).
 
@@ -19,9 +16,6 @@ This product bundles freetype 2.9.1, which is available under an
 This product bundles harfbuzz 1.8.8, which is available under an
 "MIT" license. For details, see [project/lib/harfbuzz/](project/lib).
 
-This product bundles HashLink 1.9, which is available under an
-"MIT" license. For details, see [HaxeFoundation/hashlink/](https://github.com/HaxeFoundation/hashlink/blob/1.9/LICENSE).
-
 This product bundles libjpeg 6b, which is available under a
 "libjpeg" (BSD-style) license. For details, see [project/lib/jpeg/](project/lib).
 
@@ -30,9 +24,6 @@ This product bundles libogg 1.3.6, which is available under a
 
 This product bundles LZMA SDK 4.65, which is available under
 public domain. For details, see [project/lib/lzma/](project/lzma).
-
-This product bundles mbedTLS 2.6.0, which is available under an
-"Apache 2.0" license. For details, see [project/lib/mbedtls/](project/lib).
 
 This product bundles OpenAL-Soft 1.19.0, which is available under an
 "LGPLv2" license. For details, see [project/lib/openal/](project/lib).

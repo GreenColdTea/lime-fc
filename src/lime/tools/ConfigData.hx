@@ -1,7 +1,9 @@
 package lime.tools;
 
-import hxp.*;
 import haxe.xml.Access;
+
+import hxp.Log;
+import hxp.ObjectTools;
 
 abstract ConfigData(Dynamic) to Dynamic from Dynamic
 {
@@ -171,7 +173,7 @@ abstract ConfigData(Dynamic) to Dynamic from Dynamic
 		return defaultValue;
 	}
 
-	public function getKeyValueArray(id:String, defaultValues:Dynamic = null):Array<{ key:String, value:Dynamic }>
+	public function getKeyValueArray(id:String, defaultValues:Dynamic = null):Array<{key:String, value:Dynamic}>
 	{
 		var values = {};
 		if (defaultValues != null)
@@ -188,10 +190,10 @@ abstract ConfigData(Dynamic) to Dynamic from Dynamic
 			}
 		}
 
-		var pairs:Array<{ key:String, value:Dynamic }> = [];
+		var pairs:Array<{key:String, value:Dynamic}> = [];
 		for (key in Reflect.fields(values))
 		{
-			pairs.push({ key: key, value: Reflect.field(values, key) });
+			pairs.push({key: key, value: Reflect.field(values, key)});
 		}
 
 		return pairs;
@@ -262,9 +264,9 @@ abstract ConfigData(Dynamic) to Dynamic from Dynamic
 			}
 			else if (typeDest == "TClass" && Std.isOfType(valueSource, Array) && Std.isOfType(valueDest, Array))
 			{
-				for (item in (cast valueSource:Array<Dynamic>))
+				for (item in (cast valueSource : Array<Dynamic>))
 				{
-					(cast valueDest:Array<Dynamic>).push(item);
+					(cast valueDest : Array<Dynamic>).push(item);
 				}
 			}
 			else
@@ -317,7 +319,8 @@ abstract ConfigData(Dynamic) to Dynamic from Dynamic
 			if (attrName != "type" && attrName != "config:type")
 			{
 				var attrValue = elem.x.get(attrName);
-				if (substitute != null) attrValue = substitute(attrValue);
+				if (substitute != null)
+					attrValue = substitute(attrValue);
 				setNode(bucket, attrName, attrValue);
 			}
 		}
@@ -404,7 +407,8 @@ abstract ConfigData(Dynamic) to Dynamic from Dynamic
 		if (elem.innerHTML != "")
 		{
 			var value = elem.innerHTML;
-			if (substitute != null) value = substitute(value);
+			if (substitute != null)
+				value = substitute(value);
 			setNode(bucket, elem.name, value);
 		}
 	}
@@ -525,11 +529,13 @@ abstract ConfigData(Dynamic) to Dynamic from Dynamic
 
 	// Getters & Setters
 
-	private inline function get_xmlChildren():Array<String> {
+	private inline function get_xmlChildren():Array<String>
+	{
 		return Reflect.field(this, "config:xml_children");
 	}
 
-	private inline function set_xmlChildren(value:Array<String>):Array<String> {
+	private inline function set_xmlChildren(value:Array<String>):Array<String>
+	{
 		Reflect.setField(this, "config:xml_children", value);
 		return value;
 	}

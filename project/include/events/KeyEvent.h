@@ -1,39 +1,34 @@
 #pragma once
 
-
-#include <system/CFFI.h>
-#include <system/ValuePointer.h>
+#include <hx/CFFIPrime.h>
 #include <stdint.h>
+#include <system/ValuePointer.h>
 
+namespace lime
+{
 
-namespace lime {
-
-
-	enum KeyEventType {
+	enum KeyEventType
+	{
 
 		KEY_DOWN,
 		KEY_UP
 
 	};
 
-
-	struct KeyEvent {
-
-		hl_type* t;
+	struct KeyEvent
+	{
 		double keyCode;
 		int modifier;
 		KeyEventType type;
 		int windowID;
 		double timestamp;
 
-		static ValuePointer* callback;
-		static ValuePointer* eventObject;
+		static ValuePointer *callback;
+		static ValuePointer *eventObject;
 
-		KeyEvent ();
+		KeyEvent();
 
-		static void Dispatch (KeyEvent* event);
-
+		static void Dispatch(KeyEvent *event);
 	};
 
-
-}
+} // namespace lime

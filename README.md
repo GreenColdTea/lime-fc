@@ -19,7 +19,6 @@ Lime does not include a renderer, but exposes the current context:
 
  * Cairo
  * Canvas
- * DOM
  * GL
 
 The GL context is based upon the WebGL standard, implemented for both OpenGL and OpenGL ES as needed.
@@ -100,7 +99,6 @@ Lime currently supports the following targets:
     lime test android
     lime test ios
     lime test html5
-    lime test hl
 
 Desktop builds are currently designed to be built on the same host OS
 

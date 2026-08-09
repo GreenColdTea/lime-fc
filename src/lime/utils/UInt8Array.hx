@@ -65,8 +65,10 @@ abstract UInt8Array(JSUInt8Array) from JSUInt8Array to JSUInt8Array
 	// non spec haxe conversions
 	inline public static function fromBytes(bytes:haxe.io.Bytes, ?byteOffset:Int, ?len:Int):UInt8Array
 	{
-		if (byteOffset == null) return new JSUInt8Array(cast bytes.getData());
-		if (len == null) return new JSUInt8Array(cast bytes.getData(), byteOffset);
+		if (byteOffset == null)
+			return new JSUInt8Array(cast bytes.getData());
+		if (len == null)
+			return new JSUInt8Array(cast bytes.getData(), byteOffset);
 		return new JSUInt8Array(cast bytes.getData(), byteOffset, len);
 	}
 

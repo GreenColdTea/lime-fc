@@ -18,8 +18,7 @@ class ArrayBufferView
 	var bytesPerElement(default, null):Int = 0;
 
 	@:allow(lime.utils)
-	inline
-	function new(elements:Null<Int> = null, in_type:TypedArrayType)
+	inline function new(elements:Null<Int> = null, in_type:TypedArrayType)
 	{
 		type = in_type;
 		bytesPerElement = bytesForType(type);
@@ -28,7 +27,8 @@ class ArrayBufferView
 		// the init calls below
 		if (elements != null && elements != 0)
 		{
-			if (elements < 0) elements = 0;
+			if (elements < 0)
+				elements = 0;
 			// :note:spec: also has, platform specific max int?
 			// elements = min(elements,maxint);
 
@@ -40,9 +40,9 @@ class ArrayBufferView
 	} // new
 
 	// Constructor helpers
+
 	@:allow(lime.utils)
-	inline
-	function initTypedArray(view:ArrayBufferView)
+	inline function initTypedArray(view:ArrayBufferView)
 	{
 		var srcData = view.buffer;
 		var srcLength = view.length;
@@ -70,11 +70,12 @@ class ArrayBufferView
 	} // (typedArray)
 
 	@:allow(lime.utils)
-	inline
-	function initBuffer(in_buffer:ArrayBuffer, in_byteOffset:Int = 0, len:Null<Int> = null)
+	inline function initBuffer(in_buffer:ArrayBuffer, in_byteOffset:Int = 0, len:Null<Int> = null)
 	{
-		if (in_byteOffset < 0) throw TAError.RangeError;
-		if (in_byteOffset % bytesPerElement != 0) throw TAError.RangeError;
+		if (in_byteOffset < 0)
+			throw TAError.RangeError;
+		if (in_byteOffset % bytesPerElement != 0)
+			throw TAError.RangeError;
 
 		var bufferByteLength = in_buffer.length;
 		var elementSize = bytesPerElement;
@@ -84,15 +85,18 @@ class ArrayBufferView
 		{
 			newByteLength = bufferByteLength - in_byteOffset;
 
-			if (bufferByteLength % bytesPerElement != 0) throw TAError.RangeError;
-			if (newByteLength < 0) throw TAError.RangeError;
+			if (bufferByteLength % bytesPerElement != 0)
+				throw TAError.RangeError;
+			if (newByteLength < 0)
+				throw TAError.RangeError;
 		}
 		else
 		{
 			newByteLength = len * bytesPerElement;
 
 			var newRange = in_byteOffset + newByteLength;
-			if (newRange > bufferByteLength) throw TAError.RangeError;
+			if (newRange > bufferByteLength)
+				throw TAError.RangeError;
 		}
 
 		buffer = in_buffer;
@@ -104,8 +108,7 @@ class ArrayBufferView
 	} // (buffer [, byteOffset [, length]])
 
 	@:allow(lime.utils)
-	inline
-	function initArray<T>(array:Array<T>)
+	inline function initArray<T>(array:Array<T>)
 	{
 		byteOffset = 0;
 		length = array.length;
@@ -119,12 +122,13 @@ class ArrayBufferView
 
 	// Public shared APIs
 	// T is required because it can translate [0,0] as Int array
-	inline
-	public function set<T>(view:ArrayBufferView = null, array:Array<T> = null, offset:Int = 0):Void
+
+	inline public function set<T>(view:ArrayBufferView = null, array:Array<T> = null, offset:Int = 0):Void
 	{
 		if (view != null && array == null)
 		{
-			if (offset + view.length > this.length) {
+			if (offset + view.length > this.length)
+			{
 				throw TAError.RangeError;
 			}
 			if (bytesPerElement == view.bytesPerElement)
@@ -150,8 +154,8 @@ class ArrayBufferView
 	}
 
 	// Internal TypedArray api
-	inline
-	function cloneBuffer(src:ArrayBuffer, srcByteOffset:Int = 0)
+
+	inline function cloneBuffer(src:ArrayBuffer, srcByteOffset:Int = 0)
 	{
 		var srcLength = src.length;
 		var cloneLength = srcLength - srcByteOffset;
@@ -162,13 +166,15 @@ class ArrayBufferView
 
 	@:generic
 	@:allow(lime.utils)
-	inline
-	function subarray<T_subarray>(begin:Int, end:Null<Int> = null):T_subarray
+	inline function subarray<T_subarray>(begin:Int, end:Null<Int> = null):T_subarray
 	{
-		if (end == null) end = length;
+		if (end == null)
+			end = length;
 		var len = end - begin;
-		if (len < 0) len = 0;
-		if (len > this.length) len = this.length;
+		if (len < 0)
+			len = 0;
+		if (len > this.length)
+			len = this.length;
 		var byte_offset = toByteLength(begin) + byteOffset;
 
 		var view:ArrayBufferView = switch (type)
@@ -207,8 +213,7 @@ class ArrayBufferView
 		return cast view;
 	}
 
-	inline
-	function bytesForType(type:TypedArrayType):Int
+	inline function bytesForType(type:TypedArrayType):Int
 	{
 		return switch (type)
 		{
@@ -243,8 +248,7 @@ class ArrayBufferView
 		}
 	}
 
-	inline
-	function toString()
+	inline function toString()
 	{
 		var name = switch (type)
 		{
@@ -263,19 +267,19 @@ class ArrayBufferView
 		return name + ' [byteLength:${this.byteLength}, length:${this.length}]';
 	} // toString
 
-	inline
-	function toByteLength(elemCount:Int):Int
+	inline function toByteLength(elemCount:Int):Int
 	{
 		return elemCount * bytesPerElement;
 	}
 
 	// Non-spec
-	function copyFromArray(array:Array<#if hl Dynamic #else Float #end>, offset:Int = 0)
+	function copyFromArray(array:Array<Float>, offset:Int = 0)
 	{
 		// Ideally, native semantics could be used, like cpp.NativeArray.blit
 		var i = 0, len = array.length;
 
-		if (offset + len > this.length) {
+		if (offset + len > this.length)
+		{
 			throw TAError.RangeError;
 		}
 
@@ -404,7 +408,6 @@ class ArrayBufferView
 				throw "transferElement on a base type ArrayBuffer";
 		}
 	}
-
 } // ArrayBufferView
 
 #end // !js
@@ -413,8 +416,7 @@ class ArrayBufferView
 	RangeError;
 }
 
-@:noCompletion @:dox(hide) enum
-abstract TypedArrayType(Int) from Int to Int
+@:noCompletion @:dox(hide) enum abstract TypedArrayType(Int) from Int to Int
 {
 	var None = 0;
 	var Int8 = 1;
@@ -758,8 +760,7 @@ abstract TypedArrayType(Int) from Int to Int
 	}
 
 	// Internal
-
-	// clamp a Int to a 0-255 Uint8 (for Uint8Clamped array)
+	// clamp an Int to a 0-255 Uint8 (for Uint8Clamped array)
 	static inline extern function _clamp(_in:Float):Int
 	{
 		var _out = Std.int(_in);
