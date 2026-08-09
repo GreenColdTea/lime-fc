@@ -705,6 +705,43 @@ namespace lime
 
 	}
 
+	void lime_image_data_util_color_transform(value image, value rect, value colorMatrix)
+	{
+		Image _image = Image(image);
+		Rectangle _rect = Rectangle(rect);
+		ColorMatrix _colorMatrix = ColorMatrix(colorMatrix);
+		ImageDataUtil::ColorTransform(&_image, &_rect, &_colorMatrix);
+	}
+
+	void lime_image_data_util_copy_channel(value image, value sourceImage, value sourceRect, value destPoint, int srcChannel, int destChannel)
+	{
+		Image _image = Image(image);
+		Image _sourceImage = Image(sourceImage);
+		Rectangle _sourceRect = Rectangle(sourceRect);
+		Vector2 _destPoint = Vector2(destPoint);
+		ImageDataUtil::CopyChannel(&_image, &_sourceImage, &_sourceRect, &_destPoint, srcChannel, destChannel);
+	}
+
+	void lime_image_data_util_copy_pixels(value image, value sourceImage, value sourceRect, value destPoint, value alphaImage, value alphaPoint, bool mergeAlpha)
+	{
+		Image _image = Image(image);
+		Image _sourceImage = Image(sourceImage);
+		Rectangle _sourceRect = Rectangle(sourceRect);
+		Vector2 _destPoint = Vector2(destPoint);
+
+		if (val_is_null(alphaImage))
+		{
+			ImageDataUtil::CopyPixels(&_image, &_sourceImage, &_sourceRect, &_destPoint, 0, 0, mergeAlpha);
+		}
+		else
+		{
+			Image _alphaImage = Image(alphaImage);
+			Vector2 _alphaPoint = Vector2(alphaPoint);
+
+			ImageDataUtil::CopyPixels(&_image, &_sourceImage, &_sourceRect, &_destPoint, &_alphaImage, &_alphaPoint, mergeAlpha);
+		}
+	}
+
 	void lime_image_data_util_fill_rect(value image, value rect, int rg, int ba)
 	{
 		Image _image = Image(image);
@@ -950,6 +987,18 @@ namespace lime
 		#endif
 
 		return alloc_null();
+	}
+
+	void lime_render_event_manager_register(value callback, value eventObject)
+	{
+		RenderEvent::callback = new ValuePointer(callback);
+		RenderEvent::eventObject = new ValuePointer(eventObject);
+	}
+
+	void lime_sensor_event_manager_register(value callback, value eventObject)
+	{
+		SensorEvent::callback = new ValuePointer(callback);
+		SensorEvent::eventObject = new ValuePointer(eventObject);
 	}
 
 	value lime_system_get_directory(int type, HxString company, HxString title)
@@ -1664,6 +1713,9 @@ namespace lime
 	DEFINE_PRIME2(lime_gzip_compress);
 	DEFINE_PRIME2(lime_gzip_decompress);
 	DEFINE_PRIME2v(lime_haptic_vibrate);
+	DEFINE_PRIME3v(lime_image_data_util_color_transform);
+	DEFINE_PRIME6v(lime_image_data_util_copy_channel);
+	DEFINE_PRIME7v(lime_image_data_util_copy_pixels);
 	DEFINE_PRIME4v(lime_image_data_util_fill_rect);
 	DEFINE_PRIME5v(lime_image_data_util_flood_fill);
 	DEFINE_PRIME4v(lime_image_data_util_get_pixels);
@@ -1694,6 +1746,8 @@ namespace lime
 	DEFINE_PRIME2(lime_lzma_decompress);
 	DEFINE_PRIME2v(lime_mouse_event_manager_register);
 	DEFINE_PRIME2v(lime_orientation_event_manager_register);
+	DEFINE_PRIME2v(lime_render_event_manager_register);
+	DEFINE_PRIME2v(lime_sensor_event_manager_register);
 	DEFINE_PRIME0(lime_system_get_allow_screen_timeout);
 	DEFINE_PRIME0(lime_system_get_device_model);
 	DEFINE_PRIME0(lime_system_get_device_vendor);
