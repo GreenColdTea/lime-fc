@@ -49,6 +49,8 @@
 #include <ui/Window.h>
 #include <utils/compress/LZMA.h>
 #include <utils/compress/Zlib.h>
+#include <utils/File.h>
+#include <vorbis/vorbisfile.h>
 
 #ifdef HX_WINDOWS
 #include <codecvt>
@@ -91,6 +93,85 @@ namespace lime
 	{
 		AudioDecoder *audioDecoder = (AudioDecoder *)val_data(handle);
 		delete audioDecoder;
+	}
+
+	void gc_vorbis_file(value handle)
+	{
+		OggVorbis_File *vorbisFile = (OggVorbis_File *)val_data(handle);
+
+		if (vorbisFile)
+		{
+			ov_clear(vorbisFile);
+			delete vorbisFile;
+		}
+	}
+
+	static size_t VorbisFile_Read(void *dest, size_t eltSize, size_t nelts, File *file)
+	{
+		return file->Read(dest, eltSize * nelts) / eltSize;
+	}
+
+	static int VorbisFile_Seek(File *file, ogg_int64_t offset, int whence)
+	{
+		return file->Seek(offset, whence) < 0 ? -1 : 0;
+	}
+
+	static int VorbisFile_Close(File *file)
+	{
+		int result = (int)file->Close();
+
+		delete file;
+
+		return result;
+	}
+
+	static long VorbisFile_Tell(File *file)
+	{
+		return static_cast<long>(file->Tell());
+	}
+
+	static ov_callbacks VORBISFILE_CALLBACKS = {
+
+		(size_t (*)(void *, size_t, size_t, void *))VorbisFile_Read, (int (*)(void *, ogg_int64_t, int))VorbisFile_Seek, (int (*)(void *))VorbisFile_Close, (long (*)(void *))VorbisFile_Tell
+
+	};
+
+	static bool vorbisCacheInitialized = false;
+	static value vorbisInfoValue;
+	static value vorbisInt64Value;
+	static value vorbisReadValue;
+
+	static void InitVorbisCache()
+	{
+		if (!vorbisCacheInitialized)
+		{
+			vorbisInfoValue = alloc_empty_object();
+			vorbisInt64Value = alloc_empty_object();
+			vorbisReadValue = alloc_empty_object();
+
+			value *infoRoot = alloc_root();
+			*infoRoot = vorbisInfoValue;
+
+			value *int64Root = alloc_root();
+			*int64Root = vorbisInt64Value;
+
+			value *readRoot = alloc_root();
+			*readRoot = vorbisReadValue;
+
+			vorbisCacheInitialized = true;
+		}
+	}
+
+	static value allocVorbisInt64(ogg_int64_t val)
+	{
+		InitVorbisCache();
+
+		int32_t low = (int32_t)val;
+		int32_t high = (int32_t)(val >> 32);
+
+		alloc_field(vorbisInt64Value, val_id("low"), alloc_int(low));
+		alloc_field(vorbisInt64Value, val_id("high"), alloc_int(high));
+		return vorbisInt64Value;
 	}
 
 	value allocInt64(int64_t val)
@@ -1619,6 +1700,297 @@ namespace lime
 		return allocInt64(targetAudioDecoder->Total());
 	}
 
+	value lime_vorbis_file_from_file(HxString path)
+	{
+		const char *pathUtf8 = hxs_utf8(path, nullptr);
+		File *file = new File(pathUtf8, "rb");
+
+		if (!file->handle)
+		{
+			delete file;
+			return alloc_null();
+		}
+
+		OggVorbis_File *vorbisFile = new OggVorbis_File();
+
+		if (ov_open_callbacks(file, vorbisFile, NULL, 0, VORBISFILE_CALLBACKS) != 0)
+		{
+			delete vorbisFile;
+			delete file;
+			return alloc_null();
+		}
+
+		return CFFIPointer((void *)vorbisFile, gc_vorbis_file);
+	}
+
+	value lime_vorbis_file_from_bytes(value data)
+	{
+		Bytes bytes(data);
+		File *file = new File(&bytes);
+
+		if (!file->handle)
+		{
+			delete file;
+			return alloc_null();
+		}
+
+		OggVorbis_File *vorbisFile = new OggVorbis_File();
+
+		if (ov_open_callbacks(file, vorbisFile, NULL, 0, VORBISFILE_CALLBACKS) != 0)
+		{
+			delete vorbisFile;
+			delete file;
+			return alloc_null();
+		}
+
+		return CFFIPointer((void *)vorbisFile, gc_vorbis_file);
+	}
+
+	value lime_vorbis_file_info(value vorbisFile, int bitstream)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		vorbis_info *info = ov_info(file, bitstream);
+
+		if (!info)
+		{
+			return alloc_null();
+		}
+
+		InitVorbisCache();
+
+		alloc_field(vorbisInfoValue, val_id("version"), alloc_int(info->version));
+		alloc_field(vorbisInfoValue, val_id("channels"), alloc_int(info->channels));
+		alloc_field(vorbisInfoValue, val_id("rate"), alloc_int((int)info->rate));
+		alloc_field(vorbisInfoValue, val_id("bitrateUpper"), alloc_int((int)info->bitrate_upper));
+		alloc_field(vorbisInfoValue, val_id("bitrateNominal"), alloc_int((int)info->bitrate_nominal));
+		alloc_field(vorbisInfoValue, val_id("bitrateLower"), alloc_int((int)info->bitrate_lower));
+		return vorbisInfoValue;
+	}
+
+	value lime_vorbis_file_comment(value vorbisFile, int bitstream)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		vorbis_comment *comment = ov_comment(file, bitstream);
+
+		if (!comment)
+		{
+			return alloc_null();
+		}
+
+		value userComments = alloc_array(comment->comments);
+
+		for (int i = 0; i < comment->comments; i++)
+		{
+			val_array_set_i(userComments, i, alloc_string(comment->user_comments[i]));
+		}
+
+		value result = alloc_empty_object();
+		alloc_field(result, val_id("vendor"), comment->vendor ? alloc_string(comment->vendor) : alloc_null());
+		alloc_field(result, val_id("userComments"), userComments);
+		return result;
+	}
+
+	int lime_vorbis_file_bitrate(value vorbisFile, int bitstream)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		return (int)ov_bitrate(file, bitstream);
+	}
+
+	int lime_vorbis_file_bitrate_instant(value vorbisFile)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		return (int)ov_bitrate_instant(file);
+	}
+
+	void lime_vorbis_file_clear(value vorbisFile)
+	{
+		gc_vorbis_file(vorbisFile);
+		val_gc(vorbisFile, 0);
+	}
+
+	int lime_vorbis_file_crosslap(value vorbisFile, value otherVorbisFile)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		OggVorbis_File *otherFile = (OggVorbis_File *)val_data(otherVorbisFile);
+		return ov_crosslap(file, otherFile);
+	}
+
+	int lime_vorbis_file_pcm_seek(value vorbisFile, int posLow, int posHigh)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		ogg_int64_t pos = ((ogg_int64_t)posHigh << 32) | ((ogg_int64_t)posLow & 0xFFFFFFFF);
+		return ov_pcm_seek(file, pos);
+	}
+
+	int lime_vorbis_file_pcm_seek_lap(value vorbisFile, int posLow, int posHigh)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		ogg_int64_t pos = ((ogg_int64_t)posHigh << 32) | ((ogg_int64_t)posLow & 0xFFFFFFFF);
+		return ov_pcm_seek_lap(file, pos);
+	}
+
+	int lime_vorbis_file_pcm_seek_page(value vorbisFile, int posLow, int posHigh)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		ogg_int64_t pos = ((ogg_int64_t)posHigh << 32) | ((ogg_int64_t)posLow & 0xFFFFFFFF);
+		return ov_pcm_seek_page(file, pos);
+	}
+
+	int lime_vorbis_file_pcm_seek_page_lap(value vorbisFile, int posLow, int posHigh)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		ogg_int64_t pos = ((ogg_int64_t)posHigh << 32) | ((ogg_int64_t)posLow & 0xFFFFFFFF);
+		return ov_pcm_seek_page_lap(file, pos);
+	}
+
+	value lime_vorbis_file_pcm_tell(value vorbisFile)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		return allocVorbisInt64(ov_pcm_tell(file));
+	}
+
+	value lime_vorbis_file_pcm_total(value vorbisFile, int bitstream)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		return allocVorbisInt64(ov_pcm_total(file, bitstream));
+	}
+
+	int lime_vorbis_file_raw_seek(value vorbisFile, int posLow, int posHigh)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		ogg_int64_t pos = ((ogg_int64_t)posHigh << 32) | ((ogg_int64_t)posLow & 0xFFFFFFFF);
+		return ov_raw_seek(file, pos);
+	}
+
+	int lime_vorbis_file_raw_seek_lap(value vorbisFile, int posLow, int posHigh)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		ogg_int64_t pos = ((ogg_int64_t)posHigh << 32) | ((ogg_int64_t)posLow & 0xFFFFFFFF);
+		return ov_raw_seek_lap(file, pos);
+	}
+
+	value lime_vorbis_file_raw_tell(value vorbisFile)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		return allocVorbisInt64(ov_raw_tell(file));
+	}
+
+	value lime_vorbis_file_raw_total(value vorbisFile, int bitstream)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		return allocVorbisInt64(ov_raw_total(file, bitstream));
+	}
+
+	value lime_vorbis_file_read(value vorbisFile, value buffer, int position, int length, bool bigendianp, int word, bool sgned)
+	{
+		if (val_is_null(buffer))
+		{
+			return alloc_null();
+		}
+
+		Bytes bytes(buffer);
+		int bitstream = 0;
+
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		long result = ov_read(file, (char *)bytes.b + position, length, bigendianp, word, sgned, &bitstream);
+
+		InitVorbisCache();
+
+		alloc_field(vorbisReadValue, val_id("bitstream"), alloc_int(bitstream));
+		alloc_field(vorbisReadValue, val_id("returnValue"), alloc_int((int)result));
+		return vorbisReadValue;
+	}
+
+	value lime_vorbis_file_read_float(value vorbisFile, value pcmChannels, int samples)
+	{
+		if (val_is_null(pcmChannels))
+		{
+			return alloc_null();
+		}
+
+		Bytes bytes(pcmChannels);
+		int bitstream = 0;
+
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		float **channels = nullptr;
+		long result = ov_read_float(file, &channels, samples, &bitstream);
+
+		if (result > 0 && channels)
+		{
+			vorbis_info *info = ov_info(file, -1);
+			int numChannels = info ? info->channels : 1;
+			float *out = (float *)bytes.b;
+
+			for (long i = 0; i < result; i++)
+			{
+				for (int c = 0; c < numChannels; c++)
+				{
+					out[i * numChannels + c] = channels[c][i];
+				}
+			}
+		}
+
+		InitVorbisCache();
+
+		alloc_field(vorbisReadValue, val_id("bitstream"), alloc_int(bitstream));
+		alloc_field(vorbisReadValue, val_id("returnValue"), alloc_int((int)result));
+		return vorbisReadValue;
+	}
+
+	bool lime_vorbis_file_seekable(value vorbisFile)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		return ov_seekable(file) != 0;
+	}
+
+	int lime_vorbis_file_serial_number(value vorbisFile, int bitstream)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		return ov_serialnumber(file, bitstream);
+	}
+
+	int lime_vorbis_file_streams(value vorbisFile)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		return ov_streams(file);
+	}
+
+	int lime_vorbis_file_time_seek(value vorbisFile, double s)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		return ov_time_seek(file, s);
+	}
+
+	int lime_vorbis_file_time_seek_lap(value vorbisFile, double s)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		return ov_time_seek_lap(file, s);
+	}
+
+	int lime_vorbis_file_time_seek_page(value vorbisFile, double s)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		return ov_time_seek_page(file, s);
+	}
+
+	int lime_vorbis_file_time_seek_page_lap(value vorbisFile, double s)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		return ov_time_seek_page_lap(file, s);
+	}
+
+	double lime_vorbis_file_time_tell(value vorbisFile)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		return ov_time_tell(file);
+	}
+
+	double lime_vorbis_file_time_total(value vorbisFile, int bitstream)
+	{
+		OggVorbis_File *file = (OggVorbis_File *)val_data(vorbisFile);
+		return ov_time_total(file, bitstream);
+	}
+
 	value lime_zlib_compress(value buffer, value bytes)
 	{
 		Bytes data(buffer);
@@ -1822,6 +2194,35 @@ namespace lime
 	DEFINE_PRIME1(lime_audio_decoder_can_seek);
 	DEFINE_PRIME1(lime_audio_decoder_tell);
 	DEFINE_PRIME1(lime_audio_decoder_total);
+	DEFINE_PRIME1(lime_vorbis_file_from_file);
+	DEFINE_PRIME1(lime_vorbis_file_from_bytes);
+	DEFINE_PRIME2(lime_vorbis_file_info);
+	DEFINE_PRIME2(lime_vorbis_file_comment);
+	DEFINE_PRIME2(lime_vorbis_file_bitrate);
+	DEFINE_PRIME1(lime_vorbis_file_bitrate_instant);
+	DEFINE_PRIME1v(lime_vorbis_file_clear);
+	DEFINE_PRIME2(lime_vorbis_file_crosslap);
+	DEFINE_PRIME3(lime_vorbis_file_pcm_seek);
+	DEFINE_PRIME3(lime_vorbis_file_pcm_seek_lap);
+	DEFINE_PRIME3(lime_vorbis_file_pcm_seek_page);
+	DEFINE_PRIME3(lime_vorbis_file_pcm_seek_page_lap);
+	DEFINE_PRIME1(lime_vorbis_file_pcm_tell);
+	DEFINE_PRIME2(lime_vorbis_file_pcm_total);
+	DEFINE_PRIME3(lime_vorbis_file_raw_seek);
+	DEFINE_PRIME3(lime_vorbis_file_raw_seek_lap);
+	DEFINE_PRIME1(lime_vorbis_file_raw_tell);
+	DEFINE_PRIME2(lime_vorbis_file_raw_total);
+	DEFINE_PRIME7(lime_vorbis_file_read);
+	DEFINE_PRIME3(lime_vorbis_file_read_float);
+	DEFINE_PRIME1(lime_vorbis_file_seekable);
+	DEFINE_PRIME2(lime_vorbis_file_serial_number);
+	DEFINE_PRIME1(lime_vorbis_file_streams);
+	DEFINE_PRIME2(lime_vorbis_file_time_seek);
+	DEFINE_PRIME2(lime_vorbis_file_time_seek_lap);
+	DEFINE_PRIME2(lime_vorbis_file_time_seek_page);
+	DEFINE_PRIME2(lime_vorbis_file_time_seek_page_lap);
+	DEFINE_PRIME1(lime_vorbis_file_time_tell);
+	DEFINE_PRIME2(lime_vorbis_file_time_total);
 	DEFINE_PRIME2(lime_zlib_compress);
 	DEFINE_PRIME2(lime_zlib_decompress);
 	DEFINE_PRIME0(lime_touch_get_devices);

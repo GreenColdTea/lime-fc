@@ -676,6 +676,9 @@
  */
 #if defined(SDL_PLATFORM_WIN32)
 # define SDL_PROCESS_WINDOWS 1   /**< Windows process management */
+#elif defined(SDL_PLATFORM_ANDROID)
+/* Android's Bionic libc doesn't implement posix_spawn, so the POSIX backend can't build here. */
+# define SDL_PROCESS_DUMMY 1     /**< No process management */
 #else
 # define SDL_PROCESS_POSIX 1     /**< POSIX process management */
 #endif
