@@ -16,6 +16,9 @@ import lime.utils.UInt8Array;
 #if lime_howlerjs
 import lime.media.howlerjs.Howl;
 #end
+#if lime_vorbis
+import lime.media.vorbis.VorbisFile;
+#end
 
 #if (js && html5)
 import js.html.Audio;
@@ -50,6 +53,13 @@ class AudioBuffer
 	public var data:UInt8Array;
 
 	/**
+		The total decoded length of the audio, in bytes. Only set for streamed buffers (see
+		`fromVorbisFile`), where `data` is never populated - callers that read `data.length` to
+		determine duration should fall back to this when `data` is null.
+	**/
+	public var dataLength(default, null):Int = 0;
+
+	/**
 		The format the raw audio data is stored in.
 	**/
 	public var dataFormat:AudioFormat;
@@ -68,6 +78,7 @@ class AudioBuffer
 	@:noCompletion private var __srcCustom:Dynamic;
 	@:noCompletion private var __srcHowl:#if lime_howlerjs Howl #else Dynamic #end;
 	@:noCompletion private var __srcHowlerDefaultSprite:String;
+	@:noCompletion private var __srcVorbisFile:#if lime_vorbis VorbisFile #else Dynamic #end;
 
 	#if commonjs
 	private static function __init__()
@@ -91,6 +102,13 @@ class AudioBuffer
 	{
 		#if (js && html5 && lime_howlerjs)
 		__srcHowl.unload();
+		#end
+		#if lime_vorbis
+		if (__srcVorbisFile != null)
+		{
+			__srcVorbisFile.clear();
+			__srcVorbisFile = null;
+		}
 		#end
 	}
 
@@ -198,6 +216,37 @@ class AudioBuffer
 
 		return null;
 	}
+
+	/**
+		Creates an `AudioBuffer` from a `VorbisFile`, for streamed playback.
+
+		Unlike `fromFile`/`fromBytes`, this does not decode the audio data up front —
+		`data` is left unset, and `NativeAudioSource` reads and decodes PCM data from
+		the `VorbisFile` progressively during playback instead. This gives much faster
+		load times for large OGG files at the cost of needing the file to remain openable
+		for the lifetime of playback.
+
+		@param vorbisFile The `VorbisFile` to stream audio data from.
+		@return An `AudioBuffer` instance backed by the `VorbisFile`, or `null` on failure.
+	**/
+	#if lime_vorbis
+	public static function fromVorbisFile(vorbisFile:VorbisFile):AudioBuffer
+	{
+		if (vorbisFile == null) return null;
+
+		var info = vorbisFile.info();
+
+		if (info == null) return null;
+
+		var audioBuffer = new AudioBuffer();
+		audioBuffer.channels = info.channels;
+		audioBuffer.sampleRate = info.rate;
+		audioBuffer.dataFormat = S16;
+		audioBuffer.__srcVorbisFile = vorbisFile;
+		audioBuffer.dataLength = Std.int(Int64.toInt(vorbisFile.pcmTotal()) * info.channels * (audioBuffer.bitsPerSample / 8));
+		return audioBuffer;
+	}
+	#end
 
 	/**
 		Creates an `AudioBuffer` from an array of file paths.

@@ -9,6 +9,8 @@
 		</section>
 
 		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libtiff/libtiff" />
+		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libjxl/build-android-arm64/lib/include" if="android HXCPP_ARM64" />
+		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libjxl/build-android-armv7/lib/include" if="android HXCPP_ARMV7" />
 		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libjxl/lib/include/jxl" />
 
 		<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl_image/include" />
