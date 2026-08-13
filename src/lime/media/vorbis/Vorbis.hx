@@ -21,6 +21,5 @@ class Vorbis
 	public static inline var EBADPACKET = -136;
 	public static inline var EBADLINK = -137;
 	public static inline var ENOSEEK = -138;
-	// TODO: Vorbis primitives
 }
 #end

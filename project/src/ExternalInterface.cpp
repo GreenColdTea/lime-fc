@@ -136,10 +136,6 @@ namespace lime
 
 	};
 
-	// Reused, GC-rooted return-value objects for the vorbis streaming read/seek path, which
-	// gets called dozens of times per second during playback. Allocating a fresh object on every
-	// call there creates enough GC churn to cause a noticeable memory ramp/hitch, so these are
-	// allocated once and reused, matching the approach upstream lime takes for the same functions.
 	static bool vorbisCacheInitialized = false;
 	static value vorbisInfoValue;
 	static value vorbisInt64Value;

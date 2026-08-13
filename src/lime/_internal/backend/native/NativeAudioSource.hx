@@ -174,8 +174,6 @@ class NativeAudioSource
 		{
 			var targetSeconds = parent.offset / 1000.0;
 
-			// Skip the seek only if the VorbisFile (which may be reused from a prior
-			// NativeAudioSource on this same buffer) is already at the target position.
 			if (!everQueued && Math.abs(parent.buffer.__srcVorbisFile.timeTell() - targetSeconds) < 0.05)
 			{
 				everQueued = true;
@@ -318,10 +316,6 @@ class NativeAudioSource
 
 			AL.sourceQueueBuffers(handle, numBuffers, buffers);
 
-			// OpenAL can unexpectedly stop playback if the buffers run out
-			// of data, which typically happens if an operation (such as
-			// resizing a window) freezes the main thread.
-			// If AL is supposed to be playing but isn't, restart it here.
 			if (playing && handle != null && AL.getSourcei(handle, AL.SOURCE_STATE) == AL.STOPPED)
 			{
 				AL.sourcePlay(handle);

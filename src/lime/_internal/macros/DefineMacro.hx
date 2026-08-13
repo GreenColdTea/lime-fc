@@ -50,9 +50,6 @@ class DefineMacro
 					Compiler.define("lime-openal");
 					Compiler.define("lime-cairo");
 					Compiler.define("lime-harfbuzz");
-					// lime-vorbis is set via a raw -D flag in extraParams.hxml, not here - by the time
-					// this macro runs it's too late for some #if lime_vorbis checks (e.g. in openfl.utils.Assets).
-
 					Compiler.define("lime-cffi");
 				}
 				else
