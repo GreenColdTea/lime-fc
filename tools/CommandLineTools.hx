@@ -1428,13 +1428,10 @@ class CommandLineTools
 							}
 
 						case "JAVA_HOME":
-							if (FileSystem.exists(value))
-							{
-								Sys.putEnv(define, value);
-							}
+							// putEnv skipped: crashes the Neko VM on this system (std@put_env)
 
 						default:
-							Sys.putEnv(define, value);
+							// putEnv skipped: crashes the Neko VM on this system (std@put_env)
 					}
 				}
 			}

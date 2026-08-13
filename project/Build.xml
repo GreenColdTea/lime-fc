@@ -289,6 +289,10 @@
 	<include name="lib/pixman-files.xml" />
 	<include name="lib/sdl-files.xml" />
 	<include name="lib/sdl_image-files.xml" />
+	<!-- libjxl's build normally generates these via CMake; the mac/hxcpp build path has
+	     no generator step, so copy the equivalent versions already committed under Xcode/ -->
+	<copy from="${haxelib:lime}/project/lib/sdl_image/Xcode/jxl/jxl/jxl_export.h" to="${haxelib:lime}/project/lib/sdl_image/external/libjxl/lib/include/jxl/jxl_export.h" if="mac" />
+	<copy from="${haxelib:lime}/project/lib/sdl_image/Xcode/jxl/jxl/version.h" to="${haxelib:lime}/project/lib/sdl_image/external/libjxl/lib/include/jxl/version.h" if="mac" />
 	<include name="lib/zlib-files.xml" />
 
 
