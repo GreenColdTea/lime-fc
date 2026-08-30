@@ -2,6 +2,7 @@
 #include <ft2build.h>
 #include <graphics/ImageBuffer.h>
 #include <list>
+#include <SDL3/SDL.h>
 #include <system/System.h>
 #include <text/Font.h>
 #include <utils/File.h>
@@ -18,219 +19,6 @@
 #ifdef GetGlyphIndices
 #undef GetGlyphIndices
 #endif
-
-// from http://stackoverflow.com/questions/2948308/how-do-i-read-utf-8-characters-via-a-pointer
-#define IS_IN_RANGE(c, f, l) (((c) >= (f)) && ((c) <= (l)))
-
-unsigned long readNextChar(const char *&p)
-{
-	// TODO: since UTF-8 is a variable-length
-	// encoding, you should pass in the input
-	// buffer's actual byte length so that you
-	// can determine if a malformed UTF-8
-	// sequence would exceed the end of the buffer...
-
-	const unsigned char *ptr = (const unsigned char *)p;
-	unsigned char c1, c2;
-	unsigned long uc = 0;
-	int seqlen;
-
-	c1 = ptr[0];
-
-	if ((c1 & 0x80) == 0)
-	{
-		uc = (unsigned long)(c1 & 0x7F);
-		seqlen = 1;
-	}
-	else if ((c1 & 0xE0) == 0xC0)
-	{
-		uc = (unsigned long)(c1 & 0x1F);
-		seqlen = 2;
-	}
-	else if ((c1 & 0xF0) == 0xE0)
-	{
-		uc = (unsigned long)(c1 & 0x0F);
-		seqlen = 3;
-	}
-	else if ((c1 & 0xF8) == 0xF0)
-	{
-		uc = (unsigned long)(c1 & 0x07);
-		seqlen = 4;
-	}
-	else
-	{
-		// malformed data, do something !!!
-		return (unsigned long)-1;
-	}
-
-	for (int i = 1; i < seqlen; ++i)
-	{
-		c1 = ptr[i];
-
-		if ((c1 & 0xC0) != 0x80)
-		{
-			// malformed data, do something !!!
-			return (unsigned long)-1;
-		}
-	}
-
-	switch (seqlen)
-	{
-		case 2:
-			c1 = ptr[0];
-
-			if (!IS_IN_RANGE(c1, 0xC2, 0xDF))
-			{
-				// malformed data, do something !!!
-				return (unsigned long)-1;
-			}
-
-			break;
-		case 3:
-			c1 = ptr[0];
-			c2 = ptr[1];
-
-			if (((c1 == 0xE0) && !IS_IN_RANGE(c2, 0xA0, 0xBF)) || ((c1 == 0xED) && !IS_IN_RANGE(c2, 0x80, 0x9F)) || (!IS_IN_RANGE(c1, 0xE1, 0xEC) && !IS_IN_RANGE(c1, 0xEE, 0xEF)))
-			{
-				// malformed data, do something !!!
-				return (unsigned long)-1;
-			}
-
-			break;
-		case 4:
-			c1 = ptr[0];
-			c2 = ptr[1];
-
-			if (((c1 == 0xF0) && !IS_IN_RANGE(c2, 0x90, 0xBF)) || ((c1 == 0xF4) && !IS_IN_RANGE(c2, 0x80, 0x8F)) || !IS_IN_RANGE(c1, 0xF1, 0xF3))
-			{
-				// malformed data, do something !!!
-				return (unsigned long)-1;
-			}
-
-			break;
-	}
-
-	for (int i = 1; i < seqlen; ++i)
-	{
-		uc = ((uc << 6) | (unsigned long)(ptr[i] & 0x3F));
-	}
-
-	p += seqlen;
-	return uc;
-}
-
-namespace
-{
-
-	enum
-	{
-
-		PT_MOVE = 1,
-		PT_LINE = 2,
-		PT_CURVE = 3,
-		PT_CUBIC = 4
-
-	};
-
-	struct point
-	{
-		int x, y;
-		unsigned char type;
-
-		point() {}
-		point(int x, int y, unsigned char type) : x(x), y(y), type(type) {}
-	};
-
-	struct glyph
-	{
-		FT_ULong char_code;
-		FT_Vector advance;
-		FT_Glyph_Metrics metrics;
-		int index, x, y;
-		std::vector<int> pts;
-
-		glyph() : x(0), y(0) {}
-	};
-
-	struct kerning
-	{
-		int l_glyph, r_glyph;
-		int x, y;
-
-		kerning() {}
-		kerning(int l, int r, int x, int y) : l_glyph(l), r_glyph(r), x(x), y(y) {}
-	};
-
-	struct glyph_sort_predicate
-	{
-		bool operator()(const glyph *g1, const glyph *g2) const { return g1->char_code < g2->char_code; }
-	};
-
-	typedef const FT_Vector *FVecPtr;
-
-	int outline_move_to(FVecPtr to, void *user)
-	{
-		glyph *g = static_cast<glyph *>(user);
-
-		g->pts.push_back(PT_MOVE);
-		g->pts.push_back(to->x);
-		g->pts.push_back(to->y);
-
-		g->x = to->x;
-		g->y = to->y;
-
-		return 0;
-	}
-
-	int outline_line_to(FVecPtr to, void *user)
-	{
-		glyph *g = static_cast<glyph *>(user);
-
-		g->pts.push_back(PT_LINE);
-		g->pts.push_back(to->x - g->x);
-		g->pts.push_back(to->y - g->y);
-
-		g->x = to->x;
-		g->y = to->y;
-
-		return 0;
-	}
-
-	int outline_conic_to(FVecPtr ctl, FVecPtr to, void *user)
-	{
-		glyph *g = static_cast<glyph *>(user);
-
-		g->pts.push_back(PT_CURVE);
-		g->pts.push_back(ctl->x - g->x);
-		g->pts.push_back(ctl->y - g->y);
-		g->pts.push_back(to->x - ctl->x);
-		g->pts.push_back(to->y - ctl->y);
-
-		g->x = to->x;
-		g->y = to->y;
-
-		return 0;
-	}
-
-	int outline_cubic_to(FVecPtr control1, FVecPtr control2, FVecPtr to, void *user)
-	{
-		glyph *g = static_cast<glyph *>(user);
-
-		g->pts.push_back(PT_CUBIC);
-		g->pts.push_back(control1->x - g->x);
-		g->pts.push_back(control1->y - g->y);
-		g->pts.push_back(control2->x - control1->x);
-		g->pts.push_back(control2->y - control1->y);
-		g->pts.push_back(to->x - control2->x);
-		g->pts.push_back(to->y - control2->y);
-
-		g->x = to->x;
-		g->y = to->y;
-
-		return 0;
-	}
-
-} // namespace
 
 namespace lime
 {
@@ -252,48 +40,64 @@ namespace lime
 		}
 	}
 
+	static unsigned long FT_Stream_Read(FT_Stream stream, unsigned long offset, unsigned char *buffer, unsigned long count)
+	{
+		File *file = static_cast<File *>(stream->descriptor.pointer);
+		file->Seek(offset, SEEK_SET);
+		return file->Read(buffer, count);
+	}
+
+	static void FT_Stream_Close(FT_Stream stream)
+	{
+		File *file = static_cast<File *>(stream->descriptor.pointer);
+
+		if (file)
+		{
+			delete file;
+		}
+
+		free(stream);
+	}
+
 	Font::Font(Resource *resource, int faceIndex)
 	{
 		this->face = 0;
-		this->faceMemory = 0;
 
 		if (resource)
 		{
-			File file = resource->path ? File(resource->path, "rb") : File(resource->data);
+			File *file = resource->path ? new File(resource->path, "rb") : new File(resource->data, true);
 
-			if (!file.handle)
+			if (!file->handle)
 			{
+				delete file;
 				return;
 			}
 
-			file.Seek(0, SEEK_END);
+			file->Seek(0, SEEK_END);
 
-			size_t size = (size_t)file.Tell();
+			size_t size = (size_t)file->Tell();
 
-			file.Seek(0, SEEK_SET);
+			file->Seek(0, SEEK_SET);
 
-			unsigned char *faceMemory = (unsigned char *)malloc(size);
-			file.Read(faceMemory, size);
-			file.Close();
+			FT_Stream stream = (FT_Stream)malloc(sizeof(*stream));
+			memset(stream, 0, sizeof(*stream));
+			stream->read = FT_Stream_Read;
+			stream->close = FT_Stream_Close;
+			stream->descriptor.pointer = file;
+			stream->pos = 0;
+			stream->size = (unsigned long)size;
+
+			FT_Open_Args args;
+			memset(&args, 0, sizeof(args));
+			args.flags = FT_OPEN_STREAM;
+			args.stream = stream;
 
 			FT_Face face;
 
-			int error = FT_New_Memory_Face((FT_Library)library, faceMemory, size, faceIndex, &face);
-
-			if (!error)
+			if (!FT_Open_Face((FT_Library)library, &args, faceIndex, &face))
 			{
 				this->face = face;
-				this->faceMemory = faceMemory;
 
-				/* Set charmap
-				 *
-				 * See http://www.microsoft.com/typography/otspec/name.htm for a list of
-				 * some possible platform-encoding pairs.  We're interested in 0-3 aka 3-1
-				 * - UCS-2.  Otherwise, fail. If a font has some unicode map, but lacks
-				 * UCS-2 - it is a broken or irrelevant font. What exactly Freetype will
-				 * select on face load (it promises most wide unicode, and if that will be
-				 * slower that UCS-2 - left as an excercise to check.
-				 */
 				for (int i = 0; i < ((FT_Face)face)->num_charmaps; i++)
 				{
 					FT_UShort pid = ((FT_Face)face)->charmaps[i]->platform_id;
@@ -307,7 +111,7 @@ namespace lime
 			}
 			else
 			{
-				free(faceMemory);
+				FT_Stream_Close(stream);
 			}
 		}
 	}
@@ -319,177 +123,6 @@ namespace lime
 			FT_Done_Face((FT_Face)face);
 			face = 0;
 		}
-
-		if (faceMemory)
-		{
-			free(faceMemory);
-			faceMemory = 0;
-		}
-	}
-
-	void *Font::Decompose(int size, bool forceAutoHint)
-	{
-		int result, i, j;
-
-		FT_Set_Char_Size((FT_Face)face, size, size, 72, 72);
-		FT_Set_Transform((FT_Face)face, 0, NULL);
-
-		std::vector<glyph *> glyphs;
-
-		FT_Outline_Funcs ofn = {
-			outline_move_to,
-			outline_line_to,
-			outline_conic_to,
-			outline_cubic_to,
-			0, // shift
-			0  // delta
-		};
-
-		// Import every character in face
-		FT_ULong char_code;
-		FT_UInt glyph_index;
-
-		char_code = FT_Get_First_Char((FT_Face)face, &glyph_index);
-
-		int loadFlags = FT_LOAD_NO_BITMAP | FT_LOAD_DEFAULT;
-
-		if (forceAutoHint)
-		{
-			loadFlags |= FT_LOAD_FORCE_AUTOHINT;
-		}
-		else
-		{
-			loadFlags |= FT_LOAD_NO_HINTING;
-		}
-
-		while (glyph_index != 0)
-		{
-			if (FT_Load_Glyph((FT_Face)face, glyph_index, loadFlags) == 0)
-			{
-				glyph *g = new glyph;
-				result = FT_Outline_Decompose(&((FT_Face)face)->glyph->outline, &ofn, g);
-
-				if (result == 0)
-				{
-					g->index = glyph_index;
-					g->char_code = char_code;
-					g->metrics = ((FT_Face)face)->glyph->metrics;
-					glyphs.push_back(g);
-				}
-				else
-				{
-					delete g;
-				}
-			}
-
-			char_code = FT_Get_Next_Char((FT_Face)face, char_code, &glyph_index);
-		}
-
-		// Ascending sort by character codes
-		std::sort(glyphs.begin(), glyphs.end(), glyph_sort_predicate());
-
-		std::vector<kerning> kern;
-		if (FT_HAS_KERNING(((FT_Face)face)))
-		{
-			int n = glyphs.size();
-			FT_Vector v;
-
-			for (i = 0; i < n; i++)
-			{
-				int l_glyph = glyphs[i]->index;
-
-				for (j = 0; j < n; j++)
-				{
-					int r_glyph = glyphs[j]->index;
-
-					FT_Get_Kerning((FT_Face)face, l_glyph, r_glyph, FT_KERNING_DEFAULT, &v);
-
-					if (v.x != 0 || v.y != 0)
-					{
-						kern.push_back(kerning(i, j, v.x, v.y));
-					}
-				}
-			}
-		}
-
-		int num_glyphs = glyphs.size();
-
-		wchar_t *family_name = GetFamilyName();
-
-		int calculatedAscender = ((FT_Face)face)->ascender;
-		int calculatedDescender = ((FT_Face)face)->descender;
-		int calculatedHeight = ((FT_Face)face)->height;
-
-		value ret = alloc_empty_object();
-		alloc_field(ret, val_id("has_kerning"), alloc_bool(FT_HAS_KERNING(((FT_Face)face))));
-		alloc_field(ret, val_id("is_fixed_width"), alloc_bool(FT_IS_FIXED_WIDTH(((FT_Face)face))));
-		alloc_field(ret, val_id("has_glyph_names"), alloc_bool(FT_HAS_GLYPH_NAMES(((FT_Face)face))));
-		alloc_field(ret, val_id("is_italic"), alloc_bool(((FT_Face)face)->style_flags & FT_STYLE_FLAG_ITALIC));
-		alloc_field(ret, val_id("is_bold"), alloc_bool(((FT_Face)face)->style_flags & FT_STYLE_FLAG_BOLD));
-		alloc_field(ret, val_id("num_glyphs"), alloc_int(num_glyphs));
-		alloc_field(ret, val_id("family_name"), family_name == NULL ? alloc_string(((FT_Face)face)->family_name) : alloc_wstring(family_name));
-		alloc_field(ret, val_id("style_name"), alloc_string(((FT_Face)face)->style_name));
-		alloc_field(ret, val_id("em_size"), alloc_int(((FT_Face)face)->units_per_EM));
-		alloc_field(ret, val_id("ascend"), alloc_int(calculatedAscender));
-		alloc_field(ret, val_id("descend"), alloc_int(calculatedDescender));
-		alloc_field(ret, val_id("height"), alloc_int(calculatedHeight));
-
-		delete family_name;
-
-		// 'glyphs' field
-		value neko_glyphs = alloc_array(num_glyphs);
-		for (i = 0; i < glyphs.size(); i++)
-		{
-			glyph *g = glyphs[i];
-			int num_points = g->pts.size();
-
-			value points = alloc_array(num_points);
-
-			for (j = 0; j < num_points; j++)
-			{
-				val_array_set_i(points, j, alloc_int(g->pts[j]));
-			}
-
-			value item = alloc_empty_object();
-			val_array_set_i(neko_glyphs, i, item);
-			alloc_field(item, val_id("char_code"), alloc_int(g->char_code));
-			alloc_field(item, val_id("advance"), alloc_int(g->metrics.horiAdvance));
-			alloc_field(item, val_id("min_x"), alloc_int(g->metrics.horiBearingX));
-			alloc_field(item, val_id("max_x"), alloc_int(g->metrics.horiBearingX + g->metrics.width));
-			alloc_field(item, val_id("min_y"), alloc_int(g->metrics.horiBearingY - g->metrics.height));
-			alloc_field(item, val_id("max_y"), alloc_int(g->metrics.horiBearingY));
-			alloc_field(item, val_id("points"), points);
-
-			delete g;
-		}
-
-		alloc_field(ret, val_id("glyphs"), neko_glyphs);
-
-		// 'kerning' field
-		if (FT_HAS_KERNING(((FT_Face)face)))
-		{
-			value neko_kerning = alloc_array(kern.size());
-
-			for (i = 0; i < kern.size(); i++)
-			{
-				kerning *k = &kern[i];
-
-				value item = alloc_empty_object();
-				val_array_set_i(neko_kerning, i, item);
-				alloc_field(item, val_id("left_glyph"), alloc_int(k->l_glyph));
-				alloc_field(item, val_id("right_glyph"), alloc_int(k->r_glyph));
-				alloc_field(item, val_id("x"), alloc_int(k->x));
-				alloc_field(item, val_id("y"), alloc_int(k->y));
-			}
-
-			alloc_field(ret, val_id("kerning"), neko_kerning);
-		}
-		else
-		{
-			alloc_field(ret, val_id("kerning"), alloc_null());
-		}
-
-		return ret;
 	}
 
 	int Font::GetAscender()
@@ -548,7 +181,12 @@ namespace lime
 
 	int Font::GetGlyphIndex(const char *character)
 	{
-		long charCode = readNextChar(character);
+		Uint32 charCode = SDL_StepUTF8(&character, NULL);
+
+		if (charCode == 0)
+		{
+			charCode = (Uint32)-1;
+		}
 
 		return FT_Get_Char_Index((FT_Face)face, charCode);
 	}
@@ -556,18 +194,15 @@ namespace lime
 	void *Font::GetGlyphIndices(const char *characters)
 	{
 		value indices = alloc_array(0);
-		unsigned long character;
-		int index;
 
-		while (*characters != 0)
+		while (*characters != '\0')
 		{
-			character = readNextChar(characters);
+			Uint32 character = SDL_StepUTF8(&characters, NULL);
 
-			if (character == -1)
+			if (character == 0)
 				break;
 
-			index = FT_Get_Char_Index((FT_Face)face, character);
-			val_array_push(indices, alloc_int(index));
+			val_array_push(indices, alloc_int(FT_Get_Char_Index((FT_Face)face, character)));
 		}
 
 		return indices;
@@ -586,6 +221,23 @@ namespace lime
 			alloc_field(metrics, val_id("verticalBearingX"), alloc_int(((FT_Face)face)->glyph->metrics.vertBearingX));
 			alloc_field(metrics, val_id("verticalBearingY"), alloc_int(((FT_Face)face)->glyph->metrics.vertBearingY));
 			alloc_field(metrics, val_id("verticalAdvance"), alloc_int(((FT_Face)face)->glyph->metrics.vertAdvance));
+
+			return metrics;
+		}
+
+		return alloc_null();
+	}
+
+	void *Font::GetKerning(int leftIndex, int rightIndex)
+	{
+		FT_Vector kerning;
+
+		if (FT_Get_Kerning((FT_Face)face, leftIndex, rightIndex, FT_KERNING_DEFAULT, &kerning) == 0)
+		{
+			value metrics = alloc_empty_object();
+
+			alloc_field(metrics, val_id("x"), alloc_int(kerning.x));
+			alloc_field(metrics, val_id("y"), alloc_int(kerning.y));
 
 			return metrics;
 		}
@@ -740,20 +392,9 @@ namespace lime
 		return totalOffset;
 	}
 
-	void Font::SetSize(size_t size, size_t dpi)
+	void Font::SetSize(size_t size)
 	{
-		// We changed the function signature to include a dpi argument which changes this from
-		// the default value of 72 for dpi. Any public api that uses this should probably be changed
-		// to allow setting the dpi in an appropriate future release.
-		size_t hdpi = dpi;
-		size_t vdpi = dpi;
-
-		FT_Set_Char_Size((FT_Face)face,				  // Handle to the target face object
-						 0,							  // Char width in 1/64th of points (0 means same as height)
-						 static_cast<int>(size * 64), // Char height in 1/64th of points
-						 hdpi,						  // Horizontal DPI
-						 vdpi						  // Vertical DPI
-		);
+		FT_Set_Char_Size((FT_Face)face, 0, static_cast<int>(size * 64), 0, 0);
 	}
 
 } // namespace lime

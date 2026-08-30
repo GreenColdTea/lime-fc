@@ -62,6 +62,7 @@ class NativeCFFI
 	private static var lime_font_get_glyph_index = new cpp.Callable<cpp.Object->String->Int>(cpp.Prime._loadPrime("lime", "lime_font_get_glyph_index", "osi", false));
 	private static var lime_font_get_glyph_indices = new cpp.Callable<cpp.Object->String->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_font_get_glyph_indices", "oso", false));
 	private static var lime_font_get_glyph_metrics = new cpp.Callable<cpp.Object->Int->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_font_get_glyph_metrics", "oio", false));
+	private static var lime_font_get_glyph_kerning = new cpp.Callable<cpp.Object->Int->Int->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_font_get_glyph_kerning", "oiio", false));
 	private static var lime_font_get_height = new cpp.Callable<cpp.Object->Int>(cpp.Prime._loadPrime("lime", "lime_font_get_height", "oi", false));
 	private static var lime_font_get_num_glyphs = new cpp.Callable<cpp.Object->Int>(cpp.Prime._loadPrime("lime", "lime_font_get_num_glyphs", "oi", false));
 	private static var lime_font_get_underline_position = new cpp.Callable<cpp.Object->Int>(cpp.Prime._loadPrime("lime", "lime_font_get_underline_position", "oi", false));
@@ -71,10 +72,9 @@ class NativeCFFI
 	private static var lime_font_get_units_per_em = new cpp.Callable<cpp.Object->Int>(cpp.Prime._loadPrime("lime", "lime_font_get_units_per_em", "oi", false));
 	private static var lime_font_load_bytes = new cpp.Callable<cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_font_load_bytes", "oo", false));
 	private static var lime_font_load_file = new cpp.Callable<cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_font_load_file", "oo", false));
-	private static var lime_font_outline_decompose = new cpp.Callable<cpp.Object->Int->Bool->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_font_outline_decompose", "oibo", false));
 	private static var lime_font_render_glyph = new cpp.Callable<cpp.Object->Int->cpp.Object->Int->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_font_render_glyph", "oioio", false));
 	private static var lime_font_render_glyphs = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object->Int->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_font_render_glyphs", "oooio", false));
-	private static var lime_font_set_size = new cpp.Callable<cpp.Object->Int->Int->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_font_set_size", "oiiv", false));
+	private static var lime_font_set_size = new cpp.Callable<cpp.Object->Int->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_font_set_size", "oiv", false));
 	private static var lime_font_initialize_library = new cpp.Callable<Void->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_font_initialize_library", "v", false));
 	private static var lime_font_shutdown_library = new cpp.Callable<Void->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_font_shutdown_library", "v", false));
 	private static var lime_gamepad_add_mappings = new cpp.Callable<cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_gamepad_add_mappings", "ov", false));
@@ -85,7 +85,6 @@ class NativeCFFI
 	private static var lime_gamepad_event_manager_register = new cpp.Callable<cpp.Object->cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_gamepad_event_manager_register", "oov", false));
 	private static var lime_gzip_compress = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_gzip_compress", "ooo", false));
 	private static var lime_gzip_decompress = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_gzip_decompress", "ooo", false));
-	private static var lime_haptic_vibrate = new cpp.Callable<Int->Int->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_haptic_vibrate", "iiv", false));
 	private static var lime_image_encode = new cpp.Callable<cpp.Object->Int->Int->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_image_encode", "oiioo", false));
 	private static var lime_image_load_bytes = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_image_load_bytes", "ooo", false));
 	private static var lime_image_load_file = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_image_load_file", "ooo", false));
@@ -107,44 +106,39 @@ class NativeCFFI
 	private static var lime_joystick_get_num_axes = new cpp.Callable<Int->Int>(cpp.Prime._loadPrime("lime", "lime_joystick_get_num_axes", "ii", false));
 	private static var lime_joystick_get_num_buttons = new cpp.Callable<Int->Int>(cpp.Prime._loadPrime("lime", "lime_joystick_get_num_buttons", "ii", false));
 	private static var lime_joystick_get_num_hats = new cpp.Callable<Int->Int>(cpp.Prime._loadPrime("lime", "lime_joystick_get_num_hats", "ii", false));
-	private static var lime_joystick_rumble = new cpp.Callable<Int->Float->Float->Int->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_joystick_rumble", "iddiv",
-		false));
-	private static var lime_joystick_set_led = new cpp.Callable<Int->Int->Int->Int->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_joystick_set_led", "iiiiv",
-		false));
-	private static var lime_joystick_event_manager_register = new cpp.Callable<cpp.Object->cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime",
-		"lime_joystick_event_manager_register", "oov", false));
-	private static var lime_key_code_from_scan_code = new cpp.Callable<Int->Int>(cpp.Prime._loadPrime("lime", "lime_key_code_from_scan_code",
-		"ii", false));
-	private static var lime_key_code_to_scan_code = new cpp.Callable<Int->Int>(cpp.Prime._loadPrime("lime", "lime_key_code_to_scan_code",
-		"ii", false));
-	private static var lime_key_event_manager_register = new cpp.Callable<cpp.Object->cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime",
-		"lime_key_event_manager_register", "oov", false));
-	private static var lime_lzma_compress = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_lzma_compress", "ooo",
-		false));
-	private static var lime_lzma_decompress = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_lzma_decompress", "ooo",
-		false));
-	private static var lime_mouse_event_manager_register = new cpp.Callable<cpp.Object->cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime",
-		"lime_mouse_event_manager_register", "oov", false));
-	private static var lime_orientation_event_manager_register = new cpp.Callable<cpp.Object->cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime",
-		"lime_orientation_event_manager_register", "oov", false));
-	private static var lime_render_event_manager_register = new cpp.Callable<cpp.Object->cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime",
-		"lime_render_event_manager_register", "oov", false));
-	private static var lime_sensor_event_manager_register = new cpp.Callable<cpp.Object->cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime",
-		"lime_sensor_event_manager_register", "oov", false));
-	private static var lime_system_get_allow_screen_timeout = new cpp.Callable<Void->Bool>(cpp.Prime._loadPrime("lime",
-		"lime_system_get_allow_screen_timeout", "b", false));
-	private static var lime_system_set_allow_screen_timeout = new cpp.Callable<Bool->Bool>(cpp.Prime._loadPrime("lime",
-		"lime_system_set_allow_screen_timeout", "bb", false));
-	private static var lime_system_get_hint = new cpp.Callable<String->cpp.Object>(cpp.Prime._loadPrime("lime",
-		"lime_system_get_hint", "so", false));
-	private static var lime_system_set_hint = new cpp.Callable<String->String->Void>(cpp.Prime._loadPrime("lime",
-		"lime_system_set_hint", "ssv", false));
-	private static var lime_system_get_device_model = new cpp.Callable<Void->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_system_get_device_model", "o",
-		false));
-	private static var lime_system_get_device_vendor = new cpp.Callable<Void->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_system_get_device_vendor", "o",
-		false));
-	private static var lime_system_get_directory = new cpp.Callable<Int->String->String->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_system_get_directory",
-		"isso", false));
+	private static var lime_joystick_rumble = new cpp.Callable<Int->Float->Float->Int->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_joystick_rumble", "iddiv", false));
+	private static var lime_joystick_set_led = new cpp.Callable<Int->Int->Int->Int->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_joystick_set_led", "iiiiv", false));
+	private static var lime_joystick_event_manager_register = new cpp.Callable<cpp.Object->cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_joystick_event_manager_register", "oov", false));
+	private static var lime_key_code_from_scan_code = new cpp.Callable<Int->Int>(cpp.Prime._loadPrime("lime", "lime_key_code_from_scan_code", "ii", false));
+	private static var lime_key_code_to_scan_code = new cpp.Callable<Int->Int>(cpp.Prime._loadPrime("lime", "lime_key_code_to_scan_code", "ii", false));
+	private static var lime_key_event_manager_register = new cpp.Callable<cpp.Object->cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_key_event_manager_register", "oov", false));
+	private static var lime_lzma_compress = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_lzma_compress", "ooo", false));
+	private static var lime_lzma_decompress = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_lzma_decompress", "ooo", false));
+	private static var lime_mouse_event_manager_register = new cpp.Callable<cpp.Object->cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_mouse_event_manager_register", "oov", false));
+	private static var lime_orientation_event_manager_register = new cpp.Callable<cpp.Object->cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_orientation_event_manager_register", "oov", false));
+	private static var lime_png_decode_bytes = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_png_decode_bytes", "ooo", false));
+	private static var lime_png_decode_file = new cpp.Callable<String->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_png_decode_file", "soo", false));
+	private static var lime_jpeg_decode_bytes = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_jpeg_decode_bytes", "ooo", false));
+	private static var lime_jpeg_decode_file = new cpp.Callable<String->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_jpeg_decode_file", "soo", false));
+	private static var lime_bmp_decode_bytes = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_bmp_decode_bytes", "ooo", false));
+	private static var lime_bmp_decode_file = new cpp.Callable<String->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_bmp_decode_file", "soo", false));
+	private static var lime_svg_decode_bytes = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_svg_decode_bytes", "ooo", false));
+	private static var lime_svg_decode_file = new cpp.Callable<String->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_svg_decode_file", "soo", false));
+	private static var lime_svg_decode_sized_bytes = new cpp.Callable<cpp.Object->Int->Int->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_svg_decode_sized_bytes", "oiioo", false));
+	private static var lime_svg_decode_sized_file = new cpp.Callable<String->Int->Int->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_svg_decode_sized_file", "siioo", false));
+	private static var lime_gif_decode_bytes = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_gif_decode_bytes", "ooo", false));
+	private static var lime_gif_decode_file = new cpp.Callable<String->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_gif_decode_file", "soo", false));
+	private static var lime_webp_decode_bytes = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_webp_decode_bytes", "ooo", false));
+	private static var lime_webp_decode_file = new cpp.Callable<String->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_webp_decode_file", "soo", false));
+	private static var lime_render_event_manager_register = new cpp.Callable<cpp.Object->cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_render_event_manager_register", "oov", false));
+	private static var lime_sensor_event_manager_register = new cpp.Callable<cpp.Object->cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_sensor_event_manager_register", "oov", false));
+	private static var lime_system_get_allow_screen_timeout = new cpp.Callable<Void->Bool>(cpp.Prime._loadPrime("lime", "lime_system_get_allow_screen_timeout", "b", false));
+	private static var lime_system_set_allow_screen_timeout = new cpp.Callable<Bool->Bool>(cpp.Prime._loadPrime("lime", "lime_system_set_allow_screen_timeout", "bb", false));
+	private static var lime_system_get_hint = new cpp.Callable<String->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_system_get_hint", "so", false));
+	private static var lime_system_set_hint = new cpp.Callable<String->String->Void>(cpp.Prime._loadPrime("lime", "lime_system_set_hint", "ssv", false));
+	private static var lime_system_get_device_model = new cpp.Callable<Void->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_system_get_device_model", "o", false));
+	private static var lime_system_get_device_vendor = new cpp.Callable<Void->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_system_get_device_vendor", "o", false));
+	private static var lime_system_get_directory = new cpp.Callable<Int->String->String->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_system_get_directory", "isso", false));
 	private static var lime_system_get_display = new cpp.Callable<Int->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_system_get_display", "io", false));
 	private static var lime_system_get_num_displays = new cpp.Callable<Void->Int>(cpp.Prime._loadPrime("lime", "lime_system_get_num_displays", "i", false));
 	private static var lime_system_get_first_gyroscope_sensor_id = new cpp.Callable<Void->Int>(cpp.Prime._loadPrime("lime", "lime_system_get_first_gyroscope_sensor_id", "i", false));
@@ -278,6 +272,7 @@ class NativeCFFI
 	private static var lime_font_get_glyph_index = CFFI.load("lime", "lime_font_get_glyph_index", 2);
 	private static var lime_font_get_glyph_indices = CFFI.load("lime", "lime_font_get_glyph_indices", 2);
 	private static var lime_font_get_glyph_metrics = CFFI.load("lime", "lime_font_get_glyph_metrics", 2);
+	private static var lime_font_get_glyph_kerning = CFFI.load("lime", "lime_font_get_glyph_kerning", 3);
 	private static var lime_font_get_height = CFFI.load("lime", "lime_font_get_height", 1);
 	private static var lime_font_get_num_glyphs = CFFI.load("lime", "lime_font_get_num_glyphs", 1);
 	private static var lime_font_get_underline_position = CFFI.load("lime", "lime_font_get_underline_position", 1);
@@ -287,10 +282,9 @@ class NativeCFFI
 	private static var lime_font_get_units_per_em = CFFI.load("lime", "lime_font_get_units_per_em", 1);
 	private static var lime_font_load_bytes = CFFI.load("lime", "lime_font_load_bytes", 1);
 	private static var lime_font_load_file = CFFI.load("lime", "lime_font_load_file", 1);
-	private static var lime_font_outline_decompose = CFFI.load("lime", "lime_font_outline_decompose", 3);
 	private static var lime_font_render_glyph = CFFI.load("lime", "lime_font_render_glyph", 4);
 	private static var lime_font_render_glyphs = CFFI.load("lime", "lime_font_render_glyphs", 4);
-	private static var lime_font_set_size = CFFI.load("lime", "lime_font_set_size", 3);
+	private static var lime_font_set_size = CFFI.load("lime", "lime_font_set_size", 2);
 	private static var lime_font_initialize_library = CFFI.load("lime", "lime_font_initialize_library", 0);
 	private static var lime_font_shutdown_library = CFFI.load("lime", "lime_font_shutdown_library", 0);
 	private static var lime_gamepad_add_mappings = CFFI.load("lime", "lime_gamepad_add_mappings", 1);
@@ -301,7 +295,6 @@ class NativeCFFI
 	private static var lime_gamepad_event_manager_register = CFFI.load("lime", "lime_gamepad_event_manager_register", 2);
 	private static var lime_gzip_compress = CFFI.load("lime", "lime_gzip_compress", 2);
 	private static var lime_gzip_decompress = CFFI.load("lime", "lime_gzip_decompress", 2);
-	private static var lime_haptic_vibrate = CFFI.load("lime", "lime_haptic_vibrate", 2);
 	private static var lime_image_encode = CFFI.load("lime", "lime_image_encode", 4);
 	private static var lime_image_load_bytes = CFFI.load("lime", "lime_image_load_bytes", 2);
 	private static var lime_image_load_file = CFFI.load("lime", "lime_image_load_file", 2);
