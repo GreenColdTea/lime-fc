@@ -465,8 +465,8 @@ class Image
 		}
 
 		#if (lime_cffi && !macro)
-		
-		var typeInt = switch (format) {
+		var typeInt = switch (format)
+		{
 			case PNG: 0;
 			case JPEG: 1;
 			case BMP: 2;
@@ -480,19 +480,22 @@ class Image
 		};
 
 		return NativeCFFI.lime_image_encode(encodeImage.buffer, typeInt, quality, Bytes.alloc(0));
-		
 		#elseif (js && html5)
-		
 		ImageCanvasUtil.convertToCanvas(encodeImage, false);
 
 		if (encodeImage.buffer.__srcCanvas != null)
 		{
-			var mimeType = switch (format) {
+			var mimeType = switch (format)
+			{
 				case JPEG: "image/jpeg";
 				case BMP: "image/bmp";
+				case WEBP: "image/webp";
+				case AVIF: "image/avif";
+				case GIF: "image/gif";
+				case ICO, CUR: "image/x-icon";
 				default: "image/png";
 			}
-			
+
 			var data = encodeImage.buffer.__srcCanvas.toDataURL(mimeType, quality / 100);
 			var buffer = Browser.window.atob(data.split(";base64,")[1]);
 			var bytes = Bytes.alloc(buffer.length);
@@ -504,7 +507,6 @@ class Image
 
 			return bytes;
 		}
-		
 		#end
 
 		return null;
@@ -833,21 +835,19 @@ class Image
 		var type = "";
 
 		if (__isPNG(bytes))
-		{
 			type = "image/png";
-		}
 		else if (__isJPG(bytes))
-		{
 			type = "image/jpeg";
-		}
 		else if (__isGIF(bytes))
-		{
 			type = "image/gif";
-		}
 		else if (__isWebP(bytes))
-		{
 			type = "image/webp";
-		}
+		else if (__isBMP(bytes))
+			type = "image/bmp";
+		else if (__isAVIF(bytes))
+			type = "image/avif";
+		else if (__isICO(bytes) || __isCUR(bytes))
+			type = "image/x-icon";
 		else
 		{
 			// throw "Image tried to read PNG/JPG Bytes, but found an invalid header.";
@@ -1200,20 +1200,21 @@ class Image
 		var type = "";
 
 		if (__isPNG(bytes))
-		{
 			type = "image/png";
-		}
 		else if (__isJPG(bytes))
-		{
 			type = "image/jpeg";
-		}
 		else if (__isGIF(bytes))
-		{
 			type = "image/gif";
-		}
+		else if (__isWebP(bytes))
+			type = "image/webp";
+		else if (__isBMP(bytes))
+			type = "image/bmp";
+		else if (__isAVIF(bytes))
+			type = "image/avif";
+		else if (__isICO(bytes) || __isCUR(bytes))
+			type = "image/x-icon";
 		else
 		{
-			// throw "Image tried to read PNG/JPG Bytes, but found an invalid header.";
 			return false;
 		}
 
@@ -1360,6 +1361,34 @@ class Image
 			return false;
 
 		return (bytes.getString(0, 4) == "RIFF" && bytes.getString(8, 4) == "WEBP");
+	}
+
+	private static function __isBMP(bytes:Bytes):Bool
+	{
+		if (bytes == null || bytes.length < 2)
+			return false;
+		return (bytes.get(0) == "B".code && bytes.get(1) == "M".code);
+	}
+
+	private static function __isICO(bytes:Bytes):Bool
+	{
+		if (bytes == null || bytes.length < 4)
+			return false;
+		return (bytes.get(0) == 0x00 && bytes.get(1) == 0x00 && bytes.get(2) == 0x01 && bytes.get(3) == 0x00);
+	}
+
+	private static function __isCUR(bytes:Bytes):Bool
+	{
+		if (bytes == null || bytes.length < 4)
+			return false;
+		return (bytes.get(0) == 0x00 && bytes.get(1) == 0x00 && bytes.get(2) == 0x02 && bytes.get(3) == 0x00);
+	}
+
+	private static function __isAVIF(bytes:Bytes):Bool
+	{
+		if (bytes == null || bytes.length < 12)
+			return false;
+		return (bytes.getString(4, 4) == "ftyp" && bytes.getString(8, 4) == "avif");
 	}
 
 	// Get & Set Methods

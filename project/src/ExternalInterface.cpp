@@ -176,6 +176,12 @@ namespace lime
 
 	value allocInt64(int64_t val)
 	{
+		int32_t low = val;
+		int32_t high = (val >> 32);
+
+		value int64Value = alloc_empty_object();
+		alloc_field(int64Value, val_id("low"), alloc_int(low));
+		alloc_field(int64Value, val_id("high"), alloc_int(high));
 		return int64Value;
 	}
 
@@ -1065,64 +1071,6 @@ namespace lime
 		return alloc_null();
 	}
 
-	value lime_gif_decode_bytes(value data, value buffer)
-	{
-		ImageBuffer imageBuffer(buffer);
-
-		Bytes bytes(data);
-
-		Resource resource = Resource(&bytes);
-
-		if (GIF::Decode(&resource, &imageBuffer))
-		{
-			return imageBuffer.Value(buffer);
-		}
-
-		return alloc_null();
-	}
-
-	value lime_gif_decode_file(HxString path, value buffer)
-	{
-		ImageBuffer imageBuffer(buffer);
-		Resource resource = Resource(hxs_utf8(path, nullptr));
-
-		if (GIF::Decode(&resource, &imageBuffer))
-		{
-			return imageBuffer.Value(buffer);
-		}
-
-		return alloc_null();
-	}
-
-	value lime_webp_decode_bytes(value data, value buffer)
-	{
-		ImageBuffer imageBuffer(buffer);
-
-		Bytes bytes(data);
-
-		Resource resource = Resource(&bytes);
-
-		if (WEBP::Decode(&resource, &imageBuffer))
-		{
-			return imageBuffer.Value(buffer);
-		}
-
-		return alloc_null();
-	}
-
-	value lime_webp_decode_file(HxString path, value buffer)
-	{
-		ImageBuffer imageBuffer(buffer);
-		Resource resource = Resource(hxs_utf8(path, nullptr));
-
-		if (WEBP::Decode(&resource, &imageBuffer))
-		{
-			return imageBuffer.Value(buffer);
-		}
-
-		return alloc_null();
-	}
-
 	void lime_render_event_manager_register(value callback, value eventObject)
 	{
 		RenderEvent::callback = new ValuePointer(callback);
@@ -1779,7 +1727,7 @@ namespace lime
 	value lime_vorbis_file_from_bytes(value data)
 	{
 		Bytes bytes(data);
-		File *file = new File(&bytes);
+		File *file = new File(&bytes, true);
 
 		if (!file->handle)
 		{
