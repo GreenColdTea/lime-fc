@@ -432,7 +432,7 @@ class Application extends Module
 		@param x      The X position of the drop in window coordinates.
 		@param y      The Y position of the drop in window coordinates.
 	**/
-	public function onWindowDropFile(data:String, source:String, x:Float, y:Float):Void {}
+	public function onWindowDropFile(data:lime.utils.DroppedFile, source:String, x:Float, y:Float):Void {}
 
 	/**
 		Called when a window drop text event is fired on the primary window.

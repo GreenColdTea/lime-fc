@@ -8,6 +8,7 @@ import lime.graphics.RenderContextAttributes;
 import lime.math.Rectangle;
 import lime.system.Display;
 import lime.system.DisplayMode;
+import lime.utils.DroppedFile;
 
 #if (js && html5)
 import js.html.Element;
@@ -54,7 +55,7 @@ class Window
 	public var onActivate(default, null) = new Event<Void->Void>();
 	public var onClose(default, null) = new Event<Void->Void>();
 	public var onDeactivate(default, null) = new Event<Void->Void>();
-	public var onDropFile(default, null) = new Event<String->String->Float->Float->Void>();
+	public var onDropFile(default, null) = new Event<DroppedFile->String->Float->Float->Void>();
 	public var onDropText(default, null) = new Event<String->String->Float->Float->Void>();
 	public var onDropBegin(default, null) = new Event<Void->Void>();
 	public var onDropComplete(default, null) = new Event<Float->Float->Void>();

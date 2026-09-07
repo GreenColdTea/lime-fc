@@ -1,12 +1,14 @@
 package lime._internal.backend.html5;
 
 import haxe.Timer;
+import haxe.io.Bytes;
 
 import js.html.webgl.RenderingContext;
 import js.html.CanvasElement;
 import js.html.DragEvent;
 import js.html.Element;
 import js.html.FocusEvent;
+import js.html.FileReader;
 import js.html.InputElement;
 import js.html.InputEvent;
 import js.html.LinkElement;
@@ -36,6 +38,7 @@ import lime.ui.MouseCursor;
 import lime.ui.MouseWheelMode;
 import lime.ui.Touch;
 import lime.ui.Window;
+import lime.utils.DroppedFile;
 
 @:access(lime._internal.backend.html5.HTML5Application)
 @:access(lime._internal.backend.html5.HTML5WebGL2RenderContext)
@@ -494,7 +497,16 @@ class HTML5Window
 					{
 						for (file in event.dataTransfer.files)
 						{
-							parent.onDropFile.dispatch(cast file, "html5", event.clientX, event.clientY);
+							var reader = new FileReader();
+
+							reader.onload = function(_)
+							{
+								var asset = new DroppedFile(file.name, Bytes.ofData(reader.result));
+
+								parent.onDropFile.dispatch(asset, "html5", event.clientX, event.clientY);
+							};
+
+							reader.readAsArrayBuffer(file);
 						}
 					}
 					else
