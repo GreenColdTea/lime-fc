@@ -67,12 +67,17 @@ namespace lime
 			SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 		}
 
-		if (flags & WINDOW_FLAG_HW_AA_HIRES)
+		if (flags & WINDOW_FLAG_ANTIALIASING_8X)
+		{
+			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, true);
+			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 8);
+		}
+		else if (flags & WINDOW_FLAG_ANTIALIASING_4X)
 		{
 			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, true);
 			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
 		}
-		else if (flags & WINDOW_FLAG_HW_AA)
+		else if (flags & WINDOW_FLAG_ANTIALIASING_2X)
 		{
 			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, true);
 			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 2);
