@@ -99,6 +99,14 @@ namespace lime
 
 		sdlWindow = SDL_CreateWindow(title, width, height, sdlWindowFlags);
 
+		if (!sdlWindow && (flags & (WINDOW_FLAG_ANTIALIASING_2X | WINDOW_FLAG_ANTIALIASING_4X | WINDOW_FLAG_ANTIALIASING_8X)))
+		{
+			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, false);
+			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 0);
+
+			sdlWindow = SDL_CreateWindow(title, width, height, sdlWindowFlags);
+		}
+
 		if (!sdlWindow)
 		{
 #if defined(IPHONE)
