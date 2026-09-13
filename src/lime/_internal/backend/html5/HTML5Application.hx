@@ -35,6 +35,11 @@ class HTML5Application
 	private var currentUpdate:Float;
 	private var deltaTime:Float;
 	private var framePeriod:Float;
+	private var lastAnimationFrame:Float;
+	private var frameFallbackWorker:Dynamic;
+	private var frameFallbackWorkerURL:Dynamic;
+	private var frameFallbackTimer:Int = -1;
+	private var frameFallbackActive:Bool = false;
 	private var gameDeviceCache = new Map<Int, GameDeviceData>();
 	private var hidden:Bool;
 	private var lastUpdate:Float;
@@ -51,6 +56,7 @@ class HTML5Application
 		currentUpdate = 0;
 		lastUpdate = 0;
 		nextUpdate = 0;
+		lastAnimationFrame = 0;
 		framePeriod = -1;
 
 		AudioManager.init();
@@ -247,6 +253,9 @@ class HTML5Application
 		Browser.window.addEventListener("keyup", handleKeyEvent, false);
 		Browser.window.addEventListener("focus", handleWindowEvent, false);
 		Browser.window.addEventListener("blur", handleWindowEvent, false);
+		Browser.window.addEventListener("focus", handleFrameFallbackState, false);
+		Browser.window.addEventListener("blur", handleFrameFallbackState, false);
+		Browser.document.addEventListener("visibilitychange", handleFrameFallbackState, false);
 		Browser.window.addEventListener("resize", handleWindowEvent, false);
 		Browser.window.addEventListener("beforeunload", handleWindowEvent, false);
 		Browser.window.addEventListener("canvasVisibilityChange", handleWindowEvent, false);
@@ -341,13 +350,20 @@ class HTML5Application
 		");
 
 		lastUpdate = Browser.window.performance.now();
+		lastAnimationFrame = lastUpdate;
 
 		handleApplicationEvent();
+		Browser.window.requestAnimationFrame(cast handleAnimationFrame);
+
+		handleFrameFallbackState();
 
 		return 0;
 	}
 
-	public function exit():Void {}
+	public function exit():Void
+	{
+		stopFrameFallback();
+	}
 
 	public function getDeviceOrientation():Orientation
 	{
@@ -370,6 +386,13 @@ class HTML5Application
 		return UNKNOWN;
 	}
 
+	private function handleAnimationFrame(?__):Void
+	{
+		lastAnimationFrame = Browser.window.performance.now();
+		handleApplicationEvent();
+		Browser.window.requestAnimationFrame(cast handleAnimationFrame);
+	}
+
 	private function handleApplicationEvent(?__):Void
 	{
 		// TODO: Support independent window frame rates
@@ -382,6 +405,10 @@ class HTML5Application
 		updateGameDevices();
 
 		currentUpdate = Browser.window.performance.now();
+		if (lastAnimationFrame < currentUpdate)
+		{
+			lastAnimationFrame = currentUpdate;
+		}
 
 		if (currentUpdate >= nextUpdate)
 		{
@@ -414,7 +441,85 @@ class HTML5Application
 			lastUpdate = currentUpdate;
 		}
 
-		Browser.window.requestAnimationFrame(cast handleApplicationEvent);
+	}
+
+	private function handleFrameFallbackState(?__):Void
+	{
+		#if html5
+		var hidden:Bool = Browser.document.hidden;
+		var focused:Bool = untyped Browser.document.hasFocus();
+		var shouldRunFallback:Bool = hidden || !focused;
+
+		if (shouldRunFallback)
+		{
+			startFrameFallback();
+		}
+		else
+		{
+			stopFrameFallback();
+		}
+		#end
+	}
+
+	private function startFrameFallback():Void
+	{
+		if (frameFallbackActive)
+			return;
+
+		frameFallbackActive = true;
+
+		try
+		{
+			frameFallbackWorkerURL = untyped js.Syntax.code(
+				"URL.createObjectURL(new Blob([\"setInterval(function(){postMessage(0);},16);\"],{type:\"application/javascript\"}))"
+			);
+			frameFallbackWorker = untyped js.Syntax.code("new Worker({0})", frameFallbackWorkerURL);
+			frameFallbackWorker.onmessage = function(_)
+			{
+				var now:Float = Browser.window.performance.now();
+				if (now - lastAnimationFrame >= 50)
+				{
+					handleApplicationEvent();
+				}
+			};
+		}
+		catch (error:Dynamic)
+		{
+			frameFallbackTimer = Browser.window.setInterval(function()
+			{
+				var now:Float = Browser.window.performance.now();
+				if (now - lastAnimationFrame >= 50)
+				{
+					handleApplicationEvent();
+				}
+			}, 16);
+		}
+	}
+
+	private function stopFrameFallback():Void
+	{
+		if (!frameFallbackActive)
+			return;
+
+		frameFallbackActive = false;
+
+		if (frameFallbackWorker != null)
+		{
+			untyped frameFallbackWorker.terminate();
+			frameFallbackWorker = null;
+		}
+
+		if (frameFallbackWorkerURL != null)
+		{
+			untyped Browser.window.URL.revokeObjectURL(frameFallbackWorkerURL);
+			frameFallbackWorkerURL = null;
+		}
+
+		if (frameFallbackTimer >= 0)
+		{
+			Browser.window.clearInterval(frameFallbackTimer);
+			frameFallbackTimer = -1;
+		}
 	}
 
 	private function handleSystemThemeChange(event:MediaQueryListEvent):Void
