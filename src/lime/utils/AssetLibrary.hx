@@ -25,6 +25,7 @@ class AssetLibrary
 	@:noCompletion private var cachedAudioBuffers = new Map<String, AudioBuffer>();
 	@:noCompletion private var cachedBytes = new Map<String, Bytes>();
 	@:noCompletion private var cachedFonts = new Map<String, Font>();
+	@:noCompletion private var loadingFonts = new Map<String, Future<Font>>();
 	@:noCompletion private var cachedImages = new Map<String, Image>();
 	@:noCompletion private var cachedText = new Map<String, String>();
 	@:noCompletion private var classTypes = new Map<String, Class<Dynamic>>();
@@ -456,24 +457,42 @@ class AssetLibrary
 		{
 			return Future.withValue(cachedFonts.get(id));
 		}
-		else if (classTypes.exists(id))
+
+		if (loadingFonts.exists(id))
+		{
+			return loadingFonts.get(id);
+		}
+
+		var future:Future<Font>;
+
+		if (classTypes.exists(id))
 		{
 			var font:Font = Type.createInstance(classTypes.get(id), []);
 
 			#if (js && html5)
-			return font.__loadFromName(font.name);
+			future = font.__loadWebFont();
 			#else
-			return Future.withValue(font);
+			future = Future.withValue(font);
 			#end
 		}
 		else
 		{
-			#if (js && html5)
-			return Font.loadFromName(getPath(id));
-			#else
-			return Font.loadFromFile(getPath(id));
-			#end
+			future = Font.loadFromFile(getPath(id));
 		}
+
+		loadingFonts.set(id, future);
+
+		future.onComplete(function(_)
+		{
+			loadingFonts.remove(id);
+		});
+
+		future.onError(function(_)
+		{
+			loadingFonts.remove(id);
+		});
+
+		return future;
 	}
 
 	public static function loadFromBytes(bytes:Bytes, rootPath:String = null):Future<AssetLibrary>
@@ -573,6 +592,7 @@ class AssetLibrary
 	{
 		cachedBytes.clear();
 		cachedFonts.clear();
+		loadingFonts.clear();
 		cachedImages.clear();
 		cachedAudioBuffers.clear();
 		cachedText.clear();

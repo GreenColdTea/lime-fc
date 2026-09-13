@@ -105,6 +105,12 @@ class Font
 
 	@:noCompletion private var __fontID:String;
 	@:noCompletion private var __fontPath:String;
+	#if (js && html5)
+	@:noCompletion private var __webFontLoad:Future<Font>;
+	@:noCompletion private var __webFontWeight:Int = 400;
+	@:noCompletion private var __webFontStyle:String = "normal";
+	@:noCompletion private static var __webFontID:Int = 0;
+	#end
 	#if lime_cffi
 	@:noCompletion private var __fontPathWithoutDirectory:String;
 	#end
@@ -214,7 +220,17 @@ class Font
 	 */
 	public static function loadFromBytes(bytes:Bytes):Future<Font>
 	{
-		return Future.withValue(fromBytes(bytes));
+		if (bytes == null)
+			return cast Future.withError("Could not load font from empty data");
+
+		var font = new Font();
+		font.__fromBytes(bytes);
+
+		#if (js && html5)
+		return font.__loadWebFont();
+		#else
+		return Future.withValue(font);
+		#end
 	}
 
 	/**
@@ -227,6 +243,9 @@ class Font
 	{
 		#if (js && html5)
 
+			if (path == null || path == "")
+				return cast Future.withError("Could not load font: empty path");
+
 			var request = new HTTPRequest<Bytes>();
 
 			return request.load(path).then(function(bytes)
@@ -234,27 +253,7 @@ class Font
 				if (bytes == null)
 					return cast Future.withError("Could not load font: " + path);
 
-				var font = new Font();
-				font.__fromBytes(bytes);
-
-				var fontFace:Dynamic = font.src;
-
-				var promise = new Promise<Font>();
-
-				untyped fontFace.load().then(
-					function(_)
-					{
-						promise.complete(font);
-					},
-					function(error)
-					{
-						promise.error(
-							"Could not load font \"" + path + "\": " + Std.string(error)
-						);
-					}
-				);
-
-				return promise.future;
+				return loadFromBytes(bytes);
 			});
 
 		#else
@@ -629,21 +628,33 @@ class Font
 		#if (js && html5)
 		__parseFontMetadata(bytes);
 
-		if (name == null || name.length == 0)
+		// Just to be sure fonts from same family wont use their internal css crap in browser.
+		var originalName = name;
+		var webFontName = "__lime_font_" + Std.string(__webFontID++);
+		if (originalName == null || originalName.length == 0)
 		{
-			name = "__lime_font_" + Std.string(Date.now()) + "_" + Std.random(1000000);
+			originalName = webFontName;
 		}
 
+		name = webFontName;
+
+		var descriptors:Dynamic = {
+			weight: Std.string(__webFontWeight),
+			style: __webFontStyle
+		};
+
 		var fontFace:Dynamic = untyped js.Syntax.code(
-			"new FontFace({0}, {1})",
+			"new FontFace({0}, {1}, {2})",
 			name,
-			bytes.getData()
+			bytes.getData(),
+			descriptors
 		);
 
 		src = fontFace;
 
 		untyped Browser.document.fonts.add(fontFace);
 
+		__webFontLoad = null;
 		__init = true;
 		#elseif (lime_cffi && !macro)
 		__fontPathWithoutDirectory = null;
@@ -707,6 +718,39 @@ class Font
 		__init = true;
 	}
 
+	#if (js && html5)
+	@:noCompletion private function __loadWebFont():Future<Font>
+	{
+		if (__webFontLoad != null)
+			return __webFontLoad;
+
+		var promise = new Promise<Font>();
+		__webFontLoad = promise.future;
+
+		if (src == null)
+		{
+			promise.error("Could not load web font \"" + name + "\": missing FontFace");
+			return __webFontLoad;
+		}
+
+		var fontFace:Dynamic = src;
+
+		untyped fontFace.load().then(
+			function(_)
+			{
+				promise.complete(this);
+			},
+			function(error)
+			{
+				Log.warn("Could not load web font \"" + name + "\": " + Std.string(error));
+				promise.error("Could not load web font \"" + name + "\": " + Std.string(error));
+			}
+		);
+
+		return __webFontLoad;
+	}
+	#end
+
 	@:noCompletion private function __loadFromName(name:String):Future<Font>
 	{
 		var promise = new Promise<Font>();
@@ -720,13 +764,13 @@ class Font
 
 		if (!isSafari && !isUIWebView && untyped (Browser.document).fonts && untyped (Browser.document).fonts.load)
 		{
-			untyped (Browser.document).fonts.load("1em '" + name + "'").then(function(_)
+			untyped (Browser.document).fonts.load("1em \"" + name + "\"").then(function(_)
 			{
 				promise.complete(this);
-			}, function(_)
+			}, function(error)
 			{
-				Log.warn("Could not load web font \"" + name + "\"");
-				promise.complete(this);
+				Log.warn("Could not load web font \"" + name + "\": " + Std.string(error));
+				promise.error("Could not load web font \"" + name + "\": " + Std.string(error));
 			});
 		}
 		else
@@ -887,9 +931,15 @@ class Font
 			}
 		}
 
-		if (headOffset >= 0 && headOffset + 20 <= bytes.length)
+		if (headOffset >= 0 && headOffset + 46 <= bytes.length)
 		{
 			unitsPerEM = __readUInt16(bytes, headOffset + 18);
+
+			// macStyle bit 1 = italic
+			if ((__readUInt16(bytes, headOffset + 44) & 0x0002) != 0)
+			{
+				__webFontStyle = "italic";
+			}
 
 			// Avoid invalid zero values.
 			if (unitsPerEM <= 0)
@@ -936,6 +986,19 @@ class Font
 
 		if (os2Offset >= 0 && os2Offset + 30 <= bytes.length)
 		{
+			// OS/2 usWeightClass
+			var weight = __readUInt16(bytes, os2Offset + 4);
+			if (weight >= 1 && weight <= 1000)
+			{
+				__webFontWeight = weight;
+			}
+
+			// OS/2 fsSelection bit 0 = italic
+			if (os2Offset + 64 <= bytes.length && (__readUInt16(bytes, os2Offset + 62) & 0x0001) != 0)
+			{
+				__webFontStyle = "italic";
+			}
+
 			strikethroughThickness = __readUInt16(bytes, os2Offset + 26);
 			strikethroughPosition = __readInt16(bytes, os2Offset + 28);
 		}
