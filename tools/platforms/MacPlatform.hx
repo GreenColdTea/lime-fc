@@ -246,6 +246,7 @@ class MacPlatform extends PlatformTarget
 
 		ProjectHelper.recursiveSmartCopyTemplate(project, "haxe", targetDirectory + "/haxe", context);
 		ProjectHelper.recursiveSmartCopyTemplate(project, "cpp/hxml", targetDirectory + "/haxe", context);
+		ProjectHelper.recursiveSmartCopyTemplate(project, "mac/template", targetDirectory + "/bin", context, true, false);
 
 		System.copyFileTemplate(project.templatePaths, "mac/Info.plist", targetDirectory + "/bin/" + project.app.file + ".app/Contents/Info.plist", context);
 		System.copyFileTemplate(project.templatePaths, "mac/Entitlements.plist",
