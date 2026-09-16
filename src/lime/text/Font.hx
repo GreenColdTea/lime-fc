@@ -721,6 +721,11 @@ class Font
 	#if (js && html5)
 	@:noCompletion private function __loadWebFont():Future<Font>
 	{
+		if (src == null && name != null)
+		{
+			return __loadFromName(name);
+		}
+		
 		if (__webFontLoad != null)
 			return __webFontLoad;
 
