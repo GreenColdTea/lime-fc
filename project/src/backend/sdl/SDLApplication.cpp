@@ -712,13 +712,10 @@ namespace lime
 				case SDL_EVENT_WINDOW_METAL_VIEW_RESIZED:
 				case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
 				case SDL_EVENT_WINDOW_RESIZED: {
-					int width = event->window.data1;
-					int height = event->window.data2;
+					int width;
+					int height;
 
-					if (width == 0 && height == 0)
-					{
-						SDL_GetWindowSizeInPixels(SDL_GetWindowFromID(event->window.windowID), &width, &height);
-					}
+					SDL_GetWindowSize(SDL_GetWindowFromID(event->window.windowID), &width, &height);
 
 					windowEvent.type = WINDOW_RESIZE;
 					windowEvent.width = width;
