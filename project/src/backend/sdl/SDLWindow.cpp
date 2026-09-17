@@ -344,7 +344,7 @@ namespace lime
 		int width;
 		int height;
 
-		SDL_GetWindowSizeInPixels(sdlWindow, &width, &height);
+		SDL_GetWindowSize(sdlWindow, &width, &height);
 
 		return height;
 	}
@@ -366,7 +366,8 @@ namespace lime
 
 	double SDLWindow::GetScale()
 	{
-		return 1 /* SDL_GetWindowDisplayScale (sdlWindow) */;
+		double scale = SDL_GetWindowDisplayScale(sdlWindow);
+		return scale > 0 ? scale : 1;
 	}
 
 	bool SDLWindow::GetTextInputEnabled()
@@ -379,7 +380,7 @@ namespace lime
 		int width;
 		int height;
 
-		SDL_GetWindowSizeInPixels(sdlWindow, &width, &height);
+		SDL_GetWindowSize(sdlWindow, &width, &height);
 
 		return width;
 	}
