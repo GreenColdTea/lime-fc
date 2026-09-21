@@ -524,7 +524,8 @@ class HTML5HTTPRequest
 				}
 				catch (e:Dynamic)
 				{
-					if (bitmap != null) bitmap.close();
+					if (bitmap != null)
+						bitmap.close();
 					activeRequests--;
 					processQueue();
 					promise.error(e);
@@ -563,7 +564,8 @@ class HTML5HTTPRequest
 		request.onload = function(_)
 		{
 			var type = request.getResponseHeader("Content-Type");
-			if (type == null || type == "") type = "image/png";
+			if (type == null || type == "")
+				type = "image/png";
 			loadBytes(Bytes.ofData(request.response), type);
 		};
 

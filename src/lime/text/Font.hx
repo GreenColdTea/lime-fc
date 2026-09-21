@@ -17,6 +17,7 @@ import js.Browser;
 import js.html.CanvasElement;
 import js.html.CanvasRenderingContext2D;
 import js.html.SpanElement;
+
 import lime.utils.Log;
 #end
 
@@ -109,8 +110,10 @@ class Font
 	@:noCompletion private var __webFontLoad:Future<Font>;
 	@:noCompletion private var __webFontWeight:Int = 400;
 	@:noCompletion private var __webFontStyle:String = "normal";
+
 	@:noCompletion private static var __webFontID:Int = 0;
 	#end
+
 	#if lime_cffi
 	@:noCompletion private var __fontPathWithoutDirectory:String;
 	#end
@@ -242,32 +245,28 @@ class Font
 	public static function loadFromFile(path:String):Future<Font>
 	{
 		#if (js && html5)
+		if (path == null || path == "")
+			return cast Future.withError("Could not load font: empty path");
 
-			if (path == null || path == "")
-				return cast Future.withError("Could not load font: empty path");
+		var request = new HTTPRequest<Bytes>();
 
-			var request = new HTTPRequest<Bytes>();
+		return request.load(path).then(function(bytes)
+		{
+			if (bytes == null)
+				return cast Future.withError("Could not load font: " + path);
 
-			return request.load(path).then(function(bytes)
-			{
-				if (bytes == null)
-					return cast Future.withError("Could not load font: " + path);
-
-				return loadFromBytes(bytes);
-			});
-
+			return loadFromBytes(bytes);
+		});
 		#else
+		var request = new HTTPRequest<Font>();
 
-			var request = new HTTPRequest<Font>();
-
-			return request.load(path).then(function(font)
-			{
-				if (font != null)
-					return Future.withValue(font);
-				else
-					return cast Future.withError("");
-			});
-
+		return request.load(path).then(function(font)
+		{
+			if (font != null)
+				return Future.withValue(font);
+			else
+				return cast Future.withError("");
+		});
 		#end
 	}
 
@@ -643,12 +642,7 @@ class Font
 			style: __webFontStyle
 		};
 
-		var fontFace:Dynamic = untyped js.Syntax.code(
-			"new FontFace({0}, {1}, {2})",
-			name,
-			bytes.getData(),
-			descriptors
-		);
+		var fontFace:Dynamic = untyped js.Syntax.code("new FontFace({0}, {1}, {2})", name, bytes.getData(), descriptors);
 
 		src = fontFace;
 
@@ -725,7 +719,7 @@ class Font
 		{
 			return __loadFromName(name);
 		}
-		
+
 		if (__webFontLoad != null)
 			return __webFontLoad;
 
@@ -740,17 +734,14 @@ class Font
 
 		var fontFace:Dynamic = src;
 
-		untyped fontFace.load().then(
-			function(_)
-			{
-				promise.complete(this);
-			},
-			function(error)
-			{
-				Log.warn("Could not load web font \"" + name + "\": " + Std.string(error));
-				promise.error("Could not load web font \"" + name + "\": " + Std.string(error));
-			}
-		);
+		untyped fontFace.load().then(function(_)
+		{
+			promise.complete(this);
+		}, function(error)
+		{
+			Log.warn("Could not load web font \"" + name + "\": " + Std.string(error));
+			promise.error("Could not load web font \"" + name + "\": " + Std.string(error));
+		});
 
 		return __webFontLoad;
 	}
@@ -1200,10 +1191,10 @@ class Font
 			}
 
 			/*
-			* Macintosh Roman 128-255.
-			*
-			* This table contains the standard MacRoman Unicode mapping.
-			*/
+			 * Macintosh Roman 128-255.
+			 *
+			 * This table contains the standard MacRoman Unicode mapping.
+			 */
 			var map = [
 				0x00C4, 0x00C5, 0x00C7, 0x00C9, 0x00D1, 0x00D6, 0x00DC, 0x00E1,
 				0x00E0, 0x00E2, 0x00E4, 0x00E3, 0x00E5, 0x00E7, 0x00E9, 0x00E8,
@@ -1242,6 +1233,5 @@ class Font
 
 		return result.toString();
 	}
-
 	#end
 }

@@ -440,7 +440,6 @@ class HTML5Application
 
 			lastUpdate = currentUpdate;
 		}
-
 	}
 
 	private function handleFrameFallbackState(?__):Void
@@ -470,9 +469,7 @@ class HTML5Application
 
 		try
 		{
-			frameFallbackWorkerURL = untyped js.Syntax.code(
-				"URL.createObjectURL(new Blob([\"setInterval(function(){postMessage(0);},16);\"],{type:\"application/javascript\"}))"
-			);
+			frameFallbackWorkerURL = untyped js.Syntax.code("URL.createObjectURL(new Blob([\"setInterval(function(){postMessage(0);},16);\"],{type:\"application/javascript\"}))");
 			frameFallbackWorker = untyped js.Syntax.code("new Worker({0})", frameFallbackWorkerURL);
 			frameFallbackWorker.onmessage = function(_)
 			{
