@@ -29,6 +29,7 @@ import lime.ui.KeyCode;
 import lime.ui.KeyModifier;
 import lime.ui.Touch;
 import lime.ui.Window;
+import lime.utils.Bytes;
 import lime.utils.DroppedFile;
 
 @:access(haxe.Timer)
@@ -44,6 +45,7 @@ import lime.utils.DroppedFile;
 @:access(lime.ui.Gamepad)
 @:access(lime.ui.Joystick)
 @:access(lime.ui.Window)
+@:access(lime.utils.DroppedFile)
 class NativeApplication
 {
 	private var applicationEventInfo = new ApplicationEventInfo();
@@ -216,8 +218,7 @@ class NativeApplication
 			switch (dropEventInfo.type)
 			{
 				case DROP_FILE:
-					var path = dropEventInfo.data;
-					window.onDropFile.dispatch(new DroppedFile(path, sys.io.File.getBytes(path)), dropEventInfo.source, dropEventInfo.x, dropEventInfo.y);
+					window.onDropFile.dispatch(new DroppedFile(dropEventInfo.data), dropEventInfo.source, dropEventInfo.x, dropEventInfo.y);
 				case DROP_TEXT:
 					window.onDropText.dispatch(dropEventInfo.data, dropEventInfo.source, dropEventInfo.x, dropEventInfo.y);
 				case DROP_BEGIN:

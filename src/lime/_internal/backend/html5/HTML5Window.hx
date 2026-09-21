@@ -8,7 +8,6 @@ import js.html.CanvasElement;
 import js.html.DragEvent;
 import js.html.Element;
 import js.html.FocusEvent;
-import js.html.FileReader;
 import js.html.InputElement;
 import js.html.InputEvent;
 import js.html.LinkElement;
@@ -49,6 +48,7 @@ import lime.utils.DroppedFile;
 @:access(lime.ui.Gamepad)
 @:access(lime.ui.Joystick)
 @:access(lime.ui.Window)
+@:access(lime.utils.DroppedFile)
 class HTML5Window
 {
 	private static var dummyCharacter = String.fromCharCode(127);
@@ -497,16 +497,7 @@ class HTML5Window
 					{
 						for (file in event.dataTransfer.files)
 						{
-							var reader = new FileReader();
-
-							reader.onload = function(_)
-							{
-								var asset = new DroppedFile(file.name, Bytes.ofData(reader.result));
-
-								parent.onDropFile.dispatch(asset, "html5", event.clientX, event.clientY);
-							};
-
-							reader.readAsArrayBuffer(file);
+							parent.onDropFile.dispatch(new DroppedFile(file.name, file), "html5", event.clientX, event.clientY);
 						}
 					}
 					else
