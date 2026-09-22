@@ -1,6 +1,7 @@
 package lime._internal.backend.html5;
 
 import haxe.Timer;
+import haxe.io.Bytes;
 
 import js.html.webgl.RenderingContext;
 import js.html.CanvasElement;
@@ -36,6 +37,7 @@ import lime.ui.MouseCursor;
 import lime.ui.MouseWheelMode;
 import lime.ui.Touch;
 import lime.ui.Window;
+import lime.utils.DroppedFile;
 
 @:access(lime._internal.backend.html5.HTML5Application)
 @:access(lime._internal.backend.html5.HTML5WebGL2RenderContext)
@@ -46,6 +48,7 @@ import lime.ui.Window;
 @:access(lime.ui.Gamepad)
 @:access(lime.ui.Joystick)
 @:access(lime.ui.Window)
+@:access(lime.utils.DroppedFile)
 class HTML5Window
 {
 	private static var dummyCharacter = String.fromCharCode(127);
@@ -494,7 +497,7 @@ class HTML5Window
 					{
 						for (file in event.dataTransfer.files)
 						{
-							parent.onDropFile.dispatch(cast file, "html5", event.clientX, event.clientY);
+							parent.onDropFile.dispatch(new DroppedFile(file.name, file), "html5", event.clientX, event.clientY);
 						}
 					}
 					else

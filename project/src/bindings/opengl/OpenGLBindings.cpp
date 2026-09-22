@@ -1,5 +1,4 @@
-#include "OpenGLBindings.h"
-
+#include <bindings/opengl/OpenGLBindings.h>
 #include <hx/CFFIPrime.h>
 #include <map>
 #include <SDL3/SDL.h>
@@ -62,10 +61,10 @@ namespace lime
 
 	void gc_gl_run()
 	{
-		if (gc_gl_id.size() > 0)
-		{
-			gc_gl_mutex.Lock();
+		gc_gl_mutex.Lock();
 
+		if (gc_gl_id.size() > 0 || gc_gl_ptr.size() > 0)
+		{
 			int size = gc_gl_id.size();
 
 			GLuint id;
@@ -160,8 +159,29 @@ namespace lime
 
 					case TYPE_VERTEX_ARRAY_OBJECT:
 
+#if defined(LIME_GLAD) && defined(LIME_OPENGL_GL)
+						if (GLAD_GL_VERSION_2_1 && !GLAD_GL_VERSION_3_0)
+						{
+							if (GLAD_GL_APPLE_vertex_array_object)
+							{
+								if (glIsVertexArrayAPPLE(id))
+									glDeleteVertexArraysAPPLE(1, &id);
+							}
+							else if (GLAD_GL_ARB_vertex_array_object)
+							{
+								if (glIsVertexArray(id))
+									glDeleteVertexArrays(1, &id);
+							}
+						}
+						else
+						{
+							if (glIsVertexArray(id))
+								glDeleteVertexArrays(1, &id);
+						}
+#else
 						if (glIsVertexArray(id))
 							glDeleteVertexArrays(1, &id);
+#endif
 						break;
 
 					default:
@@ -184,9 +204,9 @@ namespace lime
 			gc_gl_id.clear();
 			gc_gl_ptr.clear();
 			gc_gl_type.clear();
-
-			gc_gl_mutex.Unlock();
 		}
+
+		gc_gl_mutex.Unlock();
 	}
 
 	void lime_gl_active_texture(int texture)
@@ -294,7 +314,25 @@ namespace lime
 
 	void lime_gl_bind_vertex_array(int vertexArray)
 	{
+#if defined(LIME_GLAD) && defined(LIME_OPENGL_GL)
+		if (GLAD_GL_VERSION_2_1 && !GLAD_GL_VERSION_3_0)
+		{
+			if (GLAD_GL_APPLE_vertex_array_object)
+			{
+				glBindVertexArrayAPPLE(vertexArray);
+			}
+			else if (GLAD_GL_ARB_vertex_array_object)
+			{
+				glBindVertexArray(vertexArray);
+			}
+		}
+		else
+		{
+			glBindVertexArray(vertexArray);
+		}
+#else
 		glBindVertexArray(vertexArray);
+#endif
 	}
 
 	void lime_gl_blend_color(float r, float g, float b, float a)
@@ -334,7 +372,21 @@ namespace lime
 
 	void lime_gl_blit_framebuffer(int srcX0, int srcY0, int srcX1, int srcY1, int dstX0, int dstY0, int dstX1, int dstY1, int mask, int filter)
 	{
+#if defined(LIME_GLAD) && defined(LIME_OPENGL_GL)
+		if (GLAD_GL_VERSION_2_1 && !GLAD_GL_VERSION_3_0)
+		{
+			if (GLAD_GL_EXT_framebuffer_blit)
+			{
+				glBlitFramebufferEXT(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
+			}
+		}
+		else
+		{
+			glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
+		}
+#else
 		glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
+#endif
 	}
 
 	void lime_gl_buffer_data(int target, int size, double data, int usage)
@@ -389,7 +441,11 @@ namespace lime
 
 	void lime_gl_clear_depthf(float depth)
 	{
+#ifdef LIME_OPENGL_GL
+		glClearDepth(depth);
+#else
 		glClearDepthf(depth);
+#endif
 	}
 
 	void lime_gl_clear_stencil(int stencil)
@@ -547,7 +603,27 @@ namespace lime
 	int lime_gl_create_vertex_array()
 	{
 		GLuint id = 0;
+
+#if defined(LIME_GLAD) && defined(LIME_OPENGL_GL)
+		if (GLAD_GL_VERSION_2_1 && !GLAD_GL_VERSION_3_0)
+		{
+			if (GLAD_GL_APPLE_vertex_array_object)
+			{
+				glGenVertexArraysAPPLE(1, &id);
+			}
+			else if (GLAD_GL_ARB_vertex_array_object)
+			{
+				glGenVertexArrays(1, &id);
+			}
+		}
+		else
+		{
+			glGenVertexArrays(1, &id);
+		}
+#else
 		glGenVertexArrays(1, &id);
+#endif
+
 		return id;
 	}
 
@@ -638,7 +714,25 @@ namespace lime
 
 	void lime_gl_delete_vertex_array(int vertexArray)
 	{
+#if defined(LIME_GLAD) && defined(LIME_OPENGL_GL)
+		if (GLAD_GL_VERSION_2_1 && !GLAD_GL_VERSION_3_0)
+		{
+			if (GLAD_GL_APPLE_vertex_array_object)
+			{
+				glDeleteVertexArraysAPPLE(1, (GLuint *)&vertexArray);
+			}
+			else if (GLAD_GL_ARB_vertex_array_object)
+			{
+				glDeleteVertexArrays(1, (GLuint *)&vertexArray);
+			}
+		}
+		else
+		{
+			glDeleteVertexArrays(1, (GLuint *)&vertexArray);
+		}
+#else
 		glDeleteVertexArrays(1, (GLuint *)&vertexArray);
+#endif
 	}
 
 	void lime_gl_depth_func(int func)
@@ -653,7 +747,11 @@ namespace lime
 
 	void lime_gl_depth_rangef(float zNear, float zFar)
 	{
+#ifdef LIME_OPENGL_GL
+		glDepthRange(zNear, zFar);
+#else
 		glDepthRangef(zNear, zFar);
+#endif
 	}
 
 	void lime_gl_detach_shader(int program, int shader)
@@ -678,7 +776,25 @@ namespace lime
 
 	void lime_gl_draw_arrays_instanced(int mode, int first, int count, int instanceCount)
 	{
+#if defined(LIME_GLAD) && defined(LIME_OPENGL_GL)
+		if (GLAD_GL_VERSION_2_1 && !GLAD_GL_VERSION_3_1)
+		{
+			if (GLAD_GL_ARB_draw_instanced)
+			{
+				glDrawArraysInstancedARB(mode, first, count, instanceCount);
+			}
+			else if (GLAD_GL_EXT_draw_instanced)
+			{
+				glDrawArraysInstancedEXT(mode, first, count, instanceCount);
+			}
+		}
+		else
+		{
+			glDrawArraysInstanced(mode, first, count, instanceCount);
+		}
+#else
 		glDrawArraysInstanced(mode, first, count, instanceCount);
+#endif
 	}
 
 	void lime_gl_draw_buffers(value buffers)
@@ -701,7 +817,25 @@ namespace lime
 
 	void lime_gl_draw_elements_instanced(int mode, int count, int type, double offset, int instanceCount)
 	{
+#if defined(LIME_GLAD) && defined(LIME_OPENGL_GL)
+		if (GLAD_GL_VERSION_2_1 && !GLAD_GL_VERSION_3_1)
+		{
+			if (GLAD_GL_ARB_draw_instanced)
+			{
+				glDrawElementsInstancedARB(mode, count, type, (void *)(uintptr_t)offset, instanceCount);
+			}
+			else if (GLAD_GL_EXT_draw_instanced)
+			{
+				glDrawElementsInstancedEXT(mode, count, type, (void *)(uintptr_t)offset, instanceCount);
+			}
+		}
+		else
+		{
+			glDrawElementsInstanced(mode, count, type, (void *)(uintptr_t)offset, instanceCount);
+		}
+#else
 		glDrawElementsInstanced(mode, count, type, (void *)(uintptr_t)offset, instanceCount);
+#endif
 	}
 
 	void lime_gl_draw_range_elements(int mode, int start, int end, int count, int type, double offset)
@@ -952,9 +1086,9 @@ namespace lime
 
 	double lime_gl_get_buffer_pointerv(int target, int pname)
 	{
-		uintptr_t result = 0;
-		glGetBufferPointerv(target, pname, (void **)result);
-		return (double)result;
+		void *ptr = nullptr;
+		glGetBufferPointerv(target, pname, &ptr);
+		return (double)(uintptr_t)ptr;
 	}
 
 	void lime_gl_get_buffer_sub_data(int target, double offset, int size, double data)
@@ -1464,9 +1598,9 @@ namespace lime
 
 	double lime_gl_get_vertex_attrib_pointerv(int index, int pname)
 	{
-		uintptr_t result = 0;
-		glGetVertexAttribPointerv(index, pname, (void **)result);
-		return (double)result;
+		void *ptr = nullptr;
+		glGetVertexAttribPointerv(index, pname, &ptr);
+		return (double)(uintptr_t)ptr;
 	}
 
 	void lime_gl_hint(int target, int mode)
@@ -1567,7 +1701,18 @@ namespace lime
 
 	bool lime_gl_is_vertex_array(int handle)
 	{
-		return glIsQuery(handle);
+#if defined(LIME_GLAD) && defined(LIME_OPENGL_GL)
+		if (GLAD_GL_VERSION_2_1 && !GLAD_GL_VERSION_3_0)
+		{
+			return GLAD_GL_APPLE_vertex_array_object ? glIsVertexArrayAPPLE(handle) : (GLAD_GL_ARB_vertex_array_object ? glIsVertexArray(handle) : false);
+		}
+		else
+		{
+			return glIsVertexArray(handle);
+		}
+#else
+		return glIsVertexArray(handle);
+#endif
 	}
 
 	void lime_gl_line_width(float width)
@@ -1706,7 +1851,21 @@ namespace lime
 
 	void lime_gl_renderbuffer_storage_multisample(int target, int samples, int internalformat, int width, int height)
 	{
+#if defined(LIME_GLAD) && defined(LIME_OPENGL_GL)
+		if (GLAD_GL_VERSION_2_1 && !GLAD_GL_VERSION_3_0)
+		{
+			if (GLAD_GL_EXT_framebuffer_multisample)
+			{
+				glRenderbufferStorageMultisampleEXT(target, samples, internalformat, width, height);
+			}
+		}
+		else
+		{
+			glRenderbufferStorageMultisample(target, samples, internalformat, width, height);
+		}
+#else
 		glRenderbufferStorageMultisample(target, samples, internalformat, width, height);
+#endif
 	}
 
 	void lime_gl_resume_transform_feedback()
@@ -1799,7 +1958,7 @@ namespace lime
 
 	void lime_gl_tex_parameteri(int target, int pname, int param)
 	{
-		glTexParameterf(target, pname, param);
+		glTexParameteri(target, pname, param);
 	}
 
 	void lime_gl_tex_storage_2d(int target, int level, int internalformat, int width, int height)
@@ -1825,7 +1984,7 @@ namespace lime
 	void lime_gl_transform_feedback_varyings(int program, value varyings, int bufferMode)
 	{
 		GLsizei size = val_array_size(varyings);
-		const char **_varyings = (const char **)alloca(size * sizeof(GLenum));
+		const char **_varyings = (const char **)alloca(size * sizeof(const char *));
 
 		for (int i = 0; i < size; i++)
 		{
@@ -2022,7 +2181,21 @@ namespace lime
 
 	void lime_gl_vertex_attrib_divisor(int index, int divisor)
 	{
+#if defined(LIME_GLAD) && defined(LIME_OPENGL_GL)
+		if (GLAD_GL_VERSION_2_1 && !GLAD_GL_VERSION_3_3)
+		{
+			if (GLAD_GL_ARB_instanced_arrays)
+			{
+				glVertexAttribDivisorARB(index, divisor);
+			}
+		}
+		else
+		{
+			glVertexAttribDivisor(index, divisor);
+		}
+#else
 		glVertexAttribDivisor(index, divisor);
+#endif
 	}
 
 	void lime_gl_vertex_attrib_ipointer(int index, int size, int type, int stride, double offset)

@@ -42,7 +42,6 @@
 #include <ui/Cursor.h>
 #include <ui/FileDialog.h>
 #include <ui/Gamepad.h>
-#include <ui/Haptic.h>
 #include <ui/Joystick.h>
 #include <ui/KeyCode.h>
 #include <ui/Touch.h>
@@ -187,7 +186,7 @@ namespace lime
 
 	value lime_application_create()
 	{
-		Application *application = CreateApplication();
+		Application *application = new Application();
 		return CFFIPointer(application, gc_application);
 	}
 
@@ -195,6 +194,27 @@ namespace lime
 	{
 		ApplicationEvent::callback = new ValuePointer(callback);
 		ApplicationEvent::eventObject = new ValuePointer(eventObject);
+	}
+
+	int lime_application_alert(value application, int type, HxString message, HxString title, value buttons)
+	{
+		Application *app = (Application *)val_data(application);
+
+		std::vector<const char *> targetButtons;
+
+		if (buttons)
+		{
+			int buttonCount = val_array_size(buttons);
+
+			targetButtons.reserve(buttonCount);
+
+			for (int i = 0; i < buttonCount; i++)
+			{
+				targetButtons.push_back(val_string(val_array_i(buttons, i)));
+			}
+		}
+
+		return app->Alert(type, hxs_utf8(message, nullptr), hxs_utf8(title, nullptr), targetButtons.data(), targetButtons.size());
 	}
 
 	int lime_application_exec(value application)
@@ -259,14 +279,47 @@ namespace lime
 	value lime_bytes_read_file(HxString path, value bytes)
 	{
 		Bytes data(bytes);
-		data.ReadFile(hxs_utf8(path, nullptr));
+
+		File file(hxs_utf8(path, nullptr), "rb");
+
+		if (file.handle)
+		{
+			file.Seek(0, SEEK_END);
+
+			int size = (int)file.Tell();
+
+			file.Seek(0, SEEK_SET);
+
+			if (size > 0)
+			{
+				data.Resize(size);
+
+				file.Read(data.b, size);
+			}
+
+			file.Close();
+		}
+
 		return data.Value(bytes);
 	}
 
 	void lime_bytes_write_file(HxString path, value bytes)
 	{
-		Bytes data(bytes);
-		data.WriteFile(hxs_utf8(path, nullptr));
+		File file(hxs_utf8(path, nullptr), "wb");
+
+		if (file.handle)
+		{
+			Bytes data(bytes);
+
+			if (data.length > 0)
+			{
+				file.Write(data.b, data.length);
+
+				file.Flush();
+			}
+
+			file.Close();
+		}
 	}
 
 	double lime_cffi_get_native_pointer(value handle)
@@ -1292,7 +1345,7 @@ namespace lime
 
 	value lime_window_create(value application, int width, int height, int flags, HxString title)
 	{
-		Window *window = MakeWindow((Application *)val_data(application), width, height, flags, hxs_utf8(title, nullptr));
+		Window *window = new Window((Application *)val_data(application), width, height, flags, hxs_utf8(title, nullptr));
 		return CFFIPointer(window, gc_window);
 	}
 
@@ -2031,6 +2084,7 @@ namespace lime
 
 	DEFINE_PRIME0(lime_application_create);
 	DEFINE_PRIME2v(lime_application_event_manager_register);
+	DEFINE_PRIME5(lime_application_alert);
 	DEFINE_PRIME1(lime_application_exec);
 	DEFINE_PRIME1v(lime_application_init);
 	DEFINE_PRIME1(lime_application_quit);

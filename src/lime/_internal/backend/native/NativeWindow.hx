@@ -91,13 +91,17 @@ class NativeWindow
 		if (Reflect.hasField(attributes, "resizable") && attributes.resizable)
 			flags |= cast WindowFlags.WINDOW_FLAG_RESIZABLE;
 
-		if (contextAttributes.antialiasing >= 4)
+		if (contextAttributes.antialiasing >= 8)
 		{
-			flags |= cast WindowFlags.WINDOW_FLAG_HW_AA_HIRES;
+			flags |= cast WindowFlags.WINDOW_FLAG_ANTIALIASING_8X;
+		}
+		else if (contextAttributes.antialiasing >= 4)
+		{
+			flags |= cast WindowFlags.WINDOW_FLAG_ANTIALIASING_4X;
 		}
 		else if (contextAttributes.antialiasing >= 2)
 		{
-			flags |= cast WindowFlags.WINDOW_FLAG_HW_AA;
+			flags |= cast WindowFlags.WINDOW_FLAG_ANTIALIASING_2X;
 		}
 
 		if (contextAttributes.colorDepth == 32)
@@ -723,16 +727,17 @@ private enum abstract WindowFlags(Int)
 	var WINDOW_FLAG_BORDERLESS = 0x00000004;
 	var WINDOW_FLAG_RESIZABLE = 0x00000008;
 	var WINDOW_FLAG_VSYNC = 0x00000010;
-	var WINDOW_FLAG_HW_AA = 0x00000020;
-	var WINDOW_FLAG_HW_AA_HIRES = 0x00000060;
-	var WINDOW_FLAG_ALLOW_SHADERS = 0x00000080;
-	var WINDOW_FLAG_REQUIRE_SHADERS = 0x00000100;
-	var WINDOW_FLAG_DEPTH_BUFFER = 0x00000200;
-	var WINDOW_FLAG_STENCIL_BUFFER = 0x00000400;
-	var WINDOW_FLAG_ALLOW_HIGHDPI = 0x00000800;
-	var WINDOW_FLAG_HIDDEN = 0x00001000;
-	var WINDOW_FLAG_MINIMIZED = 0x00002000;
-	var WINDOW_FLAG_MAXIMIZED = 0x00004000;
-	var WINDOW_FLAG_ALWAYS_ON_TOP = 0x00008000;
-	var WINDOW_FLAG_COLOR_DEPTH_32_BIT = 0x00010000;
+	var WINDOW_FLAG_ANTIALIASING_2X = 0x00000020;
+	var WINDOW_FLAG_ANTIALIASING_4X = 0x00000040;
+	var WINDOW_FLAG_ANTIALIASING_8X = 0x00000080;
+	var WINDOW_FLAG_ALLOW_SHADERS = 0x00000100;
+	var WINDOW_FLAG_REQUIRE_SHADERS = 0x00000200;
+	var WINDOW_FLAG_DEPTH_BUFFER = 0x00000400;
+	var WINDOW_FLAG_STENCIL_BUFFER = 0x00000800;
+	var WINDOW_FLAG_ALLOW_HIGHDPI = 0x00001000;
+	var WINDOW_FLAG_HIDDEN = 0x00002000;
+	var WINDOW_FLAG_MINIMIZED = 0x00004000;
+	var WINDOW_FLAG_MAXIMIZED = 0x00008000;
+	var WINDOW_FLAG_ALWAYS_ON_TOP = 0x00010000;
+	var WINDOW_FLAG_COLOR_DEPTH_32_BIT = 0x00020000;
 }

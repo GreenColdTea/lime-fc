@@ -80,16 +80,6 @@ class AudioBuffer
 	@:noCompletion private var __srcHowlerDefaultSprite:String;
 	@:noCompletion private var __srcVorbisFile:#if lime_vorbis VorbisFile #else Dynamic #end;
 
-	#if commonjs
-	private static function __init__()
-	{
-		var p = untyped AudioBuffer.prototype;
-		untyped Object.defineProperties(p, {
-			"src": {get: p.get_src, set: p.set_src}
-		});
-	}
-	#end
-
 	/**
 		Creates a new, empty `AudioBuffer` instance.
 	**/
@@ -101,7 +91,17 @@ class AudioBuffer
 	public function dispose():Void
 	{
 		#if (js && html5 && lime_howlerjs)
-		__srcHowl.unload();
+		if (__srcHowl != null)
+		{
+			__srcHowl.unload();
+			__srcHowl = null;
+		}
+		#elseif (lime_cffi && !macro)
+		if (__srcBuffer != null)
+		{
+			AL.deleteBuffer(__srcBuffer);
+			__srcBuffer = null;
+		}
 		#end
 		#if lime_vorbis
 		if (__srcVorbisFile != null)

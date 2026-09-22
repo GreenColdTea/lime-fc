@@ -6,21 +6,19 @@ namespace lime
 {
 
 	std::map<int, SDL_Gamepad *> gameControllers;
-	std::map<int, int> gameControllerIDs;
 
-	bool Gamepad::Connect(int deviceID)
+	bool Gamepad::Connect(int id)
 	{
-		if (!SDL_IsGamepad(deviceID))
+		if (!SDL_IsGamepad(id))
 			return false;
 
-		SDL_Gamepad *gameController = SDL_OpenGamepad(deviceID);
+		SDL_Gamepad *gameController = SDL_OpenGamepad(id);
 
 		if (!gameController)
 			return false;
 
-		int id = SDL_GetGamepadID(gameController);
 		gameControllers[id] = gameController;
-		gameControllerIDs[deviceID] = id;
+
 		return true;
 	}
 
@@ -35,26 +33,7 @@ namespace lime
 
 		gameControllers.erase(it);
 
-		for (auto iter = gameControllerIDs.begin(); iter != gameControllerIDs.end(); ++iter)
-		{
-			if (iter->second == id)
-			{
-				gameControllerIDs.erase(iter);
-				break;
-			}
-		}
-
 		return true;
-	}
-
-	int Gamepad::GetInstanceID(int deviceID)
-	{
-		auto it = gameControllerIDs.find(deviceID);
-
-		if (it == gameControllerIDs.end())
-			return -1;
-
-		return it->second;
 	}
 
 	void Gamepad::AddMapping(const char *content)

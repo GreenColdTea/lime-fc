@@ -246,6 +246,7 @@ class MacPlatform extends PlatformTarget
 
 		ProjectHelper.recursiveSmartCopyTemplate(project, "haxe", targetDirectory + "/haxe", context);
 		ProjectHelper.recursiveSmartCopyTemplate(project, "cpp/hxml", targetDirectory + "/haxe", context);
+		ProjectHelper.recursiveSmartCopyTemplate(project, "mac/template", targetDirectory + "/bin", context, true, false);
 
 		System.copyFileTemplate(project.templatePaths, "mac/Info.plist", targetDirectory + "/bin/" + project.app.file + ".app/Contents/Info.plist", context);
 		System.copyFileTemplate(project.templatePaths, "mac/Entitlements.plist",
@@ -260,21 +261,30 @@ class MacPlatform extends PlatformTarget
 			try
 			{
 				System.runProcess("", "xcrun", [
-					"actool", project.adaptiveIcon.path,
-					"--compile", contentDirectory,
-					"--app-icon", "icon",
+					"actool",
+					project.adaptiveIcon.path,
+					"--compile",
+					contentDirectory,
+					"--app-icon",
+					"icon",
 					"--include-all-app-icons",
-					"--output-partial-info-plist", "/dev/null",
-					"--minimum-deployment-target", "11.0",
-					"--platform", "macosx",
-					"--target-device", "mac",
+					"--output-partial-info-plist",
+					"/dev/null",
+					"--minimum-deployment-target",
+					"11.0",
+					"--platform",
+					"macosx",
+					"--target-device",
+					"mac",
 				], false, false);
 			}
 			catch (e:Dynamic)
 			{
 				Log.warn("Failed to compile adaptive icon via actool");
 			}
-		} else {
+		}
+		else
+		{
 			var icons = project.icons;
 
 			if (icons.length == 0)
@@ -286,8 +296,6 @@ class MacPlatform extends PlatformTarget
 		}
 
 		copyProjectAssets(targetDirectory, contentDirectory);
-
-
 	}
 
 	public override function install():Void {}

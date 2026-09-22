@@ -443,83 +443,151 @@ class HTML5HTTPRequest
 
 	private static function __loadImage(uri:String, promise:Promise<Image>, options:Int):Void
 	{
-		var image:JSImage = untyped js.Syntax.code('new window.Image ()');
+		var isWorker:Bool = untyped js.Syntax.code("typeof window === 'undefined'");
 
-		if (!__isSameOrigin(uri))
+		if (!isWorker)
 		{
-			image.crossOrigin = "Anonymous";
-		}
+			var image:JSImage = untyped js.Syntax.code('new window.Image ()');
 
-		if (supportsImageProgress == null)
-		{
-			supportsImageProgress = untyped js.Syntax.code("'onprogress' in image");
-		}
-
-		if (supportsImageProgress || __isInMemoryURI(uri))
-		{
-			image.addEventListener("load", function(event)
+			if (!__isSameOrigin(uri))
 			{
-				__revokeBlobURI(uri, options);
-				var buffer = new ImageBuffer(null, image.width, image.height);
-				buffer.__srcImage = cast image;
+				image.crossOrigin = "Anonymous";
+			}
 
-				activeRequests--;
-				processQueue();
-
-				promise.complete(new Image(buffer));
-			}, false);
-
-			image.addEventListener("progress", function(event)
+			if (supportsImageProgress == null)
 			{
-				promise.progress(event.loaded, event.total);
-			}, false);
+				supportsImageProgress = untyped js.Syntax.code("'onprogress' in image");
+			}
 
-			image.addEventListener("error", function(event)
+			if (supportsImageProgress || __isInMemoryURI(uri))
 			{
-				__revokeBlobURI(uri, options);
-
-				activeRequests--;
-				processQueue();
-
-				promise.error(new _HTTPRequestErrorResponse(event.detail, null));
-			}, false);
-
-			image.src = uri;
-		}
-		else
-		{
-			var request = new XMLHttpRequest();
-
-			request.onload = function(_)
-			{
-				activeRequests--;
-				processQueue();
-
-				var img = new Image();
-				img.__fromBytes(Bytes.ofData(request.response), function(img)
+				image.addEventListener("load", function(event)
 				{
-					promise.complete(img);
-				});
-			}
+					__revokeBlobURI(uri, options);
+					var buffer = new ImageBuffer(null, image.width, image.height);
+					buffer.__srcImage = cast image;
 
-			request.onerror = function(event:ErrorEvent)
-			{
-				promise.error(new _HTTPRequestErrorResponse(event.message, null));
-			}
+					activeRequests--;
+					processQueue();
 
-			request.onprogress = function(event:ProgressEvent)
-			{
-				if (event.lengthComputable)
+					promise.complete(new Image(buffer));
+				}, false);
+
+				image.addEventListener("progress", function(event)
 				{
 					promise.progress(event.loaded, event.total);
-				}
+				}, false);
+
+				image.addEventListener("error", function(event)
+				{
+					__revokeBlobURI(uri, options);
+
+					activeRequests--;
+					processQueue();
+
+					promise.error(new _HTTPRequestErrorResponse(event.detail, null));
+				}, false);
+
+				image.src = uri;
+				return;
+			}
+		}
+
+		var loadBytes = function(bytes:Bytes, type:String):Void
+		{
+			var blob = new Blob([bytes.getData()], {type: type});
+			var createImageBitmap:Dynamic = untyped js.Syntax.code("typeof globalThis.createImageBitmap === 'function' ? globalThis.createImageBitmap : null");
+			var hasOffscreenCanvas:Bool = untyped js.Syntax.code("typeof globalThis.OffscreenCanvas !== 'undefined'");
+
+			if (createImageBitmap == null || !hasOffscreenCanvas)
+			{
+				activeRequests--;
+				processQueue();
+				promise.error("Worker image decoding is not supported by this browser.");
+				return;
 			}
 
-			request.open("GET", uri, true);
-			request.responseType = XMLHttpRequestResponseType.ARRAYBUFFER;
-			request.overrideMimeType('text/plain; charset=x-user-defined');
-			request.send(null);
+			createImageBitmap(blob).then(function(bitmap:Dynamic)
+			{
+				try
+				{
+					var canvas:Dynamic = untyped js.Syntax.code("new globalThis.OffscreenCanvas({0}, {1})", bitmap.width, bitmap.height);
+					var context:Dynamic = canvas.getContext("2d");
+					var imageData:Dynamic = context.getImageData(0, 0, bitmap.width, bitmap.height);
+					var data = new lime.utils.UInt8Array(null, null, null, imageData.data);
+					var image = new Image(new ImageBuffer(data, bitmap.width, bitmap.height));
+					bitmap.close();
+
+					activeRequests--;
+					processQueue();
+					promise.complete(image);
+				}
+				catch (e:Dynamic)
+				{
+					if (bitmap != null)
+						bitmap.close();
+					activeRequests--;
+					processQueue();
+					promise.error(e);
+				}
+			}, function(error:Dynamic)
+			{
+				activeRequests--;
+				processQueue();
+				promise.error(error);
+			});
+		};
+
+		if (StringTools.startsWith(uri, "data:"))
+		{
+			var comma = uri.indexOf(",");
+			if (comma > -1 && StringTools.endsWith(uri.substring(0, comma), ";base64"))
+			{
+				try
+				{
+					var type = uri.substring(5, comma).split(";")[0];
+					loadBytes(Base64.decode(uri.substr(comma + 1)), type);
+					return;
+				}
+				catch (e:Dynamic)
+				{
+					activeRequests--;
+					processQueue();
+					promise.error(e);
+					return;
+				}
+			}
 		}
+
+		var request = new XMLHttpRequest();
+
+		request.onload = function(_)
+		{
+			var type = request.getResponseHeader("Content-Type");
+			if (type == null || type == "")
+				type = "image/png";
+			loadBytes(Bytes.ofData(request.response), type);
+		};
+
+		request.onerror = function(event:ErrorEvent)
+		{
+			activeRequests--;
+			processQueue();
+			promise.error(new _HTTPRequestErrorResponse(event.message, null));
+		}
+
+		request.onprogress = function(event:ProgressEvent)
+		{
+			if (event.lengthComputable)
+			{
+				promise.progress(event.loaded, event.total);
+			}
+		}
+
+		request.open("GET", uri, true);
+		request.responseType = XMLHttpRequestResponseType.ARRAYBUFFER;
+		request.overrideMimeType('text/plain; charset=x-user-defined');
+		request.send(null);
 	}
 
 	private function __loadText(uri:String, promise:Promise<String>):Void
