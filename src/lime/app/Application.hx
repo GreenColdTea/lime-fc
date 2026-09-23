@@ -100,15 +100,7 @@ class Application extends Module
 
 	private static function __init__()
 	{
-		var _init = ApplicationBackend;
-		#if commonjs
-		var p = untyped Application.prototype;
-		untyped Object.defineProperties(p, {
-			"preloader": {get: p.get_preloader},
-			"window": {get: p.get_window},
-			"windows": {get: p.get_windows}
-		});
-		#end
+		var init = ApplicationBackend;
 	}
 
 	/**
@@ -137,6 +129,11 @@ class Application extends Module
 		__preloader = new Preloader();
 		__preloader.onProgress.add(onPreloadProgress);
 		__preloader.onComplete.add(onPreloadComplete);
+	}
+
+	public function alert(?type:lime.ui.MessageBoxType = INFORMATION, message:String = null, title:String = null, buttons:Array<String> = null):Int
+	{
+		return __backend.alert(type, message, title, buttons);
 	}
 
 	/**
@@ -435,7 +432,7 @@ class Application extends Module
 		@param x      The X position of the drop in window coordinates.
 		@param y      The Y position of the drop in window coordinates.
 	**/
-	public function onWindowDropFile(data:String, source:String, x:Float, y:Float):Void {}
+	public function onWindowDropFile(data:lime.utils.DroppedFile, source:String, x:Float, y:Float):Void {}
 
 	/**
 		Called when a window drop text event is fired on the primary window.

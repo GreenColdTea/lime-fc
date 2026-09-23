@@ -17,6 +17,7 @@ import js.Browser;
 import js.html.CanvasElement;
 import js.html.CanvasRenderingContext2D;
 import js.html.SpanElement;
+
 import lime.utils.Log;
 #end
 
@@ -105,6 +106,14 @@ class Font
 
 	@:noCompletion private var __fontID:String;
 	@:noCompletion private var __fontPath:String;
+	#if (js && html5)
+	@:noCompletion private var __webFontLoad:Future<Font>;
+	@:noCompletion private var __webFontWeight:Int = 400;
+	@:noCompletion private var __webFontStyle:String = "normal";
+
+	@:noCompletion private static var __webFontID:Int = 0;
+	#end
+
 	#if lime_cffi
 	@:noCompletion private var __fontPathWithoutDirectory:String;
 	#end
@@ -214,7 +223,17 @@ class Font
 	 */
 	public static function loadFromBytes(bytes:Bytes):Future<Font>
 	{
-		return Future.withValue(fromBytes(bytes));
+		if (bytes == null)
+			return cast Future.withError("Could not load font from empty data");
+
+		var font = new Font();
+		font.__fromBytes(bytes);
+
+		#if (js && html5)
+		return font.__loadWebFont();
+		#else
+		return Future.withValue(font);
+		#end
 	}
 
 	/**
@@ -225,18 +244,30 @@ class Font
 	 */
 	public static function loadFromFile(path:String):Future<Font>
 	{
+		#if (js && html5)
+		if (path == null || path == "")
+			return cast Future.withError("Could not load font: empty path");
+
+		var request = new HTTPRequest<Bytes>();
+
+		return request.load(path).then(function(bytes)
+		{
+			if (bytes == null)
+				return cast Future.withError("Could not load font: " + path);
+
+			return loadFromBytes(bytes);
+		});
+		#else
 		var request = new HTTPRequest<Font>();
+
 		return request.load(path).then(function(font)
 		{
 			if (font != null)
-			{
 				return Future.withValue(font);
-			}
 			else
-			{
 				return cast Future.withError("");
-			}
 		});
+		#end
 	}
 
 	/**
@@ -593,7 +624,33 @@ class Font
 	{
 		__fontPath = null;
 
-		#if (lime_cffi && !macro)
+		#if (js && html5)
+		__parseFontMetadata(bytes);
+
+		// Just to be sure fonts from same family wont use their internal css crap in browser.
+		var originalName = name;
+		var webFontName = "__lime_font_" + Std.string(__webFontID++);
+		if (originalName == null || originalName.length == 0)
+		{
+			originalName = webFontName;
+		}
+
+		name = webFontName;
+
+		var descriptors:Dynamic = {
+			weight: Std.string(__webFontWeight),
+			style: __webFontStyle
+		};
+
+		var fontFace:Dynamic = untyped js.Syntax.code("new FontFace({0}, {1}, {2})", name, bytes.getData(), descriptors);
+
+		src = fontFace;
+
+		untyped Browser.document.fonts.add(fontFace);
+
+		__webFontLoad = null;
+		__init = true;
+		#elseif (lime_cffi && !macro)
 		__fontPathWithoutDirectory = null;
 
 		src = NativeCFFI.lime_font_load_bytes(bytes);
@@ -606,7 +663,22 @@ class Font
 	{
 		__fontPath = path;
 
-		#if (lime_cffi && !macro)
+		#if (js && html5)
+		var bytes:Bytes = null;
+
+		if (Assets.exists(path))
+		{
+			bytes = Assets.getBytes(path);
+		}
+
+		if (bytes != null)
+		{
+			__fromBytes(bytes);
+			return;
+		}
+
+		__init = true;
+		#elseif (lime_cffi && !macro)
 		__fontPathWithoutDirectory = Path.withoutDirectory(__fontPath);
 
 		src = NativeCFFI.lime_font_load_file(__fontPath);
@@ -640,6 +712,41 @@ class Font
 		__init = true;
 	}
 
+	#if (js && html5)
+	@:noCompletion private function __loadWebFont():Future<Font>
+	{
+		if (src == null && name != null)
+		{
+			return __loadFromName(name);
+		}
+
+		if (__webFontLoad != null)
+			return __webFontLoad;
+
+		var promise = new Promise<Font>();
+		__webFontLoad = promise.future;
+
+		if (src == null)
+		{
+			promise.error("Could not load web font \"" + name + "\": missing FontFace");
+			return __webFontLoad;
+		}
+
+		var fontFace:Dynamic = src;
+
+		untyped fontFace.load().then(function(_)
+		{
+			promise.complete(this);
+		}, function(error)
+		{
+			Log.warn("Could not load web font \"" + name + "\": " + Std.string(error));
+			promise.error("Could not load web font \"" + name + "\": " + Std.string(error));
+		});
+
+		return __webFontLoad;
+	}
+	#end
+
 	@:noCompletion private function __loadFromName(name:String):Future<Font>
 	{
 		var promise = new Promise<Font>();
@@ -653,13 +760,13 @@ class Font
 
 		if (!isSafari && !isUIWebView && untyped (Browser.document).fonts && untyped (Browser.document).fonts.load)
 		{
-			untyped (Browser.document).fonts.load("1em '" + name + "'").then(function(_)
+			untyped (Browser.document).fonts.load("1em \"" + name + "\"").then(function(_)
 			{
 				promise.complete(this);
-			}, function(_)
+			}, function(error)
 			{
-				Log.warn("Could not load web font \"" + name + "\"");
-				promise.complete(this);
+				Log.warn("Could not load web font \"" + name + "\": " + Std.string(error));
+				promise.error("Could not load web font \"" + name + "\": " + Std.string(error));
 			});
 		}
 		else
@@ -733,6 +840,398 @@ class Font
 		style.fontFamily = fontFamily;
 		Browser.document.body.appendChild(node);
 		return node;
+	}
+
+	// Doing it manually because HTML doesn't have any api to do that
+	@:noCompletion private function __parseFontMetadata(bytes:Bytes):Void
+	{
+		if (bytes == null || bytes.length < 12)
+			return;
+
+		var sfntOffset = 0;
+
+		if (__readTag(bytes, 0) == "ttcf")
+		{
+			if (bytes.length < 16)
+				return;
+
+			sfntOffset = __readUInt32(bytes, 12);
+
+			if (sfntOffset < 0 || sfntOffset + 12 > bytes.length)
+				return;
+		}
+
+		if (sfntOffset + 12 > bytes.length)
+			return;
+
+		var sfVersion = __readUInt32(bytes, sfntOffset);
+
+		// Valid SFNT versions:
+		// 0x00010000 = TrueType
+		// 0x4F54544F = "OTTO" = OpenType/CFF
+		// 0x74727565 = "true"
+		// 0x74797031 = "typ1"
+		// These aren't colors btw
+		if (sfVersion != 0x00010000 && sfVersion != 0x4F54544F && sfVersion != 0x74727565 && sfVersion != 0x74797031)
+		{
+			return;
+		}
+
+		var numTables = __readUInt16(bytes, sfntOffset + 4);
+
+		var tableDirectory = sfntOffset + 12;
+
+		if (tableDirectory + numTables * 16 > bytes.length)
+			return;
+
+		var headOffset = -1;
+		var hheaOffset = -1;
+		var maxpOffset = -1;
+		var nameOffset = -1;
+		var postOffset = -1;
+		var os2Offset = -1;
+
+		for (i in 0...numTables)
+		{
+			var recordOffset = tableDirectory + i * 16;
+
+			var tag = __readTag(bytes, recordOffset);
+			var offset = __readUInt32(bytes, recordOffset + 8);
+			var length = __readUInt32(bytes, recordOffset + 12);
+
+			// Prevent malformed fonts from causing out-of-range access.
+			if (offset < 0 || length < 0 || offset > bytes.length || length > bytes.length - offset)
+			{
+				continue;
+			}
+
+			switch (tag)
+			{
+				case "head":
+					headOffset = offset;
+
+				case "hhea":
+					hheaOffset = offset;
+
+				case "maxp":
+					maxpOffset = offset;
+
+				case "name":
+					nameOffset = offset;
+
+				case "post":
+					postOffset = offset;
+
+				case "OS/2":
+					os2Offset = offset;
+			}
+		}
+
+		if (headOffset >= 0 && headOffset + 46 <= bytes.length)
+		{
+			unitsPerEM = __readUInt16(bytes, headOffset + 18);
+
+			// macStyle bit 1 = italic
+			if ((__readUInt16(bytes, headOffset + 44) & 0x0002) != 0)
+			{
+				__webFontStyle = "italic";
+			}
+
+			// Avoid invalid zero values.
+			if (unitsPerEM <= 0)
+			{
+				unitsPerEM = 1;
+			}
+		}
+
+		if (hheaOffset >= 0 && hheaOffset + 10 <= bytes.length)
+		{
+			ascender = __readInt16(bytes, hheaOffset + 4);
+			descender = __readInt16(bytes, hheaOffset + 6);
+
+			var lineGap = __readInt16(bytes, hheaOffset + 8);
+
+			height = ascender - descender + lineGap;
+
+			if (height < 0)
+			{
+				height = 0;
+			}
+		}
+
+		if (maxpOffset >= 0 && maxpOffset + 6 <= bytes.length)
+		{
+			numGlyphs = __readUInt16(bytes, maxpOffset + 4);
+		}
+
+		if (postOffset >= 0 && postOffset + 12 <= bytes.length)
+		{
+			underlinePosition = __readInt16(bytes, postOffset + 8);
+			underlineThickness = __readInt16(bytes, postOffset + 10);
+		}
+
+		if (nameOffset >= 0)
+		{
+			var fontName = __readFontName(bytes, nameOffset);
+
+			if (fontName != null && fontName.length > 0)
+			{
+				name = fontName;
+			}
+		}
+
+		if (os2Offset >= 0 && os2Offset + 30 <= bytes.length)
+		{
+			// OS/2 usWeightClass
+			var weight = __readUInt16(bytes, os2Offset + 4);
+			if (weight >= 1 && weight <= 1000)
+			{
+				__webFontWeight = weight;
+			}
+
+			// OS/2 fsSelection bit 0 = italic
+			if (os2Offset + 64 <= bytes.length && (__readUInt16(bytes, os2Offset + 62) & 0x0001) != 0)
+			{
+				__webFontStyle = "italic";
+			}
+
+			strikethroughThickness = __readUInt16(bytes, os2Offset + 26);
+			strikethroughPosition = __readInt16(bytes, os2Offset + 28);
+		}
+		else
+		{
+			strikethroughPosition = Std.int(unitsPerEM * 0.25);
+			strikethroughThickness = Std.int(unitsPerEM * 0.05);
+		}
+	}
+
+	@:noCompletion private static function __readFontName(bytes:Bytes, tableOffset:Int):String
+	{
+		if (tableOffset < 0 || tableOffset + 6 > bytes.length)
+			return null;
+
+		var count = __readUInt16(bytes, tableOffset + 2);
+		var stringOffset = __readUInt16(bytes, tableOffset + 4);
+
+		var recordsOffset = tableOffset + 6;
+
+		if (recordsOffset + count * 12 > bytes.length)
+			return null;
+
+		var bestName:String = null;
+		var bestScore:Int = -1;
+
+		for (i in 0...count)
+		{
+			var recordOffset = recordsOffset + i * 12;
+
+			var platformID = __readUInt16(bytes, recordOffset);
+			var encodingID = __readUInt16(bytes, recordOffset + 2);
+			var languageID = __readUInt16(bytes, recordOffset + 4);
+			var nameID = __readUInt16(bytes, recordOffset + 6);
+			var length = __readUInt16(bytes, recordOffset + 8);
+			var offset = __readUInt16(bytes, recordOffset + 10);
+
+			// Name ID 1 = Font Family Name
+			if (nameID != 1)
+				continue;
+
+			var stringStart = tableOffset + stringOffset + offset;
+
+			if (stringStart < 0 || stringStart > bytes.length || length > bytes.length - stringStart)
+			{
+				continue;
+			}
+
+			var value:String = null;
+			var score = 0;
+
+			// Windows Unicode
+			if (platformID == 3)
+			{
+				value = __decodeUTF16BE(bytes, stringStart, length);
+				score = 100;
+
+				// Prefer English (US)
+				if (languageID == 0x0409)
+					score += 10;
+			}
+			// Unicode platform
+			else if (platformID == 0)
+			{
+				value = __decodeUTF16BE(bytes, stringStart, length);
+				score = 90;
+			}
+			// Macintosh Roman
+			else if (platformID == 1 && encodingID == 0)
+			{
+				value = __decodeMacRoman(bytes, stringStart, length);
+				score = 80;
+
+				// Macintosh English
+				if (languageID == 0)
+				{
+					score += 10;
+				}
+			}
+
+			if (value == null)
+			{
+				continue;
+			}
+
+			value = StringTools.trim(value);
+
+			if (value.length == 0)
+			{
+				continue;
+			}
+
+			if (score > bestScore)
+			{
+				bestScore = score;
+				bestName = value;
+			}
+		}
+
+		return bestName;
+	}
+
+	@:noCompletion private static inline function __readUInt16(bytes:Bytes, offset:Int):Int
+	{
+		return (bytes.get(offset) << 8) | bytes.get(offset + 1);
+	}
+
+	@:noCompletion private static inline function __readInt16(bytes:Bytes, offset:Int):Int
+	{
+		var value = (bytes.get(offset) << 8) | bytes.get(offset + 1);
+
+		if (value & 0x8000 != 0)
+			value -= 0x10000;
+
+		return value;
+	}
+
+	@:noCompletion private static inline function __readUInt32(bytes:Bytes, offset:Int):Int
+	{
+		return (bytes.get(offset) << 24) | (bytes.get(offset + 1) << 16) | (bytes.get(offset + 2) << 8) | bytes.get(offset + 3);
+	}
+
+	@:noCompletion private static function __readTag(bytes:Bytes, offset:Int):String
+	{
+		var result = new StringBuf();
+
+		result.add(String.fromCharCode(bytes.get(offset)));
+		result.add(String.fromCharCode(bytes.get(offset + 1)));
+		result.add(String.fromCharCode(bytes.get(offset + 2)));
+		result.add(String.fromCharCode(bytes.get(offset + 3)));
+
+		return result.toString();
+	}
+
+	@:noCompletion private static function __decodeUTF16BE(bytes:Bytes, offset:Int, length:Int):String
+	{
+		if (length <= 0 || (length & 1) != 0)
+			return null;
+
+		var result = new StringBuf();
+
+		var end = offset + length;
+		var position = offset;
+
+		while (position + 1 < end)
+		{
+			var code = __readUInt16(bytes, position);
+			position += 2;
+
+			result.add(String.fromCharCode(code));
+		}
+
+		return result.toString();
+	}
+
+	@:noCompletion private static function __decodeASCII(bytes:Bytes, offset:Int, length:Int):String
+	{
+		if (length <= 0)
+			return null;
+
+		var result = new StringBuf();
+
+		for (i in 0...length)
+		{
+			var value = bytes.get(offset + i);
+
+			if (value == 0)
+				continue;
+
+			if (value >= 32 && value <= 126)
+				result.add(String.fromCharCode(value));
+			else
+				result.add("?");
+		}
+
+		return result.toString();
+	}
+
+	@:noCompletion private static function __decodeMacRoman(bytes:Bytes, offset:Int, length:Int):String
+	{
+		if (length <= 0)
+			return null;
+
+		var result = new StringBuf();
+
+		for (i in 0...length)
+		{
+			var value = bytes.get(offset + i);
+
+			if (value < 128)
+			{
+				result.add(String.fromCharCode(value));
+				continue;
+			}
+
+			/*
+			 * Macintosh Roman 128-255.
+			 *
+			 * This table contains the standard MacRoman Unicode mapping.
+			 */
+			var map = [
+				0x00C4, 0x00C5, 0x00C7, 0x00C9, 0x00D1, 0x00D6, 0x00DC, 0x00E1,
+				0x00E0, 0x00E2, 0x00E4, 0x00E3, 0x00E5, 0x00E7, 0x00E9, 0x00E8,
+				0x00EA, 0x00EB, 0x00ED, 0x00EC, 0x00EE, 0x00EF, 0x00F1, 0x00F3,
+				0x00F2, 0x00F4, 0x00F6, 0x00F5, 0x00FA, 0x00F9, 0x00FB, 0x00FC,
+				0x00A8, 0x00B0, 0x00C6, 0x00D8, 0x00C7, 0x00D8, 0x00A5, 0x00B5,
+				0x00E6, 0x00F8, 0x00C9, 0x00C9, 0x00AA, 0x00BA, 0x00E9, 0x00F1,
+				0x00A1, 0x00BF, 0x00AC, 0x00A9, 0x00A3, 0x00A5, 0x00D6, 0x00DC,
+				0x00A2, 0x00A7, 0x00F4, 0x00F6, 0x00F2, 0x00F3, 0x00F5, 0x00FA,
+				0x00F9, 0x00FB, 0x00FC, 0x00A1, 0x00BF, 0x00B0, 0x00B2, 0x00B3,
+				0x00B4, 0x00A8, 0x00B7, 0x00B6, 0x00C0, 0x00C3, 0x00D5, 0x0152,
+				0x0153, 0x2013, 0x2014, 0x201C, 0x201D, 0x2018, 0x2019, 0x00F7,
+				0x25CA, 0x00FF, 0x0178, 0x2044, 0x20AC, 0x2039, 0x203A, 0xFB01,
+				0xFB02, 0x2020, 0x2021, 0x00B7, 0x00B6, 0x201A, 0x201E, 0x2030,
+				0x00C2, 0x00CA, 0x00C1, 0x00CB, 0x00C8, 0x00CD, 0x00CE, 0x00CF,
+				0x00CC, 0x00D3, 0x00D4, 0xF8FF, 0x00D2, 0x00DA, 0x00DB, 0x00D9,
+				0x0131, 0x02C6, 0x02DC, 0x00AF, 0x02D8, 0x02D9, 0x02DA, 0x00B8,
+				0x02DD, 0x02DB, 0x02C7, 0x2014, 0x00C3, 0x00D5, 0x00A0, 0x00C0,
+				0x00C2, 0x00CA, 0x00C1, 0x00CB, 0x00C8, 0x00CD, 0x00CE, 0x00CF,
+				0x00CC, 0x00D3, 0x00D4, 0x00D2, 0x00DA, 0x00DB, 0x00D9, 0x00D5,
+				0x00D0, 0x00D1, 0x00D2, 0x00D3, 0x00D4, 0x00D5, 0x00D6, 0x00D7,
+				0x00D8, 0x00D9, 0x00DA, 0x00DB, 0x00DC, 0x00DD, 0x00DE, 0x00DF,
+				0x00E0, 0x00E1, 0x00E2, 0x00E3, 0x00E4, 0x00E5, 0x00E6, 0x00E7,
+				0x00E8, 0x00E9, 0x00EA, 0x00EB, 0x00EC, 0x00ED, 0x00EE, 0x00EF,
+				0x00F0, 0x00F1, 0x00F2, 0x00F3, 0x00F4, 0x00F5, 0x00F6, 0x00F7,
+				0x00F8, 0x00F9, 0x00FA, 0x00FB, 0x00FC, 0x00FD, 0x00FE, 0x00FF
+			];
+
+			var index = value - 128;
+
+			if (index >= 0 && index < map.length)
+				result.add(String.fromCharCode(map[index]));
+			else
+				result.add("\uFFFD");
+		}
+
+		return result.toString();
 	}
 	#end
 }

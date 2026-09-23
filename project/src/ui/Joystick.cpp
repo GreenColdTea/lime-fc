@@ -5,19 +5,17 @@
 namespace lime
 {
 
-	std::map<int, int> joystickIDs;
 	std::map<int, SDL_Joystick *> joysticks;
 
-	bool Joystick::Connect(int deviceID)
+	bool Joystick::Connect(int id)
 	{
-		SDL_Joystick *joystick = SDL_OpenJoystick(deviceID);
+		SDL_Joystick *joystick = SDL_OpenJoystick(id);
 
 		if (!joystick)
 			return false;
 
-		int id = SDL_GetJoystickID(joystick);
 		joysticks[id] = joystick;
-		joystickIDs[deviceID] = id;
+
 		return true;
 	}
 
@@ -32,26 +30,7 @@ namespace lime
 
 		joysticks.erase(it);
 
-		for (auto iter = joystickIDs.begin(); iter != joystickIDs.end(); ++iter)
-		{
-			if (iter->second == id)
-			{
-				joystickIDs.erase(iter);
-				break;
-			}
-		}
-
 		return true;
-	}
-
-	int Joystick::GetInstanceID(int deviceID)
-	{
-		auto it = joystickIDs.find(deviceID);
-
-		if (it == joystickIDs.end())
-			return -1;
-
-		return it->second;
 	}
 
 	char *Joystick::GetDeviceGUID(int id)

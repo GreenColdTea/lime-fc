@@ -176,14 +176,14 @@
             <compilerflag value="-DSDL_USE_BUILTIN_OPENGL_DEFINITIONS" />
             <compilerflag value="-DGLES_SILENCE_DEPRECATION" if="iphone" />
 
-			<file name="src/backend/sdl/SDLApplication.cpp" />
-			<file name="src/backend/sdl/SDLWindow.cpp" />
-
 		</section>
 
 		<section if="LIME_SDL_IMAGE">
 
 			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl_image/include" />
+			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl_image/external/libjxl/lib/include" />
+			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl_image/external/libjxl/build/lib/include" />
+			
 			<compilerflag value="-DLIME_SDL_IMAGE" />
 			<compilerflag value="-DWEBP_DLL=0" />
 			<compilerflag value="-DWEBP_EXTERN=extern" />
@@ -232,6 +232,7 @@
 
 		</section>
 
+		<file name="src/app/Application.cpp" />
 		<file name="src/graphics/Image.cpp" />
 		<file name="src/graphics/ImageBuffer.cpp" />
 		<file name="src/graphics/utils/ImageDataUtil.cpp" />
@@ -251,11 +252,11 @@
 		<file name="src/ui/Cursor.cpp" />
 		<file name="src/ui/FileDialog.cpp" />
 		<file name="src/ui/Gamepad.cpp" />
-		<file name="src/ui/Haptic.mm" if="iphone" />
+		<file name="src/ui/Gesture.mm" if="mac" />
 		<file name="src/ui/Joystick.cpp" />
 		<file name="src/ui/KeyCode.cpp" />
 		<file name="src/ui/Touch.cpp" />
-		<file name="src/ui/Gesture.mm" if="mac" />
+		<file name="src/ui/Window.cpp" />
 		<file name="src/utils/ArrayBufferView.cpp" />
 		<file name="src/utils/Bytes.cpp" />
 		<file name="src/utils/File.cpp" />

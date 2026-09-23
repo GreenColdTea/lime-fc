@@ -6,10 +6,81 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
+
 #include <climits>
+#include <thread>
+
+#include <jxl/decode.h>
+#include <jxl/thread_parallel_runner.h>
 
 namespace lime {
 
+    static bool DecodeJXL_Multithreaded(SDL_IOStream* io, ImageBuffer* imageBuffer) {
+        Sint64 dataSize = SDL_GetIOSize(io);
+        if (dataSize <= 0) return false;
+
+        uint8_t* data = (uint8_t*)SDL_malloc((size_t)dataSize);
+        if (!data) return false;
+        
+        SDL_SeekIO(io, 0, SDL_IO_SEEK_SET);
+        if (SDL_ReadIO(io, data, (size_t)dataSize) != (size_t)dataSize) {
+            SDL_free(data);
+            return false;
+        }
+
+        JxlDecoder* dec = JxlDecoderCreate(NULL);
+        if (!dec) {
+            SDL_free(data);
+            return false;
+        }
+
+        unsigned int num_threads = std::thread::hardware_concurrency();
+        if (num_threads == 0) num_threads = 2;
+
+        void* runner = JxlThreadParallelRunnerCreate(NULL, num_threads);
+        if (runner) {
+            JxlDecoderSetParallelRunner(dec, JxlThreadParallelRunner, runner);
+        }
+
+        JxlDecoderSubscribeEvents(dec, JXL_DEC_BASIC_INFO | JXL_DEC_FULL_IMAGE);
+        JxlDecoderSetInput(dec, data, (size_t)dataSize);
+
+        JxlBasicInfo info;
+        JxlPixelFormat format = {4, JXL_TYPE_UINT8, JXL_NATIVE_ENDIAN, 0};
+
+        bool success = false;
+
+        for (;;) {
+            JxlDecoderStatus status = JxlDecoderProcessInput(dec);
+
+            if (status == JXL_DEC_ERROR || status == JXL_DEC_NEED_MORE_INPUT) {
+                break;
+            } else if (status == JXL_DEC_BASIC_INFO) {
+                if (JxlDecoderGetBasicInfo(dec, &info) != JXL_DEC_SUCCESS) break;
+            } else if (status == JXL_DEC_NEED_IMAGE_OUT_BUFFER) {
+                size_t buffer_size;
+                if (JxlDecoderImageOutBufferSize(dec, &format, &buffer_size) != JXL_DEC_SUCCESS) break;
+                
+                imageBuffer->Resize(info.xsize, info.ysize, 32);
+                imageBuffer->transparent = (info.alpha_bits > 0);
+                
+                if (JxlDecoderSetImageOutBuffer(dec, &format, imageBuffer->data->buffer->b, buffer_size) != JXL_DEC_SUCCESS) break;
+            } else if (status == JXL_DEC_FULL_IMAGE) {
+                continue;
+            } else if (status == JXL_DEC_SUCCESS) {
+                success = true;
+                break;
+            } else {
+                break; 
+            }
+        }
+
+        if (runner) JxlThreadParallelRunnerDestroy(runner);
+        JxlDecoderDestroy(dec);
+        SDL_free(data);
+
+        return success;
+    }
 
     bool UniversalImage::Decode (Resource *resource, ImageBuffer *imageBuffer, const char* formatExt) {
 
@@ -27,6 +98,25 @@ namespace lime {
 
         if (!io) {
             return false;
+        }
+
+        bool is_jxl = false;
+        Sint64 start = SDL_TellIO(io);
+        uint8_t magic[12];
+        if (SDL_ReadIO(io, magic, 12) == 12) {
+            if (magic[0] == 0xFF && magic[1] == 0x0A) {
+                is_jxl = true; // Raw JXL stream
+            } else if (magic[0] == 0x00 && magic[1] == 0x00 && magic[2] == 0x00 && magic[3] == 0x0C &&
+                       magic[4] == 'J' && magic[5] == 'X' && magic[6] == 'L' && magic[7] == ' ') {
+                is_jxl = true; // JXL container
+            }
+        }
+        SDL_SeekIO(io, start, SDL_IO_SEEK_SET);
+
+        if (is_jxl) {
+            bool result = DecodeJXL_Multithreaded(io, imageBuffer);
+            SDL_CloseIO(io);
+            return result;
         }
 
         SDL_Surface *surface = nullptr;

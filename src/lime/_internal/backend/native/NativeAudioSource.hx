@@ -1,9 +1,9 @@
 package lime._internal.backend.native;
 
 import haxe.Int64;
+import haxe.MainLoop;
 import haxe.Timer;
 
-import lime.app.Application;
 import lime.math.Vector4;
 import lime.media.openal.AL;
 import lime.media.openal.ALBuffer;
@@ -12,7 +12,11 @@ import lime.media.openal.ext.EXT_float32;
 import lime.media.vorbis.VorbisFile;
 import lime.media.AudioManager;
 import lime.media.AudioSource;
+import lime.media.openal.AL;
 import lime.utils.UInt8Array;
+
+import sys.thread.Mutex;
+import sys.thread.Thread;
 
 @:access(lime.media.AudioBuffer)
 class NativeAudioSource
@@ -24,13 +28,17 @@ class NativeAudioSource
 	private static var hasDirectChannelsExt:Null<Bool>;
 	private static var hasALSoftLatencyExt:Null<Bool>;
 
+	private static var activeAudioSources:Array<NativeAudioSource> = [];
+	private static var processingMutex:Mutex = new Mutex();
+	private static var processingThread:Thread;
+
 	private var buffers:Array<ALBuffer>;
 	private var bufferTimeBlocks:Array<Float>;
+
 	private var completed:Bool;
 	private var dataLength:Int;
 	private var format:Int;
 	private var handle:ALSource;
-	private var length:Null<Float>;
 	private var loops:Int;
 	private var parent:AudioSource;
 	private var playing:Bool;
@@ -41,6 +49,8 @@ class NativeAudioSource
 
 	public function new(parent:AudioSource)
 	{
+		setupProcessingThread();
+
 		this.parent = parent;
 
 		position = new Vector4();
@@ -50,13 +60,7 @@ class NativeAudioSource
 	{
 		if (handle != null)
 		{
-			if (Application.current != null && !stream)
-			{
-				if (Application.current.onUpdate.has(checkPlay))
-				{
-					Application.current.onUpdate.remove(checkPlay);
-				}
-			}
+			unregisterSource(this);
 
 			stop();
 
@@ -155,10 +159,7 @@ class NativeAudioSource
 			AL.sourcei(handle, AL.DIRECT_CHANNELS_SOFT, AL.REMIX_UNMATCHED_SOFT);
 		}
 
-		if (!stream && !Application.current.onUpdate.has(checkPlay))
-		{
-			Application.current.onUpdate.add(checkPlay);
-		}
+		registerSource(this);
 	}
 
 	public function play():Void
@@ -227,6 +228,11 @@ class NativeAudioSource
 		}
 
 		setCurrentTime(0);
+	}
+
+	private function streamTimer_onRun():Void
+	{
+		refillBuffers();
 	}
 
 	private function readVorbisFileBuffer(vorbisFile:VorbisFile, length:Int):UInt8Array
@@ -325,12 +331,7 @@ class NativeAudioSource
 
 	// Event Handlers
 
-	private function streamTimer_onRun():Void
-	{
-		refillBuffers();
-	}
-
-	private function checkPlay(_):Void
+	private function process():Void
 	{
 		if (AL.getSourcei(handle, AL.SOURCE_STATE) == AL.PLAYING)
 		{
@@ -349,7 +350,14 @@ class NativeAudioSource
 		if (!completed)
 		{
 			stop();
-			parent.onComplete.dispatch();
+
+			// `onComplete` must not run from the processing thread,
+			// in case a crash happens from this callback or smth, itll be bad,
+			// it should use the main thread for it.
+			MainLoop.runInMainThread(function():Void
+			{
+				parent.onComplete.dispatch();
+			});
 		}
 
 		completed = true;
@@ -425,14 +433,7 @@ class NativeAudioSource
 
 	public function getGain():Float
 	{
-		if (handle != null)
-		{
-			return AL.getSourcef(handle, AL.GAIN);
-		}
-		else
-		{
-			return 1;
-		}
+		return handle != null ? AL.getSourcef(handle, AL.GAIN) : 1;
 	}
 
 	public function setGain(value:Float):Float
@@ -447,21 +448,11 @@ class NativeAudioSource
 
 	public function getLength():Float
 	{
-		if (length != null)
-		{
-			return length;
-		}
-
 		var bytesPerFrame = parent.buffer.channels * (parent.buffer.bitsPerSample / 8.0);
 
 		var totalFrames = dataLength / bytesPerFrame;
 
-		return ((totalFrames / parent.buffer.sampleRate) * 1000.0) - parent.offset;
-	}
-
-	public function setLength(value:Float):Float
-	{
-		return length = value;
+		return (totalFrames / parent.buffer.sampleRate) * 1000.0;
 	}
 
 	public function getLoops():Int
@@ -476,14 +467,7 @@ class NativeAudioSource
 
 	public function getPitch():Float
 	{
-		if (handle != null)
-		{
-			return AL.getSourcef(handle, AL.PITCH);
-		}
-		else
-		{
-			return 1;
-		}
+		return handle != null ? AL.getSourcef(handle, AL.PITCH) : 1;
 	}
 
 	public function setPitch(value:Float):Float
@@ -538,5 +522,58 @@ class NativeAudioSource
 		}
 
 		return 0;
+	}
+
+	// processing Thread Functions
+
+	@:noCompletion
+	private static function registerSource(source:NativeAudioSource):Void
+	{
+		processingMutex.acquire();
+
+		if (!activeAudioSources.contains(source))
+			activeAudioSources.push(source);
+
+		processingMutex.release();
+	}
+
+	@:noCompletion
+	private static function unregisterSource(source:NativeAudioSource):Void
+	{
+		processingMutex.acquire();
+
+		if (activeAudioSources.contains(source))
+			activeAudioSources.remove(source);
+
+		processingMutex.release();
+	}
+
+	@:noCompletion
+	private static function setupProcessingThread():Void
+	{
+		if (processingThread == null)
+		{
+			processingThread = Thread.create(function():Void
+			{
+				while (true)
+				{
+					processingMutex.acquire();
+
+					for (activeAudioSource in activeAudioSources)
+					{
+						activeAudioSource.process();
+					}
+
+					// Useful for tracking how many audio sources are currently being processed,
+					// but itll spam the shit out of your console,
+					// should be removed later ig.
+					// MainLoop.runInMainThread(Sys.println.bind('Active sources: ${activeAudioSources.length}'));
+
+					processingMutex.release();
+
+					Sys.sleep(0.01);
+				}
+			});
+		}
 	}
 }

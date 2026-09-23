@@ -4,11 +4,6 @@
 		<!-- Prevent swipe-to-dismiss behavior -->
 		<item name="android:windowSwipeToDismiss">false</item>
 
-		::if (ANDROID_DISPLAY_CUTOUT!="")::
-		<!-- Enable drawing under the display cutout -->
-		<item name="android:windowLayoutInDisplayCutoutMode">::ANDROID_DISPLAY_CUTOUT::</item>
-		::end::
-
 		<!-- Ensure content draws behind the system bars -->
 		<item name="android:windowDrawsSystemBarBackgrounds">true</item>
 
@@ -22,11 +17,6 @@
 	<style name="LimeAppMainTheme" parent="@android:style/Theme.DeviceDefault.NoActionBar">
 		<!-- Prevent swipe-to-dismiss behavior -->
 		<item name="android:windowSwipeToDismiss">false</item>
-
-		::if (ANDROID_DISPLAY_CUTOUT!="")::
-		<!-- Enable drawing under the display cutout -->
-		<item name="android:windowLayoutInDisplayCutoutMode">::ANDROID_DISPLAY_CUTOUT::</item>
-		::end::
 
 		<!-- Ensure content draws behind the system bars -->
 		<item name="android:windowDrawsSystemBarBackgrounds">true</item>
