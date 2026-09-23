@@ -217,7 +217,6 @@ class AudioManager
 	@:noCompletion
 	private static function setupConfig():Void
 	{
-		#if (lime_openal && (windows || mac || linux || android || ios))
 		final alConfig:Array<String> = [
 			"[general]",
 			"channels=stereo",

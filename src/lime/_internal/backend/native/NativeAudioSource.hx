@@ -1,6 +1,8 @@
 package lime._internal.backend.native;
 
+import haxe.Int64;
 import haxe.MainLoop;
+import haxe.Timer;
 
 import lime.math.Vector4;
 import lime.media.openal.AL;
@@ -11,6 +13,7 @@ import lime.media.vorbis.VorbisFile;
 import lime.media.AudioManager;
 import lime.media.AudioSource;
 import lime.media.openal.AL;
+import lime.utils.UInt8Array;
 
 import sys.thread.Mutex;
 import sys.thread.Thread;
@@ -28,6 +31,9 @@ class NativeAudioSource
 	private static var activeAudioSources:Array<NativeAudioSource> = [];
 	private static var processingMutex:Mutex = new Mutex();
 	private static var processingThread:Thread;
+
+	private var buffers:Array<ALBuffer>;
+	private var bufferTimeBlocks:Array<Float>;
 
 	private var completed:Bool;
 	private var dataLength:Int;
@@ -153,8 +159,6 @@ class NativeAudioSource
 			AL.sourcei(handle, AL.DIRECT_CHANNELS_SOFT, AL.REMIX_UNMATCHED_SOFT);
 		}
 
-		dataLength = parent.buffer.data.length;
-
 		registerSource(this);
 	}
 
@@ -224,6 +228,11 @@ class NativeAudioSource
 		}
 
 		setCurrentTime(0);
+	}
+
+	private function streamTimer_onRun():Void
+	{
+		refillBuffers();
 	}
 
 	private function readVorbisFileBuffer(vorbisFile:VorbisFile, length:Int):UInt8Array
