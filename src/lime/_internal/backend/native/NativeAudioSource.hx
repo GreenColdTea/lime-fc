@@ -267,13 +267,15 @@ class NativeAudioSource
 			}
 		}
 
+		if (total == 0) return null;
+		if (total < length) return buffer.subarray(0, total);
+
 		return buffer;
 	}
 
 	private function refillBuffers(buffers:Array<ALBuffer> = null):Void
 	{
 		var vorbisFile = null;
-		var position = 0;
 
 		if (buffers == null)
 		{
@@ -281,50 +283,41 @@ class NativeAudioSource
 
 			if (buffersProcessed > 0)
 			{
-				vorbisFile = parent.buffer.__srcVorbisFile;
-				position = Int64.toInt(vorbisFile.pcmTell());
-
-				if (position < dataLength)
-				{
-					buffers = AL.sourceUnqueueBuffers(handle, buffersProcessed);
-				}
+				buffers = AL.sourceUnqueueBuffers(handle, buffersProcessed);
 			}
 		}
 
 		if (buffers != null)
 		{
-			if (vorbisFile == null)
-			{
-				vorbisFile = parent.buffer.__srcVorbisFile;
-				position = Int64.toInt(vorbisFile.pcmTell());
-			}
+			vorbisFile = parent.buffer.__srcVorbisFile;
+			if (vorbisFile == null) return;
 
 			var numBuffers = 0;
-			var data;
+			var data = null;
 
 			for (buffer in buffers)
 			{
-				if (dataLength - position >= STREAM_BUFFER_SIZE)
+				data = readVorbisFileBuffer(vorbisFile, STREAM_BUFFER_SIZE);
+
+				if (data != null && data.length > 0)
 				{
-					data = readVorbisFileBuffer(vorbisFile, STREAM_BUFFER_SIZE);
 					AL.bufferData(buffer, format, data, data.length, parent.buffer.sampleRate);
-					position += STREAM_BUFFER_SIZE;
 					numBuffers++;
 				}
-				else if (position < dataLength)
+				else
 				{
-					data = readVorbisFileBuffer(vorbisFile, dataLength - position);
-					AL.bufferData(buffer, format, data, data.length, parent.buffer.sampleRate);
-					numBuffers++;
 					break;
 				}
 			}
 
-			AL.sourceQueueBuffers(handle, numBuffers, buffers);
-
-			if (playing && handle != null && AL.getSourcei(handle, AL.SOURCE_STATE) == AL.STOPPED)
+			if (numBuffers > 0)
 			{
-				AL.sourcePlay(handle);
+				AL.sourceQueueBuffers(handle, numBuffers, buffers);
+
+				if (playing && handle != null && AL.getSourcei(handle, AL.SOURCE_STATE) == AL.STOPPED)
+				{
+					AL.sourcePlay(handle);
+				}
 			}
 		}
 	}
@@ -342,8 +335,13 @@ class NativeAudioSource
 		{
 			playing = false;
 			loops--;
-			setCurrentTime(0);
-			play();
+			
+			MainLoop.runInMainThread(function():Void
+			{
+				setCurrentTime(0);
+				play();
+			});
+
 			return;
 		}
 
