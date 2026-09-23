@@ -181,6 +181,9 @@
 		<section if="LIME_SDL_IMAGE">
 
 			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl_image/include" />
+			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl_image/external/libjxl/lib/include" />
+			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl_image/external/libjxl/build/lib/include" />
+			
 			<compilerflag value="-DLIME_SDL_IMAGE" />
 			<compilerflag value="-DWEBP_DLL=0" />
 			<compilerflag value="-DWEBP_EXTERN=extern" />
