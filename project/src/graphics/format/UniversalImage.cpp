@@ -9,6 +9,15 @@
 
 #include <climits>
 #include <thread>
+ 
+#if defined(_MSC_VER)
+    #ifndef __attribute__
+        #define __attribute__(x) 
+    #endif
+    #ifndef __deprecated__
+        #define __deprecated__
+    #endif
+#endif
 
 #include <jxl/decode.h>
 #include <jxl/thread_parallel_runner.h>
@@ -35,7 +44,7 @@ namespace lime {
         }
 
         unsigned int num_threads = std::thread::hardware_concurrency();
-        if (num_threads == 0) num_threads = 2;
+        if (num_threads == 0) num_threads = 1;
 
         void* runner = JxlThreadParallelRunnerCreate(NULL, num_threads);
         if (runner) {
