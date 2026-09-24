@@ -21,8 +21,53 @@
 
 #include <jxl/decode.h>
 #include <jxl/thread_parallel_runner.h>
+#include <webp/decode.h>
 
 namespace lime {
+
+    static bool DecodeWEBP_Multithreaded(SDL_IOStream* io, ImageBuffer* imageBuffer) {
+        Sint64 dataSize = SDL_GetIOSize(io);
+        if (dataSize <= 0) return false;
+
+        uint8_t* data = (uint8_t*)SDL_malloc((size_t)dataSize);
+        if (!data) return false;
+        
+        SDL_SeekIO(io, 0, SDL_IO_SEEK_SET);
+        if (SDL_ReadIO(io, data, (size_t)dataSize) != (size_t)dataSize) {
+            SDL_free(data);
+            return false;
+        }
+
+        WebPDecoderConfig config;
+        if (!WebPInitDecoderConfig(&config)) {
+            SDL_free(data);
+            return false;
+        }
+
+        if (WebPGetFeatures(data, dataSize, &config.input) != VP8_STATUS_OK) {
+            SDL_free(data);
+            return false;
+        }
+
+        config.options.use_threads = 1; 
+
+        config.output.colorspace = MODE_RGBA;
+        
+        imageBuffer->Resize(config.input.width, config.input.height, 32);
+        imageBuffer->transparent = config.input.has_alpha;
+        
+        config.output.u.RGBA.rgba = imageBuffer->data->buffer->b;
+        config.output.u.RGBA.stride = config.input.width * 4;
+        config.output.u.RGBA.size = config.output.u.RGBA.stride * config.input.height;
+        config.output.is_external_memory = 1;
+
+        VP8StatusCode status = WebPDecode(data, dataSize, &config);
+
+        WebPFreeDecBuffer(&config.output);
+        SDL_free(data);
+
+        return status == VP8_STATUS_OK;
+    }
 
     static bool DecodeJXL_Multithreaded(SDL_IOStream* io, ImageBuffer* imageBuffer) {
         Sint64 dataSize = SDL_GetIOSize(io);
@@ -110,6 +155,7 @@ namespace lime {
         }
 
         bool is_jxl = false;
+        bool is_webp = false;
         Sint64 start = SDL_TellIO(io);
         uint8_t magic[12];
         if (SDL_ReadIO(io, magic, 12) == 12) {
@@ -118,12 +164,21 @@ namespace lime {
             } else if (magic[0] == 0x00 && magic[1] == 0x00 && magic[2] == 0x00 && magic[3] == 0x0C &&
                        magic[4] == 'J' && magic[5] == 'X' && magic[6] == 'L' && magic[7] == ' ') {
                 is_jxl = true; // JXL container
+            } else if (magic[0] == 'R' && magic[1] == 'I' && magic[2] == 'F' && magic[3] == 'F' &&
+                       magic[8] == 'W' && magic[9] == 'E' && magic[10] == 'B' && magic[11] == 'P') {
+                is_webp = true; // WebP container
             }
         }
         SDL_SeekIO(io, start, SDL_IO_SEEK_SET);
 
         if (is_jxl) {
             bool result = DecodeJXL_Multithreaded(io, imageBuffer);
+            SDL_CloseIO(io);
+            return result;
+        }
+
+        if (is_webp) {
+            bool result = DecodeWEBP_Multithreaded(io, imageBuffer);
             SDL_CloseIO(io);
             return result;
         }
