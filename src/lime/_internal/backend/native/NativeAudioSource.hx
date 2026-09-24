@@ -326,6 +326,11 @@ class NativeAudioSource
 
 	private function process():Void
 	{
+		if (!playing)
+		{
+			return;
+		}
+
 		if (AL.getSourcei(handle, AL.SOURCE_STATE) == AL.PLAYING)
 		{
 			return;
@@ -347,13 +352,9 @@ class NativeAudioSource
 
 		if (!completed)
 		{
-			stop();
-
-			// `onComplete` must not run from the processing thread,
-			// in case a crash happens from this callback or smth, itll be bad,
-			// it should use the main thread for it.
 			MainLoop.runInMainThread(function():Void
 			{
+				stop();
 				parent.onComplete.dispatch();
 			});
 		}
