@@ -79,6 +79,8 @@ class AudioBuffer
 	@:noCompletion private var __srcHowl:#if lime_howlerjs Howl #else Dynamic #end;
 	@:noCompletion private var __srcHowlerDefaultSprite:String;
 	@:noCompletion private var __srcVorbisFile:#if lime_vorbis VorbisFile #else Dynamic #end;
+	
+	@:noCompletion private var __srcDecoder:AudioDecoder;
 
 	/**
 		Creates a new, empty `AudioBuffer` instance.
@@ -110,6 +112,11 @@ class AudioBuffer
 			__srcVorbisFile = null;
 		}
 		#end
+		
+		if (__srcDecoder != null)
+		{
+			__srcDecoder = null;
+		}
 	}
 
 	/**
@@ -247,6 +254,38 @@ class AudioBuffer
 		return audioBuffer;
 	}
 	#end
+
+	/**
+		Creates an `AudioBuffer` from a file for streamed playback, supporting multiple formats (MP3, FLAC, WAV, OPUS, OGG).
+		
+		Like `fromVorbisFile`, this does not decode the audio data up front. `NativeAudioSource` will decode
+		the audio in chunks during playback using the universal `AudioDecoder` backend.
+		
+		@param path The file path to the audio data.
+		@return An `AudioBuffer` instance backed by the `AudioDecoder`, or `null` on failure.
+	**/
+	public static function fromFileStream(path:String):AudioBuffer
+	{
+		if (path == null) return null;
+
+		#if (lime_cffi && !macro)
+		var decoder:AudioDecoder = AudioDecoder.fromFile(path);
+
+		if (decoder != null)
+		{
+			var audioBuffer = new AudioBuffer();
+			audioBuffer.channels = decoder.channels;
+			audioBuffer.sampleRate = decoder.sampleRate;
+			audioBuffer.dataFormat = S16;
+			audioBuffer.__srcDecoder = decoder;
+			
+			audioBuffer.dataLength = Std.int(Int64.toInt(decoder.total()) * audioBuffer.channels * (audioBuffer.bitsPerSample / 8));
+			return audioBuffer;
+		}
+		#end
+
+		return null;
+	}
 
 	/**
 		Creates an `AudioBuffer` from an array of file paths.

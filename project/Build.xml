@@ -189,7 +189,7 @@
 			<compilerflag value="-DWEBP_DLL=0" />
 			<compilerflag value="-DWEBP_EXTERN=extern" />
 			<compilerflag value="-DJXL_STATIC_DEFINE" />
-			<compilerflag value="-DJXL_THREADS_STATIC_DEFINE" if="android || ios" />
+			<compilerflag value="-DJXL_THREADS_STATIC_DEFINE" if="android" />
 
 			<file name="src/graphics/format/UniversalImage.cpp" />
 
@@ -292,14 +292,13 @@
 	<include name="lib/pixman-files.xml" />
 	<include name="lib/sdl-files.xml" />
 	<include name="lib/sdl_image-files.xml" />
-	<include name="lib/libjxl-files.xml" />
-	<copy from="${haxelib:lime}/project/lib/sdl_image/Xcode/jxl/jxl/jxl_export.h" to="${haxelib:lime}/project/lib/sdl_image/external/libjxl/lib/include/jxl/jxl_export.h" if="mac || ios" />
-	<copy from="${haxelib:lime}/project/lib/sdl_image/Xcode/jxl/jxl/version.h" to="${haxelib:lime}/project/lib/sdl_image/external/libjxl/lib/include/jxl/version.h" if="mac || ios" />
+
+	<copy from="${haxelib:lime}/project/lib/sdl_image/Xcode/jxl/jxl/jxl_export.h" to="${haxelib:lime}/project/lib/sdl_image/external/libjxl/lib/include/jxl/jxl_export.h" if="mac" />
+	<copy from="${haxelib:lime}/project/lib/sdl_image/Xcode/jxl/jxl/version.h" to="${haxelib:lime}/project/lib/sdl_image/external/libjxl/lib/include/jxl/version.h" if="mac" />
 	<copy from="${haxelib:lime}/project/lib/sdl_image/external/libjxl/android/jxl/jxl_export.h" to="${haxelib:lime}/project/lib/sdl_image/external/libjxl/lib/include/jxl/jxl_export.h" if="android" />
 	<copy from="${haxelib:lime}/project/lib/sdl_image/external/libjxl/android/jxl/version.h" to="${haxelib:lime}/project/lib/sdl_image/external/libjxl/lib/include/jxl/version.h" if="android" />
-	<copy from="${haxelib:lime}/project/lib/sdl_image/external/libjxl/android/jxl/jxl_threads_export.h" to="${haxelib:lime}/project/lib/sdl_image/external/libjxl/lib/include/jxl/jxl_threads_export.h" if="android" />
-	<include name="lib/zlib-files.xml" />
 
+	<include name="lib/zlib-files.xml" />
 
 	<target id="lime" output="${LIBPREFIX}lime${DEBUGEXTRA}${LIBSUFFIX}" tool="linker" toolid="${STD_MODULE_LINK}">
 
@@ -328,7 +327,6 @@
 			<files id="native-toolkit-sdl_image-deps-libwebp-sharpyuv" />
 			<files id="native-toolkit-sdl_image-deps-libwebp" />
 			<files id="native-toolkit-sdl_image" />
-			<files id="native-toolkit-libjxl" if="ios" />
 
 		</section>
 
