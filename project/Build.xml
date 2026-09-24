@@ -34,7 +34,8 @@
 
 	<set name="OUTPUT_DIR" value="../ndll" unless="OUTPUT_DIR" />
 	<set name="DEBUGEXTRA" value="-debug" if="fulldebug" />
-	<set name="LIBSUFFIX" value="${HX_TARGET_SUFFIX}" if="HX_TARGET_SUFFIX" />
+	<set name="LIBSUFFIX" value="" if="mac" />
+	<set name="LIBSUFFIX" value="${HX_TARGET_SUFFIX}" if="HX_TARGET_SUFFIX" unless="mac" />
 	<set name="LIBSUFFIX" value="${LIBEXTRA}" unless="LIBSUFFIX" />
 	<set name="NATIVE_TOOLKIT_PATH" value="lib" unless="NATIVE_TOOLKIT_PATH" />
 
@@ -449,6 +450,7 @@
                 <section if="LIME_SDL_IMAGE">
 
 					<lib name="-ljxl" />
+					<lib name="-ljxl_threads" />
 					<lib name="-lwebp" />
 					<lib name="-lwebpdemux" />
 					<lib name="-lwebpmux" />

@@ -784,13 +784,6 @@ namespace lime
 		return result.Value(bytes);
 	}
 
-	void lime_haptic_vibrate(int period, int duration)
-	{
-		#ifdef IPHONE
-		Haptic::Vibrate(period, duration);
-		#endif
-	}
-
 	value lime_image_encode(value buffer, int type, int quality, value bytes)
 	{
 		#ifdef LIME_SDL_IMAGE
