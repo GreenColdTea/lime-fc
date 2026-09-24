@@ -15,29 +15,52 @@
 
 namespace lime {
 
+    // Creating/destroying a JxlThreadParallelRunner spins up and tears down a whole
+    // thread pool; on Android that overhead is significant and was being paid on every
+    // single image decode. Reuse one runner for the lifetime of the process instead.
+    static void* GetJXLThreadRunner() {
+        static void* runner = []() -> void* {
+            unsigned int num_threads = std::thread::hardware_concurrency();
+            if (num_threads == 0) num_threads = 2;
+
+            void* created = JxlThreadParallelRunnerCreate(NULL, num_threads);
+            if (!created) {
+                SDL_Log("DecodeJXL: JxlThreadParallelRunnerCreate failed, continuing single-threaded");
+            }
+            return created;
+        }();
+        return runner;
+    }
+
     static bool DecodeJXL_Multithreaded(SDL_IOStream* io, ImageBuffer* imageBuffer) {
         Sint64 dataSize = SDL_GetIOSize(io);
-        if (dataSize <= 0) return false;
+        if (dataSize <= 0) {
+            SDL_Log("DecodeJXL: SDL_GetIOSize returned %lld", (long long)dataSize);
+            return false;
+        }
 
         uint8_t* data = (uint8_t*)SDL_malloc((size_t)dataSize);
-        if (!data) return false;
-        
+        if (!data) {
+            SDL_Log("DecodeJXL: SDL_malloc failed for %lld bytes", (long long)dataSize);
+            return false;
+        }
+
         SDL_SeekIO(io, 0, SDL_IO_SEEK_SET);
-        if (SDL_ReadIO(io, data, (size_t)dataSize) != (size_t)dataSize) {
+        size_t bytesRead = SDL_ReadIO(io, data, (size_t)dataSize);
+        if (bytesRead != (size_t)dataSize) {
+            SDL_Log("DecodeJXL: short read, got %zu of %lld bytes", bytesRead, (long long)dataSize);
             SDL_free(data);
             return false;
         }
 
         JxlDecoder* dec = JxlDecoderCreate(NULL);
         if (!dec) {
+            SDL_Log("DecodeJXL: JxlDecoderCreate failed");
             SDL_free(data);
             return false;
         }
 
-        unsigned int num_threads = std::thread::hardware_concurrency();
-        if (num_threads == 0) num_threads = 2;
-
-        void* runner = JxlThreadParallelRunnerCreate(NULL, num_threads);
+        void* runner = GetJXLThreadRunner();
         if (runner) {
             JxlDecoderSetParallelRunner(dec, JxlThreadParallelRunner, runner);
         }
@@ -53,29 +76,45 @@ namespace lime {
         for (;;) {
             JxlDecoderStatus status = JxlDecoderProcessInput(dec);
 
-            if (status == JXL_DEC_ERROR || status == JXL_DEC_NEED_MORE_INPUT) {
+            if (status == JXL_DEC_ERROR) {
+                SDL_Log("DecodeJXL: JXL_DEC_ERROR from JxlDecoderProcessInput");
+                break;
+            } else if (status == JXL_DEC_NEED_MORE_INPUT) {
+                SDL_Log("DecodeJXL: JXL_DEC_NEED_MORE_INPUT (dataSize=%lld)", (long long)dataSize);
                 break;
             } else if (status == JXL_DEC_BASIC_INFO) {
-                if (JxlDecoderGetBasicInfo(dec, &info) != JXL_DEC_SUCCESS) break;
+                if (JxlDecoderGetBasicInfo(dec, &info) != JXL_DEC_SUCCESS) {
+                    SDL_Log("DecodeJXL: JxlDecoderGetBasicInfo failed");
+                    break;
+                }
+                SDL_Log("DecodeJXL: basic info %ux%u alpha_bits=%u", info.xsize, info.ysize, info.alpha_bits);
             } else if (status == JXL_DEC_NEED_IMAGE_OUT_BUFFER) {
                 size_t buffer_size;
-                if (JxlDecoderImageOutBufferSize(dec, &format, &buffer_size) != JXL_DEC_SUCCESS) break;
-                
+                if (JxlDecoderImageOutBufferSize(dec, &format, &buffer_size) != JXL_DEC_SUCCESS) {
+                    SDL_Log("DecodeJXL: JxlDecoderImageOutBufferSize failed");
+                    break;
+                }
+
                 imageBuffer->Resize(info.xsize, info.ysize, 32);
                 imageBuffer->transparent = (info.alpha_bits > 0);
-                
-                if (JxlDecoderSetImageOutBuffer(dec, &format, imageBuffer->data->buffer->b, buffer_size) != JXL_DEC_SUCCESS) break;
+
+                if (JxlDecoderSetImageOutBuffer(dec, &format, imageBuffer->data->buffer->b, buffer_size) != JXL_DEC_SUCCESS) {
+                    SDL_Log("DecodeJXL: JxlDecoderSetImageOutBuffer failed (buffer_size=%zu)", buffer_size);
+                    break;
+                }
             } else if (status == JXL_DEC_FULL_IMAGE) {
                 continue;
             } else if (status == JXL_DEC_SUCCESS) {
                 success = true;
                 break;
             } else {
-                break; 
+                SDL_Log("DecodeJXL: unexpected JxlDecoderStatus %d", (int)status);
+                break;
             }
         }
 
-        if (runner) JxlThreadParallelRunnerDestroy(runner);
+        // note: runner is a shared, process-lifetime singleton (see GetJXLThreadRunner) and is
+        // intentionally not destroyed here.
         JxlDecoderDestroy(dec);
         SDL_free(data);
 
