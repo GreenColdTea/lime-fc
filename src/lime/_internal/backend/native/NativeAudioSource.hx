@@ -43,6 +43,7 @@ class NativeAudioSource
 	private var parent:AudioSource;
 	private var playing:Bool;
 	private var buffering:Bool;
+	private var streamEOF:Bool;
 	private var position:Vector4;
 	private var stream:Bool;
 	private var streamTimer:Timer;
@@ -54,6 +55,7 @@ class NativeAudioSource
 
 		this.parent = parent;
 		this.buffering = false;
+		this.streamEOF = false;
 		position = new Vector4();
 	}
 
@@ -107,6 +109,7 @@ class NativeAudioSource
 		}
 
 		format = 0;
+		streamEOF = false;
 
 		switch (parent.buffer.dataFormat)
 		{
@@ -262,7 +265,17 @@ class NativeAudioSource
 			
 			var decodedBytes:haxe.io.Bytes = decoder.decode(framesWanted, parent.buffer.dataFormat);
 			
-			if (decodedBytes == null || decodedBytes.length == 0) return null;
+			if (decodedBytes == null || decodedBytes.length == 0) 
+			{
+				streamEOF = true;
+				return null;
+			}
+			
+			if (decodedBytes.length < length)
+			{
+				streamEOF = true;
+			}
+
 			return new UInt8Array(decodedBytes);
 		}
 		else if (parent.buffer.__srcVorbisFile != null)
@@ -284,12 +297,21 @@ class NativeAudioSource
 				else break;
 			}
 
-			if (total == 0) return null;
-			if (total < length) return buffer.subarray(0, total);
+			if (total == 0) 
+			{
+				streamEOF = true;
+				return null;
+			}
+			if (total < length) 
+			{
+				streamEOF = true;
+				return buffer.subarray(0, total);
+			}
 
 			return buffer;
 		}
 
+		streamEOF = true;
 		return null;
 	}
 
@@ -343,9 +365,23 @@ class NativeAudioSource
 
 	private function process():Void
 	{
-		if (!playing || buffering) return;
+		if (!playing || buffering || AL.getSourcei(handle, AL.SOURCE_STATE) == AL.PLAYING) return;
 
-		if (AL.getSourcei(handle, AL.SOURCE_STATE) == AL.PLAYING) return;
+		if (stream && !streamEOF)
+		{
+			MainLoop.runInMainThread(function():Void
+			{
+				if (playing && !buffering && handle != null)
+				{
+					refillBuffers();
+					if (AL.getSourcei(handle, AL.SOURCE_STATE) != AL.PLAYING) 
+					{
+						AL.sourcePlay(handle);
+					}
+				}
+			});
+			return;
+		}
 
 		if (loops > 0)
 		{
@@ -411,6 +447,8 @@ class NativeAudioSource
 
 				if (parent != null && parent.buffer != null)
 				{
+					streamEOF = false;
+
 					var targetSeconds = (value + parent.offset) / 1000.0;
 					
 					if (parent.buffer.__srcDecoder != null)
