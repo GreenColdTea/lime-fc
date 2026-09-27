@@ -183,7 +183,9 @@
 
 			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl_image/include" />
 			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl_image/external/libjxl/lib/include" />
-			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl_image/external/libjxl/build/lib/include" />
+			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl_image/external/libjxl/build/lib/include" unless="android" />
+			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libjxl/build-android-arm64/lib/include" if="android HXCPP_ARM64" />
+			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/custom/sdl_image/external/libjxl/build-android-armv7/lib/include" if="android" unless="HXCPP_ARM64" />
 			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl_image/external/libwebp/src" />
 			
 			<compilerflag value="-DLIME_SDL_IMAGE" />
