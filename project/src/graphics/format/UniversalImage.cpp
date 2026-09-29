@@ -180,6 +180,7 @@ namespace lime {
         if (!io) return false;
 
         bool is_jxl = false;
+        bool is_webp = false;
         Sint64 start = SDL_TellIO(io);
         uint8_t magic[12];
         
