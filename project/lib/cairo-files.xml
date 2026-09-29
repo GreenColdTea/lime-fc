@@ -20,7 +20,8 @@
 		<section>
 
 			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/custom/cairo/configs/default" unless="windows || mac || linux" />
-			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/custom/cairo/configs/linux" if="linux" />
+			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/custom/cairo/configs/default" if="switch || nx || HX_NX" />
+			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/custom/cairo/configs/linux" if="linux" unless="switch || nx || HX_NX" />
 			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/custom/cairo/configs/windows" if="windows" />
 			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/custom/cairo/configs/mac" if="mac" />
 

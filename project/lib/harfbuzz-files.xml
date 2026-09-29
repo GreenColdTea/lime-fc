@@ -16,7 +16,7 @@
 
 				<compilerflag value="-DHAVE_UNISTD_H" />
 
-				<compilerflag value="-DHAVE_SYS_MMAN_H" unless="mingw" />
+				<compilerflag value="-DHAVE_SYS_MMAN_H" unless="mingw || switch || nx || HX_NX" />
 
 			</section>
 

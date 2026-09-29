@@ -20,8 +20,11 @@
     #endif
 #endif
 
+#ifndef __SWITCH__
 #include <jxl/decode.h>
 #include <jxl/thread_parallel_runner.h>
+#endif
+#include <webp/decode.h>
 
 namespace lime {
 
@@ -75,6 +78,7 @@ namespace lime {
         return true;
     }
 
+#ifndef __SWITCH__
     static bool DecodeJXL_Multithreaded(SDL_IOStream* io, ImageBuffer* imageBuffer) {
         Sint64 dataSize = SDL_GetIOSize(io);
         if (dataSize <= 0) return false;
@@ -159,6 +163,7 @@ namespace lime {
 
         return success;
     }
+#endif
 
     bool UniversalImage::Decode (Resource *resource, ImageBuffer *imageBuffer, const char* formatExt) {
 
@@ -179,20 +184,28 @@ namespace lime {
         uint8_t magic[12];
         
         if (SDL_ReadIO(io, magic, 12) == 12) {
+#ifndef __SWITCH__
             if (magic[0] == 0xFF && magic[1] == 0x0A) {
                 is_jxl = true; // Raw JXL stream
             } else if (magic[0] == 0x00 && magic[1] == 0x00 && magic[2] == 0x00 && magic[3] == 0x0C &&
                        magic[4] == 'J' && magic[5] == 'X' && magic[6] == 'L' && magic[7] == ' ') {
-                is_jxl = true;
+                is_jxl = true; // JXL container
+            } else
+#endif
+            if (magic[0] == 'R' && magic[1] == 'I' && magic[2] == 'F' && magic[3] == 'F' &&
+                       magic[8] == 'W' && magic[9] == 'E' && magic[10] == 'B' && magic[11] == 'P') {
+                is_webp = true; // WebP container
             }
         }
         SDL_SeekIO(io, start, SDL_IO_SEEK_SET);
 
+#ifndef __SWITCH__
         if (is_jxl) {
             bool result = DecodeJXL_Multithreaded(io, imageBuffer);
             SDL_CloseIO(io);
             return result;
         }
+#endif
 
         if (DecodeAnimation_Stitched(io, imageBuffer)) {
             SDL_CloseIO(io);
