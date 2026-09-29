@@ -24,7 +24,6 @@
 #include <jxl/decode.h>
 #include <jxl/thread_parallel_runner.h>
 #endif
-#include <webp/decode.h>
 
 namespace lime {
 
@@ -180,10 +179,9 @@ namespace lime {
         if (!io) return false;
 
         bool is_jxl = false;
-        bool is_webp = false;
         Sint64 start = SDL_TellIO(io);
         uint8_t magic[12];
-        
+
         if (SDL_ReadIO(io, magic, 12) == 12) {
 #ifndef __SWITCH__
             if (magic[0] == 0xFF && magic[1] == 0x0A) {
@@ -191,12 +189,8 @@ namespace lime {
             } else if (magic[0] == 0x00 && magic[1] == 0x00 && magic[2] == 0x00 && magic[3] == 0x0C &&
                        magic[4] == 'J' && magic[5] == 'X' && magic[6] == 'L' && magic[7] == ' ') {
                 is_jxl = true; // JXL container
-            } else
-#endif
-            if (magic[0] == 'R' && magic[1] == 'I' && magic[2] == 'F' && magic[3] == 'F' &&
-                       magic[8] == 'W' && magic[9] == 'E' && magic[10] == 'B' && magic[11] == 'P') {
-                is_webp = true; // WebP container
             }
+#endif
         }
         SDL_SeekIO(io, start, SDL_IO_SEEK_SET);
 
