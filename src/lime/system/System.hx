@@ -372,7 +372,7 @@ class System
 		{
 			#if (sys && windows)
 			Sys.command("start", ["", path]);
-			#elseif mac
+			#elseif macos
 			Sys.command("/usr/bin/open", [path]);
 			#elseif linux
 			Sys.command("/usr/bin/xdg-open", [path]);
@@ -421,6 +421,58 @@ class System
 			return NativeCFFI.lime_system_set_hint(key, value);
 			#end
 		}
+	}
+
+	/**
+		Report the user's preferred locale.
+	**/
+	public static function getPreferredLocales():Array<Locale>
+	{
+		var preferredLocales:Array<Locale> = [];
+
+		#if (lime_cffi && !macro)
+		var locales:Array<Dynamic> = NativeCFFI.lime_system_get_preferred_locales();
+
+		if (locales != null && locales.length > 0)
+		{
+			for (locale in locales)
+			{
+				var preferredLocale:Locale = new Locale();
+				preferredLocale.language = locale.language;
+				preferredLocale.country = locale.country;
+				preferredLocales.push(preferredLocale);
+			}
+		}
+		#elseif html5
+		var locales:Array<String> = [];
+
+		if (js.Browser.navigator.languages != null && js.Browser.navigator.languages.length > 0)
+		{
+			locales = js.Browser.navigator.languages;
+		}
+		else if (js.Browser.navigator.language != null)
+		{
+			locales = [js.Browser.navigator.language];
+		}
+
+		if (locales != null && locales.length > 0)
+		{
+			for (locale in locales)
+			{
+				var parts:Array<String> = locale.indexOf("-") != -1 ? locale.split("-") : locale.split("_");
+
+				if (parts.length > 0)
+				{
+					var preferredLocale:Locale = new Locale();
+					preferredLocale.language = parts[0];
+					preferredLocale.country = parts.length > 1 ? parts[1] : null;
+					preferredLocales.push(preferredLocale);
+				}
+			}
+		}
+		#end
+
+		return preferredLocales;
 	}
 
 	@:noCompletion private static function __copyMissingFields(target:Dynamic, source:Dynamic):Void
@@ -580,7 +632,7 @@ class System
 				}
 				__deviceModel = model;
 			}
-			#elseif mac
+			#elseif macos
 			__deviceModel = __runProcess("sysctl", ["-n", "hw.model"]);
 			#elseif linux
 			__deviceModel = __runProcess("cat", ["/sys/devices/virtual/dmi/id/sys_vendor"]);
@@ -602,7 +654,7 @@ class System
 			{
 				__deviceVendor = vendor.charAt(0).toUpperCase() + vendor.substr(1);
 			}
-			#elseif (ios || mac)
+			#elseif (ios || macos)
 			__deviceVendor = "Apple";
 			#elseif linux
 			__deviceVendor = __runProcess("cat", ["/sys/devices/virtual/dmi/id/product_name"]);
@@ -660,7 +712,7 @@ class System
 		{
 			#if windows
 			__fontsDirectory = Path.join([Sys.getEnv("WINDIR"), "Fonts"]);
-			#elseif mac
+			#elseif macos
 			__fontsDirectory = "/Library/Fonts";
 			#elseif ios
 			__fontsDirectory = "/System/Library/Fonts";
@@ -712,7 +764,7 @@ class System
 		{
 			#if windows
 			__platformName = "Windows";
-			#elseif mac
+			#elseif macos
 			__platformName = "macOS";
 			#elseif linux
 			__platformName = __runProcess("lsb_release", ["-is"]);
@@ -741,7 +793,7 @@ class System
 				__platformVersion = release + " (API " + api + ")";
 			#elseif (lime_cffi && !macro && ios)
 			__platformVersion = NativeCFFI.lime_system_get_platform_version();
-			#elseif mac
+			#elseif macos
 			__platformVersion = __runProcess("sw_vers", ["-productVersion"]);
 			#elseif linux
 			__platformVersion = __runProcess("lsb_release", ["-rs"]);

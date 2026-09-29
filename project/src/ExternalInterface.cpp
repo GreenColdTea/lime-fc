@@ -24,7 +24,6 @@
 #include <graphics/format/UniversalImage.h>
 #include <graphics/Image.h>
 #include <graphics/ImageBuffer.h>
-#include <graphics/utils/ImageDataUtil.h>
 #include <hx/CFFIPrime.h>
 #include <media/decoders/FlacDecoder.h>
 #include <media/decoders/MP3Decoder.h>
@@ -36,7 +35,6 @@
 #include <system/Endian.h>
 #include <system/FileWatcher.h>
 #include <system/JNI.h>
-#include <system/Locale.h>
 #include <system/System.h>
 #include <text/Font.h>
 #include <ui/Cursor.h>
@@ -833,124 +831,6 @@ namespace lime
 
 	}
 
-	void lime_image_data_util_color_transform(value image, value rect, value colorMatrix)
-	{
-		Image _image = Image(image);
-		Rectangle _rect = Rectangle(rect);
-		ColorMatrix _colorMatrix = ColorMatrix(colorMatrix);
-		ImageDataUtil::ColorTransform(&_image, &_rect, &_colorMatrix);
-	}
-
-	void lime_image_data_util_copy_channel(value image, value sourceImage, value sourceRect, value destPoint, int srcChannel, int destChannel)
-	{
-		Image _image = Image(image);
-		Image _sourceImage = Image(sourceImage);
-		Rectangle _sourceRect = Rectangle(sourceRect);
-		Vector2 _destPoint = Vector2(destPoint);
-		ImageDataUtil::CopyChannel(&_image, &_sourceImage, &_sourceRect, &_destPoint, srcChannel, destChannel);
-	}
-
-	void lime_image_data_util_copy_pixels(value image, value sourceImage, value sourceRect, value destPoint, value alphaImage, value alphaPoint, bool mergeAlpha)
-	{
-		Image _image = Image(image);
-		Image _sourceImage = Image(sourceImage);
-		Rectangle _sourceRect = Rectangle(sourceRect);
-		Vector2 _destPoint = Vector2(destPoint);
-
-		if (val_is_null(alphaImage))
-		{
-			ImageDataUtil::CopyPixels(&_image, &_sourceImage, &_sourceRect, &_destPoint, 0, 0, mergeAlpha);
-		}
-		else
-		{
-			Image _alphaImage = Image(alphaImage);
-			Vector2 _alphaPoint = Vector2(alphaPoint);
-
-			ImageDataUtil::CopyPixels(&_image, &_sourceImage, &_sourceRect, &_destPoint, &_alphaImage, &_alphaPoint, mergeAlpha);
-		}
-	}
-
-	void lime_image_data_util_fill_rect(value image, value rect, int rg, int ba)
-	{
-		Image _image = Image(image);
-		Rectangle _rect = Rectangle(rect);
-		int32_t color = (rg << 16) | ba;
-		ImageDataUtil::FillRect(&_image, &_rect, color);
-	}
-
-	void lime_image_data_util_flood_fill(value image, int x, int y, int rg, int ba)
-	{
-		Image _image = Image(image);
-		int32_t color = (rg << 16) | ba;
-		ImageDataUtil::FloodFill(&_image, x, y, color);
-	}
-
-	void lime_image_data_util_get_pixels(value image, value rect, int format, value bytes)
-	{
-		Image _image = Image(image);
-		Rectangle _rect = Rectangle(rect);
-		PixelFormat _format = (PixelFormat)format;
-		Bytes pixels = Bytes(bytes);
-		ImageDataUtil::GetPixels(&_image, &_rect, _format, &pixels);
-	}
-
-	void lime_image_data_util_merge(value image, value sourceImage, value sourceRect, value destPoint, int redMultiplier, int greenMultiplier, int blueMultiplier, int alphaMultiplier)
-	{
-		Image _image = Image(image);
-		Image _sourceImage = Image(sourceImage);
-		Rectangle _sourceRect = Rectangle(sourceRect);
-		Vector2 _destPoint = Vector2(destPoint);
-		ImageDataUtil::Merge(&_image, &_sourceImage, &_sourceRect, &_destPoint, redMultiplier, greenMultiplier, blueMultiplier, alphaMultiplier);
-	}
-
-	void lime_image_data_util_multiply_alpha(value image)
-	{
-		Image _image = Image(image);
-		ImageDataUtil::MultiplyAlpha(&_image);
-	}
-
-	void lime_image_data_util_resize(value image, value buffer, int width, int height)
-	{
-		Image _image = Image(image);
-		ImageBuffer _buffer = ImageBuffer(buffer);
-		ImageDataUtil::Resize(&_image, &_buffer, width, height);
-	}
-
-	void lime_image_data_util_set_format(value image, int format)
-	{
-		Image _image = Image(image);
-		PixelFormat _format = (PixelFormat)format;
-		ImageDataUtil::SetFormat(&_image, _format);
-	}
-
-	void lime_image_data_util_set_pixels(value image, value rect, value bytes, int offset, int format, int endian)
-	{
-		Image _image = Image(image);
-		Rectangle _rect = Rectangle(rect);
-		Bytes _bytes(bytes);
-		PixelFormat _format = (PixelFormat)format;
-		Endian _endian = (Endian)endian;
-		ImageDataUtil::SetPixels(&_image, &_rect, &_bytes, offset, _format, _endian);
-	}
-
-	int lime_image_data_util_threshold(value image, value sourceImage, value sourceRect, value destPoint, int operation, int thresholdRG, int thresholdBA, int colorRG, int colorBA, int maskRG, int maskBA, bool copySource)
-	{
-		Image _image = Image(image);
-		Image _sourceImage = Image(sourceImage);
-		Rectangle _sourceRect = Rectangle(sourceRect);
-		Vector2 _destPoint = Vector2(destPoint);
-		int32_t threshold = (thresholdRG << 16) | thresholdBA;
-		int32_t color = (colorRG << 16) | colorBA;
-		int32_t mask = (maskRG << 16) | maskBA;
-		return ImageDataUtil::Threshold(&_image, &_sourceImage, &_sourceRect, &_destPoint, operation, threshold, color, mask, copySource);
-	}
-
-	void lime_image_data_util_unmultiply_alpha(value image)
-	{
-		Image _image = Image(image);
-		ImageDataUtil::UnmultiplyAlpha(&_image);
-	}
-
 	double lime_jni_getenv()
 	{
 #ifdef ANDROID
@@ -1027,22 +907,6 @@ namespace lime
 	{
 		KeyEvent::callback = new ValuePointer(callback);
 		KeyEvent::eventObject = new ValuePointer(eventObject);
-	}
-
-	value lime_locale_get_system_locale()
-	{
-		std::string *locale = Locale::GetSystemLocale();
-
-		if (!locale)
-		{
-			return alloc_null();
-		}
-		else
-		{
-			value result = alloc_string(locale->c_str());
-			delete locale;
-			return result;
-		}
 	}
 
 	value lime_lzma_compress(value buffer, value bytes)
@@ -1273,6 +1137,35 @@ namespace lime
 		#else
 		return false;
 		#endif
+	}
+
+	value lime_system_get_preferred_locales()
+	{
+		int count = 0;
+
+		SDL_Locale **preferredLocales = SDL_GetPreferredLocales(&count);
+
+		if (preferredLocales)
+		{
+			value values = alloc_array(count);
+
+			for (int i = 0; i < count; i++)
+			{
+				if (!preferredLocales[i])
+					continue;
+
+				value value = alloc_empty_object();
+				alloc_field(value, val_id("language"), alloc_string(preferredLocales[i]->language));
+				alloc_field(value, val_id("country"), preferredLocales[i]->country ? alloc_string(preferredLocales[i]->country) : alloc_null());
+				val_array_set_i(values, i, value);
+			}
+
+			SDL_free(preferredLocales);
+
+			return values;
+		}
+
+		return alloc_null();
 	}
 
 	void lime_text_event_manager_register(value callback, value eventObject)
@@ -2132,19 +2025,6 @@ namespace lime
 	DEFINE_PRIME4v(lime_gamepad_set_led);
 	DEFINE_PRIME2(lime_gzip_compress);
 	DEFINE_PRIME2(lime_gzip_decompress);
-	DEFINE_PRIME3v(lime_image_data_util_color_transform);
-	DEFINE_PRIME6v(lime_image_data_util_copy_channel);
-	DEFINE_PRIME7v(lime_image_data_util_copy_pixels);
-	DEFINE_PRIME4v(lime_image_data_util_fill_rect);
-	DEFINE_PRIME5v(lime_image_data_util_flood_fill);
-	DEFINE_PRIME4v(lime_image_data_util_get_pixels);
-	DEFINE_PRIME8v(lime_image_data_util_merge);
-	DEFINE_PRIME1v(lime_image_data_util_multiply_alpha);
-	DEFINE_PRIME4v(lime_image_data_util_resize);
-	DEFINE_PRIME2v(lime_image_data_util_set_format);
-	DEFINE_PRIME6v(lime_image_data_util_set_pixels);
-	DEFINE_PRIME12(lime_image_data_util_threshold);
-	DEFINE_PRIME1v(lime_image_data_util_unmultiply_alpha);
 	DEFINE_PRIME4(lime_image_encode);
 	DEFINE_PRIME2(lime_image_load_bytes);
 	DEFINE_PRIME2(lime_image_load_file);
@@ -2160,7 +2040,6 @@ namespace lime
 	DEFINE_PRIME1(lime_key_code_from_scan_code);
 	DEFINE_PRIME1(lime_key_code_to_scan_code);
 	DEFINE_PRIME2v(lime_key_event_manager_register);
-	DEFINE_PRIME0(lime_locale_get_system_locale);
 	DEFINE_PRIME2(lime_lzma_compress);
 	DEFINE_PRIME2(lime_lzma_decompress);
 	DEFINE_PRIME2v(lime_mouse_event_manager_register);
@@ -2187,6 +2066,7 @@ namespace lime
 	DEFINE_PRIME1(lime_system_get_hint);
 	DEFINE_PRIME2v(lime_system_set_hint);
 	DEFINE_PRIME2(lime_system_set_windows_console_mode);
+	DEFINE_PRIME0(lime_system_get_preferred_locales);
 	DEFINE_PRIME2v(lime_text_event_manager_register);
 	DEFINE_PRIME2v(lime_touch_event_manager_register);
 	DEFINE_PRIME5(lime_window_alert);

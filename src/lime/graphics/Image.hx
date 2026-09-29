@@ -1,12 +1,13 @@
 package lime.graphics;
 
+import haxe.crypto.Base64;
+
 import haxe.io.Bytes;
 import haxe.io.BytesData;
 import haxe.io.BytesInput;
 import haxe.io.BytesOutput;
 
 import lime._internal.backend.native.NativeCFFI;
-import lime._internal.format.Base64;
 import lime._internal.graphics.ImageCanvasUtil;
 import lime._internal.graphics.ImageDataUtil;
 import lime.app.Application;
