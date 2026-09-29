@@ -9,6 +9,7 @@
 
 #include <climits>
 #include <thread>
+#include <vector>
  
 #if defined(_MSC_VER)
     #ifndef __attribute__
@@ -21,52 +22,57 @@
 
 #include <jxl/decode.h>
 #include <jxl/thread_parallel_runner.h>
-#include <webp/decode.h>
 
 namespace lime {
 
-    static bool DecodeWEBP_Multithreaded(SDL_IOStream* io, ImageBuffer* imageBuffer) {
-        Sint64 dataSize = SDL_GetIOSize(io);
-        if (dataSize <= 0) return false;
-
-        uint8_t* data = (uint8_t*)SDL_malloc((size_t)dataSize);
-        if (!data) return false;
+    static bool DecodeAnimation_Stitched(SDL_IOStream* io, ImageBuffer* imageBuffer) {
+        Sint64 start = SDL_TellIO(io);
         
-        SDL_SeekIO(io, 0, SDL_IO_SEEK_SET);
-        if (SDL_ReadIO(io, data, (size_t)dataSize) != (size_t)dataSize) {
-            SDL_free(data);
+        IMG_Animation* anim = IMG_LoadAnimation_IO(io, false);
+        
+        if (!anim || anim->count <= 1) {
+            if (anim) IMG_FreeAnimation(anim);
+            SDL_SeekIO(io, start, SDL_IO_SEEK_SET);
             return false;
         }
 
-        WebPDecoderConfig config;
-        if (!WebPInitDecoderConfig(&config)) {
-            SDL_free(data);
-            return false;
+        int frame_w = anim->w;
+        int frame_h = anim->h;
+        int frame_count = anim->count;
+
+        imageBuffer->Resize(frame_w * frame_count, frame_h, 32);
+        imageBuffer->transparent = true;
+
+        uint8_t* dest = imageBuffer->data->buffer->b;
+        size_t row_stride = frame_w * 4;
+        size_t total_stride = row_stride * frame_count;
+
+        for (int f = 0; f < frame_count; ++f) {
+            SDL_Surface* surface = anim->frames[f];
+            SDL_Surface* rgba_surface = surface;
+            
+            if (surface->format != SDL_PIXELFORMAT_RGBA32) {
+                rgba_surface = SDL_ConvertSurface(surface, SDL_PIXELFORMAT_RGBA32);
+            }
+
+            if (rgba_surface) {
+                uint8_t* src_pixels = (uint8_t*)rgba_surface->pixels;
+                int src_pitch = rgba_surface->pitch;
+
+                for (int y = 0; y < frame_h; ++y) {
+                    memcpy(dest + (y * total_stride) + (f * row_stride),
+                           src_pixels + (y * src_pitch),
+                           row_stride);
+                }
+
+                if (rgba_surface != surface) {
+                    SDL_DestroySurface(rgba_surface);
+                }
+            }
         }
 
-        if (WebPGetFeatures(data, dataSize, &config.input) != VP8_STATUS_OK) {
-            SDL_free(data);
-            return false;
-        }
-
-        config.options.use_threads = 1; 
-
-        config.output.colorspace = MODE_RGBA;
-        
-        imageBuffer->Resize(config.input.width, config.input.height, 32);
-        imageBuffer->transparent = config.input.has_alpha;
-        
-        config.output.u.RGBA.rgba = imageBuffer->data->buffer->b;
-        config.output.u.RGBA.stride = config.input.width * 4;
-        config.output.u.RGBA.size = config.output.u.RGBA.stride * config.input.height;
-        config.output.is_external_memory = 1;
-
-        VP8StatusCode status = WebPDecode(data, dataSize, &config);
-
-        WebPFreeDecBuffer(&config.output);
-        SDL_free(data);
-
-        return status == VP8_STATUS_OK;
+        IMG_FreeAnimation(anim);
+        return true;
     }
 
     static bool DecodeJXL_Multithreaded(SDL_IOStream* io, ImageBuffer* imageBuffer) {
@@ -96,12 +102,15 @@ namespace lime {
             JxlDecoderSetParallelRunner(dec, JxlThreadParallelRunner, runner);
         }
 
-        JxlDecoderSubscribeEvents(dec, JXL_DEC_BASIC_INFO | JXL_DEC_FULL_IMAGE);
+        JxlDecoderSetCoalescing(dec, JXL_TRUE);
+        JxlDecoderSubscribeEvents(dec, JXL_DEC_BASIC_INFO | JXL_DEC_FRAME | JXL_DEC_FULL_IMAGE);
         JxlDecoderSetInput(dec, data, (size_t)dataSize);
 
         JxlBasicInfo info;
         JxlPixelFormat format = {4, JXL_TYPE_UINT8, JXL_NATIVE_ENDIAN, 0};
 
+        std::vector<std::vector<uint8_t>> frames;
+        std::vector<uint8_t> current_frame;
         bool success = false;
 
         for (;;) {
@@ -115,17 +124,32 @@ namespace lime {
                 size_t buffer_size;
                 if (JxlDecoderImageOutBufferSize(dec, &format, &buffer_size) != JXL_DEC_SUCCESS) break;
                 
-                imageBuffer->Resize(info.xsize, info.ysize, 32);
-                imageBuffer->transparent = (info.alpha_bits > 0);
-                
-                if (JxlDecoderSetImageOutBuffer(dec, &format, imageBuffer->data->buffer->b, buffer_size) != JXL_DEC_SUCCESS) break;
+                current_frame.resize(buffer_size);
+                if (JxlDecoderSetImageOutBuffer(dec, &format, current_frame.data(), buffer_size) != JXL_DEC_SUCCESS) break;
             } else if (status == JXL_DEC_FULL_IMAGE) {
-                continue;
+                frames.push_back(current_frame);
+                success = true; 
             } else if (status == JXL_DEC_SUCCESS) {
-                success = true;
-                break;
-            } else {
                 break; 
+            }
+        }
+
+        if (success && !frames.empty()) {
+            size_t frame_count = frames.size();
+            
+            imageBuffer->Resize(info.xsize * frame_count, info.ysize, 32);
+            imageBuffer->transparent = (info.alpha_bits > 0);
+
+            uint8_t* dest = imageBuffer->data->buffer->b;
+            size_t row_stride = info.xsize * 4;
+            size_t total_stride = row_stride * frame_count;
+
+            for (size_t f = 0; f < frame_count; ++f) {
+                for (size_t y = 0; y < info.ysize; ++y) {
+                    memcpy(dest + (y * total_stride) + (f * row_stride),
+                           frames[f].data() + (y * row_stride),
+                           row_stride);
+                }
             }
         }
 
@@ -138,9 +162,7 @@ namespace lime {
 
     bool UniversalImage::Decode (Resource *resource, ImageBuffer *imageBuffer, const char* formatExt) {
 
-        if (!resource) {
-            return false;
-        }
+        if (!resource) return false;
 
         SDL_IOStream *io = nullptr;
 
@@ -150,23 +172,18 @@ namespace lime {
             io = SDL_IOFromConstMem (resource->data->b, resource->data->length);
         }
 
-        if (!io) {
-            return false;
-        }
+        if (!io) return false;
 
         bool is_jxl = false;
-        bool is_webp = false;
         Sint64 start = SDL_TellIO(io);
         uint8_t magic[12];
+        
         if (SDL_ReadIO(io, magic, 12) == 12) {
             if (magic[0] == 0xFF && magic[1] == 0x0A) {
                 is_jxl = true; // Raw JXL stream
             } else if (magic[0] == 0x00 && magic[1] == 0x00 && magic[2] == 0x00 && magic[3] == 0x0C &&
                        magic[4] == 'J' && magic[5] == 'X' && magic[6] == 'L' && magic[7] == ' ') {
-                is_jxl = true; // JXL container
-            } else if (magic[0] == 'R' && magic[1] == 'I' && magic[2] == 'F' && magic[3] == 'F' &&
-                       magic[8] == 'W' && magic[9] == 'E' && magic[10] == 'B' && magic[11] == 'P') {
-                is_webp = true; // WebP container
+                is_jxl = true;
             }
         }
         SDL_SeekIO(io, start, SDL_IO_SEEK_SET);
@@ -177,10 +194,9 @@ namespace lime {
             return result;
         }
 
-        if (is_webp) {
-            bool result = DecodeWEBP_Multithreaded(io, imageBuffer);
+        if (DecodeAnimation_Stitched(io, imageBuffer)) {
             SDL_CloseIO(io);
-            return result;
+            return true;
         }
 
         SDL_Surface *surface = nullptr;
@@ -201,9 +217,7 @@ namespace lime {
 
         SDL_CloseIO(io);
 
-        if (!surface) {
-            return false;
-        }
+        if (!surface) return false;
 
         if (surface->format != SDL_PIXELFORMAT_RGBA32) {
             SDL_Surface *old_surface = surface;
@@ -211,9 +225,7 @@ namespace lime {
             SDL_DestroySurface (old_surface);
         }
 
-        if (!surface) {
-            return false;
-        }
+        if (!surface) return false;
 
         imageBuffer->Resize (surface->w, surface->h, 32);
         
@@ -226,10 +238,8 @@ namespace lime {
         }
 
         SDL_DestroySurface (surface);
-
         return true;
     }
-
 
     bool UniversalImage::Encode (ImageBuffer *imageBuffer, Bytes *bytes, int type, int quality) {
         if (!imageBuffer || !imageBuffer->data || !bytes) {
@@ -310,5 +320,5 @@ namespace lime {
 
         return success;
     }
-
+    
 }
