@@ -565,6 +565,9 @@ class CommandLineTools
 				case HTML5:
 					platform = new HTML5Platform(command, project, targetFlags);
 
+				case SWITCH:
+					platform = new SwitchPlatform(command, project, targetFlags);
+
 				default:
 			}
 

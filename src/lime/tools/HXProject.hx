@@ -156,6 +156,9 @@ class HXProject extends Script
 			case WINDOWS, MAC, LINUX:
 				PlatformType.DESKTOP;
 
+			case SWITCH:
+				PlatformType.CONSOLE;
+
 			default:
 				// TODO: Better handling of platform type for pluggable targets
 				PlatformType.CONSOLE;
