@@ -242,7 +242,7 @@ class AudioManager
 
 		try
 		{
-			final directory:String = Path.join([#if mobile System.applicationStorageDirectory #else System.applicationDirectory #end, "plugins"]);
+			final directory:String = Path.join([#if (mobile || mac) System.applicationStorageDirectory #else System.applicationDirectory #end, "plugins"]);
 			final path:String = Path.withExtension(Path.join([directory, 'audio-config-${AUDIO_CONFIG_VERSION}']), #if windows 'ini' #else 'conf' #end);
 			final content:String = alConfig.join('\n');
 
