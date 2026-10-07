@@ -77,7 +77,7 @@ namespace lime {
         return true;
     }
 
-#ifndef __SWITCH__
+    #ifndef __SWITCH__
     static bool DecodeJXL_Multithreaded(SDL_IOStream* io, ImageBuffer* imageBuffer) {
         Sint64 dataSize = SDL_GetIOSize(io);
         if (dataSize <= 0) return false;
@@ -162,7 +162,7 @@ namespace lime {
 
         return success;
     }
-#endif
+    #endif
 
     bool UniversalImage::Decode (Resource *resource, ImageBuffer *imageBuffer, const char* formatExt) {
 
@@ -183,24 +183,24 @@ namespace lime {
         uint8_t magic[12];
 
         if (SDL_ReadIO(io, magic, 12) == 12) {
-#ifndef __SWITCH__
+            #ifndef __SWITCH__
             if (magic[0] == 0xFF && magic[1] == 0x0A) {
                 is_jxl = true; // Raw JXL stream
             } else if (magic[0] == 0x00 && magic[1] == 0x00 && magic[2] == 0x00 && magic[3] == 0x0C &&
                        magic[4] == 'J' && magic[5] == 'X' && magic[6] == 'L' && magic[7] == ' ') {
                 is_jxl = true; // JXL container
             }
-#endif
+            #endif
         }
         SDL_SeekIO(io, start, SDL_IO_SEEK_SET);
 
-#ifndef __SWITCH__
+        #ifndef __SWITCH__
         if (is_jxl) {
             bool result = DecodeJXL_Multithreaded(io, imageBuffer);
             SDL_CloseIO(io);
             return result;
         }
-#endif
+        #endif
 
         if (DecodeAnimation_Stitched(io, imageBuffer)) {
             SDL_CloseIO(io);
@@ -221,6 +221,11 @@ namespace lime {
                 SDL_SeekIO(io, 0, SDL_IO_SEEK_SET);
                 surface = IMG_LoadTyped_IO (io, false, ext + 1);
             }
+        }
+
+        if (!surface) {
+            SDL_SeekIO(io, start, SDL_IO_SEEK_SET);
+            surface = IMG_LoadTyped_IO(io, false, "TGA");
         }
 
         SDL_CloseIO(io);
