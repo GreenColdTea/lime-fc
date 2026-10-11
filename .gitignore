@@ -10,6 +10,7 @@ project/vc*.pdb
 *.iml
 tools/*.exe
 tools/obj
+tools/alias/obj
 haxedoc.xml
 .vscode/settings.json
 package-lock.json
