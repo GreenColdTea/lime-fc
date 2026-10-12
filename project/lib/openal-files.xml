@@ -8,7 +8,7 @@
 
         <section>
 
-            <section if="linux">
+            <section if="linux" unless="switch || nx || HX_NX">
 
                 <compilerflag value="-I/usr/include/pipewire-0.3" />
                 <compilerflag value="-I/usr/include/spa-0.2" />
@@ -26,6 +26,8 @@
             </section>
 
             <compilerflag value="-I${NATIVE_TOOLKIT_PATH}/openal/fmt-11.2.0/include" />
+
+            <compilerflag value="-DFMT_USE_FALLBACK_FILE=1" if="switch || nx || HX_NX" />
 
             <compilerflag value="-I${NATIVE_TOOLKIT_PATH}/openal/gsl/include" />
 
@@ -254,7 +256,7 @@
             <file name="${NATIVE_TOOLKIT_PATH}/openal/core/logging.cpp" />
             <file name="${NATIVE_TOOLKIT_PATH}/openal/core/mastering.cpp" />
             <file name="${NATIVE_TOOLKIT_PATH}/openal/core/mixer.cpp" />
-            <file name="${NATIVE_TOOLKIT_PATH}/openal/core/rtkit.cpp" if="linux" />
+            <file name="${NATIVE_TOOLKIT_PATH}/openal/core/rtkit.cpp" if="linux" unless="switch || nx || HX_NX" />
             <file name="${NATIVE_TOOLKIT_PATH}/openal/core/storage_formats.cpp" />
             <file name="${NATIVE_TOOLKIT_PATH}/openal/core/tsmefilter.cpp" />
             <file name="${NATIVE_TOOLKIT_PATH}/openal/core/uhjfilter.cpp" />
@@ -266,7 +268,7 @@
         <section>
 
             <file name="${NATIVE_TOOLKIT_PATH}/openal/fmt-11.2.0/src/format.cc" />
-            <file name="${NATIVE_TOOLKIT_PATH}/openal/fmt-11.2.0/src/os.cc" />
+            <file name="${NATIVE_TOOLKIT_PATH}/openal/fmt-11.2.0/src/os.cc" unless="switch || nx || HX_NX" />
 
         </section>
 

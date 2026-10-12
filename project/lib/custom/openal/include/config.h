@@ -4,6 +4,8 @@
 	#include "platforms/apple/config.h"
 #elif defined(__ANDROID__)
 	#include "platforms/android/config.h"
+#elif defined(__SWITCH__)
+	#include "platforms/switch/config.h"
 #elif defined(__linux__)
     #include "platforms/linux/config.h"
 #elif defined(__EMSCRIPTEN__)
