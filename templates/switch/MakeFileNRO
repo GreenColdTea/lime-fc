@@ -51,7 +51,7 @@ LIBS := -Wl,--start-group \
         -lSDL2_image -lSDL2_gfx -lSDL2_net -lSDL2_mixer \
         -lopusfile -lopus -lmpg123 -lvorbisidec -lmodplug \
         -lvorbisfile -lcurl -lvorbis -logg -lSDL3 -lharfbuzz \
-        -lopenal \
+        -lopenal -llua5.1 \
         -lpthread -lstdc++ -lm -lnx \
         -Wl,--end-group
 

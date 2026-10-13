@@ -1,0 +1,7 @@
+#define FORCE_ALIGN
+#define ALSOFT_EMBED_HRTF_DATA
+#define HAVE_CXXMODULES 0
+#define HAVE_RTKIT 0
+#define HAVE_DYNLOAD 0
+#define ALSOFT_UWP 0
+#define ALSOFT_EAX 0
