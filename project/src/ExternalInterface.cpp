@@ -1303,6 +1303,12 @@ namespace lime
 		return targetWindow->GetScale();
 	}
 
+	double lime_window_get_display_scale(value window)
+	{
+		Window *targetWindow = (Window *)val_data(window);
+		return targetWindow->GetDisplayScale();
+	}
+
 	bool lime_window_get_text_input_enabled(value window)
 	{
 		Window *targetWindow = (Window *)val_data(window);
@@ -2086,6 +2092,7 @@ namespace lime
 	DEFINE_PRIME1(lime_window_get_id);
 	DEFINE_PRIME1(lime_window_get_mouse_lock);
 	DEFINE_PRIME1(lime_window_get_scale);
+	DEFINE_PRIME1(lime_window_get_display_scale);
 	DEFINE_PRIME1(lime_window_get_text_input_enabled);
 	DEFINE_PRIME1(lime_window_get_width);
 	DEFINE_PRIME1(lime_window_get_x);

@@ -64,6 +64,7 @@ namespace lime
 		bool GetMouseLock();
 		float GetOpacity();
 		double GetScale();
+		double GetDisplayScale();
 		bool GetTextInputEnabled();
 		int GetWidth();
 		int GetX();

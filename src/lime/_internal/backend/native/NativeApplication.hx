@@ -676,6 +676,24 @@ class NativeApplication
 					window.__height = windowEventInfo.height;
 					window.onResize.dispatch(windowEventInfo.width, windowEventInfo.height);
 
+				case WINDOW_SCALE_CHANGED:
+					#if (lime_cffi && !macro)
+					final oldScale:Float = window.__displayScale;
+
+					window.__displayScale = NativeCFFI.lime_window_get_display_scale(window.__backend.handle);
+
+					final newScale:Float = window.__displayScale;
+
+					if (newScale != 0)
+					{
+						final scaleRatio:Float = newScale / oldScale;
+
+						window.resize(Math.floor(windowEventInfo.width * scaleRatio), Math.floor(windowEventInfo.height * scaleRatio));
+
+						window.onDisplayScaleChange.dispatch(newScale, oldScale);
+					}
+					#end
+
 				case WINDOW_RESTORE:
 					window.__fullscreen = false;
 					window.__minimized = false;
@@ -1158,6 +1176,7 @@ private enum abstract WindowEventType(Int)
 	var WINDOW_RESTORE = 12;
 	var WINDOW_SHOW = 13;
 	var WINDOW_HIDE = 14;
+	var WINDOW_SCALE_CHANGED = 15;
 }
 
 @:keep private class OrientationEventInfo

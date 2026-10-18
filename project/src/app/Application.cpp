@@ -785,7 +785,7 @@ namespace lime
 				case SDL_EVENT_WINDOW_METAL_VIEW_RESIZED:
 				case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
 				case SDL_EVENT_WINDOW_RESIZED:
-					windowEvent.type = WINDOW_RESIZE;
+					windowEvent.type = (event->type == SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED) ? WINDOW_SCALE_CHANGED : WINDOW_RESIZE;
 #ifndef IPHONE
 					SDL_GetWindowSize(SDL_GetWindowFromID(event->window.windowID), &windowEvent.width, &windowEvent.height);
 #else
@@ -931,28 +931,44 @@ namespace lime
 #if defined(HX_WINDOWS) || defined(HX_MACOS)
 	bool Application::HandleEventWatcher(void *userdata, SDL_Event *event)
 	{
-		if (!background && event->type == SDL_EVENT_WINDOW_EXPOSED)
+		if (!background)
 		{
-			WindowEvent windowResizeEvent;
-			windowResizeEvent.type = WINDOW_RESIZE;
+			if (event->type == SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED)
+			{
+				WindowEvent windowScaleEvent;
+				windowScaleEvent.type = WINDOW_SCALE_CHANGED;
+				windowScaleEvent.windowID = event->window.windowID;
 #ifndef IPHONE
-			SDL_GetWindowSize(SDL_GetWindowFromID(event->window.windowID), &windowResizeEvent.width, &windowResizeEvent.height);
+				SDL_GetWindowSize(SDL_GetWindowFromID(event->window.windowID), &windowScaleEvent.width, &windowScaleEvent.height);
 #else
-			SDL_GetWindowSizeInPixels(SDL_GetWindowFromID(event->window.windowID), &windowResizeEvent.width, &windowResizeEvent.height);
+				SDL_GetWindowSizeInPixels(SDL_GetWindowFromID(event->window.windowID), &windowScaleEvent.width, &windowScaleEvent.height);
 #endif
-			windowResizeEvent.windowID = event->window.windowID;
-			WindowEvent::Dispatch(&windowResizeEvent);
+				WindowEvent::Dispatch(&windowScaleEvent);
+				return true;
+			}
+			else if (event->type == SDL_EVENT_WINDOW_EXPOSED)
+			{
+				WindowEvent windowResizeEvent;
+				windowResizeEvent.type = WINDOW_RESIZE;
+#ifndef IPHONE
+				SDL_GetWindowSize(SDL_GetWindowFromID(event->window.windowID), &windowResizeEvent.width, &windowResizeEvent.height);
+#else
+				SDL_GetWindowSizeInPixels(SDL_GetWindowFromID(event->window.windowID), &windowResizeEvent.width, &windowResizeEvent.height);
+#endif
+				windowResizeEvent.windowID = event->window.windowID;
+				WindowEvent::Dispatch(&windowResizeEvent);
 
-			WindowEvent windowExposeEvent;
-			windowExposeEvent.type = WINDOW_EXPOSE;
-			windowExposeEvent.windowID = event->window.windowID;
-			WindowEvent::Dispatch(&windowExposeEvent);
+				WindowEvent windowExposeEvent;
+				windowExposeEvent.type = WINDOW_EXPOSE;
+				windowExposeEvent.windowID = event->window.windowID;
+				WindowEvent::Dispatch(&windowExposeEvent);
 
-			currentApplication->RenderFrame();
+				currentApplication->RenderFrame();
 
-			currentApplication->FramePacer();
+				currentApplication->FramePacer();
 
-			return false;
+				return false;
+			}
 		}
 
 		return true;

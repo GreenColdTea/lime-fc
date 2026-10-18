@@ -129,6 +129,11 @@ class Window
 	**/
 	public var onResize(default, null) = new Event<Int->Int->Void>();
 
+	/**
+		Fired when the window display scale is changed.
+	**/
+	public var onDisplayScaleChange(default, null) = new Event<Float->Float->Void>();
+
 	public var onRestore(default, null) = new Event<Void->Void>();
 	public var onShow(default, null) = new Event<Void->Void>();
 	public var onTextEdit(default, null) = new Event<String->Int->Int->Void>();
@@ -138,6 +143,7 @@ class Window
 	public var parameters:Dynamic;
 	public var resizable(get, set):Bool;
 	public var scale(get, null):Float;
+	public var displayScale(get, null):Float;
 	#if (!lime_doc_gen || openfl)
 	public var stage(default, null):Stage;
 	#end
@@ -164,6 +170,7 @@ class Window
 	@:noCompletion private var __minimized:Bool;
 	@:noCompletion private var __resizable:Bool;
 	@:noCompletion private var __scale:Float;
+	@:noCompletion private var __displayScale:Float;
 	@:noCompletion private var __title:String;
 	@:noCompletion private var __alwaysOnTop:Bool;
 	@:noCompletion private var __width:Int;
@@ -186,6 +193,7 @@ class Window
 		__height = 0;
 		__fullscreen = false;
 		__scale = 1;
+		__displayScale = 1;
 		__x = 0;
 		__y = 0;
 		__title = Reflect.hasField(__attributes, "title") ? __attributes.title : "";
@@ -485,6 +493,11 @@ class Window
 	@:noCompletion private inline function get_scale():Float
 	{
 		return __scale;
+	}
+
+	@:noCompletion private inline function get_displayScale():Float
+	{
+		return __displayScale;
 	}
 
 	@:noCompletion private inline function get_textInputEnabled():Bool

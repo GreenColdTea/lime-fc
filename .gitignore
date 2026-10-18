@@ -3,6 +3,7 @@
 .DS_Store?
 Export/
 project/all_objs
+project/obj
 project/vc*.pdb
 *.userprefs
 *.swp
@@ -17,5 +18,4 @@ package-lock.json
 node_modules
 !templates/**/node_modules
 .vscode/
-/project/obj
-/templates/bin/hl/Windows64
+.gradle/
