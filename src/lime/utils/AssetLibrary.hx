@@ -442,12 +442,7 @@ class AssetLibrary
 		}
 		else
 		{
-			var future = Bytes.loadFromFile(getPath(id));
-			future.onComplete(function(bytes)
-			{
-				cachedBytes.set(id, bytes);
-			});
-			return future;
+			return Bytes.loadFromFile(getPath(id));
 		}
 	}
 
@@ -546,12 +541,7 @@ class AssetLibrary
 		}
 		else
 		{
-			var future = Image.loadFromFile(getPath(id));
-			future.onComplete(function(image)
-			{
-				cachedImages.set(id, image);
-			});
-			return future;
+			return Image.loadFromFile(getPath(id));
 		}
 	}
 
@@ -563,28 +553,16 @@ class AssetLibrary
 		}
 		else if (cachedBytes.exists(id) || classTypes.exists(id))
 		{
-			var bytes = getBytes(id);
-
-			if (bytes == null)
-			{
-				return cast Future.withValue(null);
-			}
-			else
+			return Bytes.loadFromFile(getPath(id)).then(function(bytes)
 			{
 				var text = bytes.getString(0, bytes.length);
 				cachedText.set(id, text);
 				return Future.withValue(text);
-			}
+			});
 		}
 		else
 		{
-			var request = new HTTPRequest<String>();
-			var future = request.load(getPath(id));
-			future.onComplete(function(text)
-			{
-				cachedText.set(id, text);
-			});
-			return future;
+			return new HTTPRequest<String>().load(getPath(id));
 		}
 	}
 
