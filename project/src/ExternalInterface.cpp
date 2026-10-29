@@ -106,7 +106,7 @@ namespace lime
 		}
 	}
 
-	static value allocVorbisInt64(ogg_int64_t val)
+	static value allocVorbisInt64(int64_t val)
 	{
 		InitVorbisCache();
 

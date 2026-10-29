@@ -108,11 +108,6 @@ class AudioBuffer
 			__srcMADecoder = null;
 		}
 		#end
-		
-		if (__srcDecoder != null)
-		{
-			__srcDecoder = null;
-		}
 	}
 
 	/**
