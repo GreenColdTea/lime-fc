@@ -1,37 +1,28 @@
 package lime.media;
 
-import lime.system.CFFIPointer;
-
-import haxe.MainLoop;
-#if lime_openal
-import haxe.io.Path;
-
-import lime.system.System;
-
-import sys.FileSystem;
-import sys.io.File;
+import lime.utils.Log;
+#if lime_miniaudio
+import lime.media.miniaudio.MAEngine;
+import lime.media.miniaudio.MAEngineConfig;
+#if lime_miniaudio_debug_output
+import lime.media.miniaudio.MAHelpers;
+import lime.media.miniaudio.MALog;
+import lime.media.miniaudio.MALogLevel;
 #end
-
-import haxe.Timer;
-
-import lime._internal.backend.native.NativeCFFI;
-import lime.media.openal.AL;
-import lime.media.openal.ALC;
-import lime.media.openal.ALContext;
-import lime.media.openal.ALDevice;
-import lime.app.Application;
-
-#if (js && html5)
-import js.Browser;
+#elseif (js && html5 && lime_howlerjs)
+import lime.media.howlerjs.Howler;
 #end
 
 @:allow(lime._internal.backend.native.NativeApplication)
-@:access(lime._internal.backend.native.NativeCFFI)
-@:access(lime.media.openal.ALDevice)
 class AudioManager
 {
+	#if lime_miniaudio_debug_output
 	@:noCompletion
-	private static var AUDIO_CONFIG_VERSION:String = "1.1";
+	private static function onLog(level:MALogLevel, pMessage:String):Void
+	{
+		Log.println('${MAHelpers.log_level_to_string(level)}: ${pMessage}');
+	}
+	#end
 
 	@:noCompletion
 	private static var resumeOnFocus:Bool = false;
@@ -39,54 +30,128 @@ class AudioManager
 	@:noCompletion
 	private static var active:Bool = true;
 
-	public static var context:AudioContext;
+	#if lime_miniaudio
+	#if lime_miniaudio_debug_output
+	public static var log:MALog;
+	#end
+	public static var engine:MAEngine;
+	#elseif (js && html5)
+	public static var audioContext:js.html.audio.AudioContext;
+	#end
 
-	public static function init(context:AudioContext = null)
+	public static function init():Void
 	{
-		if (AudioManager.context == null)
+		#if lime_miniaudio
+		if (engine == null)
 		{
-			if (context == null)
+			#if lime_miniaudio_debug_output
+			if (log == null)
 			{
-				AudioManager.context = new AudioContext();
+				log = MALog.init();
 
-				context = AudioManager.context;
-
-				#if !lime_doc_gen
-				if (context.type == OPENAL)
+				if (log != null)
 				{
-					#if lime_openal
-					setupConfig();
-					#end
-
-					var alc = context.openal;
-					var device = alc.openDevice();
-					if (device != null)
-					{
-						var ctx = alc.createContext(device);
-						alc.makeContextCurrent(ctx);
-						alc.processContext(ctx);
-
-						if (alc.isExtensionPresent('ALC_SOFT_system_events', device)
-							&& alc.isExtensionPresent('ALC_SOFT_reopen_device', device))
-						{
-							if (alc.isExtensionPresent('AL_SOFT_hold_on_disconnect'))
-								alc.disable(AL.STOP_SOURCES_ON_DISCONNECT_SOFT);
-
-							alc.eventControlSOFT([
-								ALC.EVENT_TYPE_DEFAULT_DEVICE_CHANGED_SOFT,
-								ALC.EVENT_TYPE_DEVICE_ADDED_SOFT,
-								ALC.EVENT_TYPE_DEVICE_REMOVED_SOFT
-							], true);
-
-							alc.eventCallbackSOFT(deviceEventCallback);
-						}
-					}
+					log.register_callback(onLog);
 				}
-				#end
+				else
+				{
+					Log.error("Unable to create MiniAudio engine log config for Native!");
+				}
+			}
+			#end
+
+			final config:MAEngineConfig = MAEngineConfig.init();
+
+			#if lime_miniaudio_debug_output
+			config.pLog = log;
+			#end
+
+			#if (ios && simulator)
+			// For some reason, if we don't request a sample rate,
+			// Core Audio will decide to use 8000 Hz on simulator, so to prevent this,
+			// force sample rate to 48000 Hz to match `MA_DEFAULT_SAMPLE_RATE` for better playback quality.
+			config.sampleRate = 48000;
+			#end
+
+			#if ios
+			// Since we are doing our own modification to the `AVAudioSession` shared instance,
+			// we should automatically start the `ma_engine` instance, only after it's initialized,
+			// so the options take proper effect.
+			config.noAutoStart = true;
+			#end
+
+			engine = MAEngine.init(config);
+
+			if (engine == null)
+			{
+				Log.error("Unable to create MiniAudio engine for Native!");
+				return;
 			}
 
-			AudioManager.context = context;
+			#if ios
+			// Now we are starting the engine as usual after the `AVAudioSession` options have been set.
+			engine.start();
+			#end
 		}
+		#elseif (js && html5 && lime_howlerjs)
+		if (audioContext == null)
+		{
+			if (Howler.usingWebAudio)
+			{
+				audioContext = Howler.ctx;
+			}
+			else
+			{
+				#if (!lime_doc_gen && !display)
+				Howler._setupAudioContext();
+				#end
+
+				if (Howler.usingWebAudio)
+				{
+					audioContext = Howler.ctx;
+				}
+				else
+				{
+					Log.error("Unable to create HowlerJS context for Web!");
+				}
+			}
+		}
+		#elseif (js && html5)
+		if (audioContext == null)
+		{
+			audioContext = cast untyped js.Syntax.code("new window.AudioContext ()");
+
+			if (audioContext == null)
+			{
+				audioContext = cast untyped js.Syntax.code("new window.webkitAudioContext ()");
+
+				if (audioContext == null)
+				{
+					Log.error("Unable to create AudioContext for Web!");
+				}
+			}
+		}
+		#end
+	}
+
+	public static function shutdown():Void
+	{
+		#if lime_miniaudio
+		if (engine != null)
+		{
+			engine.stop();
+			engine.uninit();
+			engine = null;
+		}
+
+		#if lime_miniaudio_debug_output
+		if (log != null)
+		{
+			log.uninit();
+			log = null;
+		}
+		#end
+		#end
 	}
 
 	public static function resume():Void
@@ -94,47 +159,11 @@ class AudioManager
 		if (active)
 			return;
 
-		#if !lime_doc_gen
-		if (context != null && context.type == OPENAL)
-		{
-			var alc = context.openal;
-			var currentContext = alc.getCurrentContext();
-
-			if (currentContext != null)
-			{
-				var device = alc.getContextsDevice(currentContext);
-				alc.resumeDevice(device);
-				alc.processContext(currentContext);
-			}
-		}
+		#if lime_miniaudio
+		engine.start();
 		#end
 
 		active = true;
-	}
-
-	public static function shutdown():Void
-	{
-		#if !lime_doc_gen
-		if (context != null && context.type == OPENAL)
-		{
-			var alc = context.openal;
-			var currentContext = alc.getCurrentContext();
-			var device = alc.getContextsDevice(currentContext);
-
-			if (currentContext != null)
-			{
-				alc.makeContextCurrent(null);
-				alc.destroyContext(currentContext);
-
-				if (device != null)
-				{
-					alc.closeDevice(device);
-				}
-			}
-		}
-		#end
-
-		context = null;
 	}
 
 	public static function suspend():Void
@@ -142,23 +171,8 @@ class AudioManager
 		if (!active)
 			return;
 
-		#if !lime_doc_gen
-		if (context != null && context.type == OPENAL)
-		{
-			var alc = context.openal;
-			var currentContext = alc.getCurrentContext();
-			var device = alc.getContextsDevice(currentContext);
-
-			if (currentContext != null)
-			{
-				alc.suspendContext(currentContext);
-
-				if (device != null)
-				{
-					alc.pauseDevice(device);
-				}
-			}
-		}
+		#if lime_miniaudio
+		engine.stop();
 		#end
 
 		active = false;
@@ -182,79 +196,4 @@ class AudioManager
 
 		AudioManager.suspend();
 	}
-
-	@:noCompletion
-	private static function deviceEventCallback(eventType:Int, deviceType:Int, handle:CFFIPointer, message:String):Void
-	{
-		#if !lime_doc_gen
-		if (eventType == ALC.EVENT_TYPE_DEFAULT_DEVICE_CHANGED_SOFT && deviceType == ALC.PLAYBACK_DEVICE_SOFT)
-		{
-			var device = new ALDevice(handle);
-
-			MainLoop.runInMainThread(function():Void
-			{
-				var alc = context.openal;
-
-				if (device == null)
-				{
-					var currentContext = alc.getCurrentContext();
-
-					var device = alc.getContextsDevice(currentContext);
-
-					if (device != null)
-						alc.reopenDeviceSOFT(device, null, null);
-				}
-				else
-				{
-					alc.reopenDeviceSOFT(device, null, null);
-				}
-			});
-		}
-		#end
-	}
-
-	#if lime_openal
-	@:noCompletion
-	private static function setupConfig():Void
-	{
-		final alConfig:Array<String> = [
-			"[general]",
-			"channels=stereo",
-			"frequency=48000",
-			"sample-type=float32",
-			"stereo-mode=speakers",
-			"stereo-encoding=panpot",
-			"hrtf=false",
-			"periods=4",
-			"cf_level=1",
-			"dither=false",
-			"resampler=fast_bsinc24",
-			"front-stablizer=false",
-			"output-limiter=false",
-			"volume-adjust=0",
-			"period_size=256",
-
-			"[decoder]",
-			"hq-mode=true",
-			"distance-comp=false",
-			"nfc=false"
-		];
-
-		try
-		{
-			final directory:String = Path.join([#if mobile System.applicationStorageDirectory #else System.applicationDirectory #end, "plugins"]);
-			final path:String = Path.withExtension(Path.join([directory, 'audio-config-${AUDIO_CONFIG_VERSION}']), #if windows 'ini' #else 'conf' #end);
-			final content:String = alConfig.join('\n');
-
-			if (!FileSystem.exists(directory))
-				FileSystem.createDirectory(directory);
-
-			if (!FileSystem.exists(path))
-				File.saveContent(path, content);
-
-			Sys.putEnv("ALSOFT_CONF", path);
-		}
-		catch (e:Dynamic) {}
-	}
-	#end
 }

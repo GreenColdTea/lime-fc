@@ -94,7 +94,6 @@ class HTML5Platform extends PlatformTarget
 			if (FileSystem.exists(outputFile))
 			{
 				var context = project.templateContext;
-				context.SOURCE_FILE = File.getContent(outputFile);
 				context.embeddedLibraries = [];
 
 				for (dependency in project.dependencies)
@@ -110,7 +109,15 @@ class HTML5Platform extends PlatformTarget
 					}
 				}
 
-				System.copyFileTemplate(project.templatePaths, "html5/output.js", outputFile, context);
+				if (FileSystem.stat(outputFile).size > STREAMED_SOURCE_THRESHOLD)
+				{
+					wrapLargeOutputFile(context);
+				}
+				else
+				{
+					context.SOURCE_FILE = File.getContent(outputFile);
+					System.copyFileTemplate(project.templatePaths, "html5/output.js", outputFile, context);
+				}
 			}
 		}
 	}
@@ -167,6 +174,179 @@ class HTML5Platform extends PlatformTarget
 			hxml.noOutput = true;
 			return hxml;
 		}
+	}
+
+	private static inline var STREAMED_SOURCE_THRESHOLD:Int = 32 * 1024 * 1024;
+	private static inline var STREAM_BUFFER_SIZE:Int = 1024 * 1024;
+
+	private function wrapLargeOutputFile(context:Dynamic):Void
+	{
+		var sourceMarker = "__LIME_STREAMED_SOURCE_FILE_6F1A94C2__";
+		var markerBytes = haxe.io.Bytes.ofString(sourceMarker);
+		var renderedTemplatePath = outputFile + ".lime-template.tmp";
+		var mergedOutputPath = outputFile + ".lime-merged.tmp";
+
+		context.SOURCE_FILE = sourceMarker;
+		System.copyFileTemplate(project.templatePaths, "html5/output.js", renderedTemplatePath, context);
+
+		var markerIndex = findUniqueMarker(renderedTemplatePath, markerBytes);
+		if (markerIndex < 0)
+		{
+			if (FileSystem.exists(renderedTemplatePath)) FileSystem.deleteFile(renderedTemplatePath);
+			context.SOURCE_FILE = null;
+			throw "Unable to stream the large HTML5 output: html5/output.js must resolve to exactly one SOURCE_FILE placeholder.";
+		}
+
+		context.SOURCE_FILE = null;
+		var sourceSize = FileSystem.stat(outputFile).size;
+		var templateSize = FileSystem.stat(renderedTemplatePath).size;
+		var merged = File.write(mergedOutputPath, true);
+
+		try
+		{
+			copyFileRange(renderedTemplatePath, merged, 0, markerIndex);
+			copyFileRange(outputFile, merged, 0, sourceSize);
+			copyFileRange(renderedTemplatePath, merged, markerIndex + markerBytes.length,
+				templateSize - markerIndex - markerBytes.length);
+			merged.close();
+		}
+		catch (error:Dynamic)
+		{
+			merged.close();
+			if (FileSystem.exists(mergedOutputPath)) FileSystem.deleteFile(mergedOutputPath);
+			if (FileSystem.exists(renderedTemplatePath)) FileSystem.deleteFile(renderedTemplatePath);
+			throw error;
+		}
+
+		var mergedSize = FileSystem.stat(mergedOutputPath).size;
+		var finalOutput = File.write(outputFile, true);
+		try
+		{
+			copyFileRange(mergedOutputPath, finalOutput, 0, mergedSize);
+			finalOutput.close();
+		}
+		catch (error:Dynamic)
+		{
+			finalOutput.close();
+			if (FileSystem.exists(mergedOutputPath)) FileSystem.deleteFile(mergedOutputPath);
+			if (FileSystem.exists(renderedTemplatePath)) FileSystem.deleteFile(renderedTemplatePath);
+			throw error;
+		}
+
+		FileSystem.deleteFile(mergedOutputPath);
+		FileSystem.deleteFile(renderedTemplatePath);
+	}
+
+	private function findUniqueMarker(path:String, marker:haxe.io.Bytes):Int
+	{
+		var fileSize = FileSystem.stat(path).size;
+		var input = File.read(path, true);
+		var buffer = haxe.io.Bytes.alloc(STREAM_BUFFER_SIZE);
+		var carry = haxe.io.Bytes.alloc(marker.length - 1);
+		var carryLength = 0;
+		var remaining = fileSize;
+		var totalRead = 0;
+		var found = -1;
+		var matches = 0;
+
+		try
+		{
+			while (remaining > 0)
+			{
+				var chunkLength = remaining > buffer.length ? buffer.length : remaining;
+				readBytesExactly(input, buffer, chunkLength);
+				var combined = haxe.io.Bytes.alloc(carryLength + chunkLength);
+				if (carryLength > 0) combined.blit(0, carry, 0, carryLength);
+				combined.blit(carryLength, buffer, 0, chunkLength);
+
+				var lastStart = combined.length - marker.length;
+				var index = 0;
+				while (index <= lastStart)
+				{
+					if (bytesMatchAt(combined, index, marker))
+					{
+						matches++;
+						if (matches > 1)
+						{
+							input.close();
+							return -1;
+						}
+						found = totalRead - carryLength + index;
+					}
+					index++;
+				}
+
+				carryLength = combined.length < marker.length - 1 ? combined.length : marker.length - 1;
+				carry = haxe.io.Bytes.alloc(marker.length - 1);
+				if (carryLength > 0) carry.blit(0, combined, combined.length - carryLength, carryLength);
+				totalRead += chunkLength;
+				remaining -= chunkLength;
+			}
+		}
+		catch (error:Dynamic)
+		{
+			input.close();
+			throw error;
+		}
+
+		input.close();
+		return matches == 1 ? found : -1;
+	}
+
+	private function bytesMatchAt(source:haxe.io.Bytes, offset:Int, target:haxe.io.Bytes):Bool
+	{
+		if (offset < 0 || offset + target.length > source.length) return false;
+		var index = 0;
+		while (index < target.length)
+		{
+			if (source.get(offset + index) != target.get(index)) return false;
+			index++;
+		}
+		return true;
+	}
+
+	private function readBytesExactly(input:haxe.io.Input, buffer:haxe.io.Bytes, length:Int):Void
+	{
+		var total = 0;
+		while (total < length)
+		{
+			var count = input.readBytes(buffer, total, length - total);
+			if (count <= 0) throw "Unexpected end of file while streaming the HTML5 output.";
+			total += count;
+		}
+	}
+
+	private function copyFileRange(path:String, output:haxe.io.Output, start:Int, length:Int):Void
+	{
+		var input = File.read(path, true);
+		var buffer = haxe.io.Bytes.alloc(STREAM_BUFFER_SIZE);
+		var skipRemaining = start;
+		var copyRemaining = length;
+
+		try
+		{
+			while (skipRemaining > 0)
+			{
+				var chunkLength = skipRemaining > buffer.length ? buffer.length : skipRemaining;
+				readBytesExactly(input, buffer, chunkLength);
+				skipRemaining -= chunkLength;
+			}
+
+			while (copyRemaining > 0)
+			{
+				var chunkLength = copyRemaining > buffer.length ? buffer.length : copyRemaining;
+				readBytesExactly(input, buffer, chunkLength);
+				output.writeBytes(buffer, 0, chunkLength);
+				copyRemaining -= chunkLength;
+			}
+		}
+		catch (error:Dynamic)
+		{
+			input.close();
+			throw error;
+		}
+
+		input.close();
 	}
 
 	private function initialize(command:String, project:HXProject):Void

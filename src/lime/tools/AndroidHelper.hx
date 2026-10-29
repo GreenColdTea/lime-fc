@@ -420,8 +420,19 @@ class AndroidHelper
 
 		System.runCommand(adbPath, adbName, args.concat(["force-stop", activityName]));
 
+		var argsLogcat = [];
+
+		if (deviceID != null && deviceID != "")
+		{
+			argsLogcat.push("-s");
+			argsLogcat.push(deviceID);
+		}
+
+		System.runCommand(adbPath, adbName, argsLogcat.concat(["logcat", "-c"]));
+
 		System.runCommand(adbPath, adbName, args.concat([
 			"start",
+			"-W",
 			"-a",
 			"android.intent.action.MAIN",
 			"-c",
@@ -453,8 +464,6 @@ class AndroidHelper
 		var pidString = StringTools.trim(System.runProcess(adbPath, adbName, args.concat(["shell", "pidof", "-s", project.meta.packageName])));
 
 		args.push("logcat");
-
-		System.runCommand(adbPath, adbName, args.concat(["-c"]));
 
 		var pidInt = Std.parseInt(pidString);
 

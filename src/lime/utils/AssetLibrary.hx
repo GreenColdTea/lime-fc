@@ -30,7 +30,6 @@ class AssetLibrary
 	@:noCompletion private var cachedText = new Map<String, String>();
 	@:noCompletion private var classTypes = new Map<String, Class<Dynamic>>();
 	@:noCompletion private var loaded:Bool;
-	@:noCompletion private var pathGroups = new Map<String, Array<String>>();
 	@:noCompletion private var paths = new Map<String, String>();
 	@:noCompletion private var preload = new Map<String, Bool>();
 	@:noCompletion private var promise:Promise<AssetLibrary>;
@@ -238,10 +237,6 @@ class AssetLibrary
 		{
 			return paths.get(id);
 		}
-		else if (pathGroups.exists(id))
-		{
-			return pathGroups.get(id)[0];
-		}
 		else
 		{
 			return null;
@@ -415,18 +410,20 @@ class AssetLibrary
 		}
 		else if (classTypes.exists(id))
 		{
-			return Future.withValue(AudioBuffer.fromBytes(cast(Type.createInstance(classTypes.get(id), []), Bytes)));
+			return AudioBuffer.loadFromBytes(cast(Type.createInstance(classTypes.get(id), []), Bytes));
+		}
+		else if (cachedBytes.exists(id))
+		{
+			return AudioBuffer.loadFromBytes(cachedBytes.get(id)).then(function(buffer)
+			{
+				cachedBytes.remove(id);
+				cachedAudioBuffers.set(id, buffer);
+				return Future.withValue(buffer);
+			});
 		}
 		else
 		{
-			if (pathGroups.exists(id))
-			{
-				return AudioBuffer.loadFromFiles(pathGroups.get(id));
-			}
-			else
-			{
-				return AudioBuffer.loadFromFile(paths.get(id));
-			}
+			return AudioBuffer.loadFromFile(getPath(id));
 		}
 	}
 
@@ -442,7 +439,14 @@ class AssetLibrary
 		}
 		else
 		{
-			return Bytes.loadFromFile(getPath(id));
+			var future = Bytes.loadFromFile(getPath(id));
+			#if (html5 && js)
+			future.onComplete(function(bytes)
+			{
+				cachedBytes.set(id, bytes);
+			});
+			#end
+			return future;
 		}
 	}
 
@@ -541,7 +545,14 @@ class AssetLibrary
 		}
 		else
 		{
-			return Image.loadFromFile(getPath(id));
+			var future = Image.loadFromFile(getPath(id));
+			#if (html5 && js)
+			future.onComplete(function(image)
+			{
+				cachedImages.set(id, image);
+			});
+			#end
+			return future;
 		}
 	}
 
@@ -562,7 +573,15 @@ class AssetLibrary
 		}
 		else
 		{
-			return new HTTPRequest<String>().load(getPath(id));
+			var request = new HTTPRequest<String>();
+			var future = request.load(getPath(id));
+			#if (html5 && js)
+			future.onComplete(function(text)
+			{
+				cachedText.set(id, text);
+			});
+			#end
+			return future;
 		}
 	}
 
@@ -761,18 +780,6 @@ class AssetLibrary
 				paths.set(id, __cacheBreak(__resolvePath(basePath + Reflect.field(asset, "path"))));
 			}
 
-			if (Reflect.hasField(asset, "pathGroup"))
-			{
-				pathGroup = Reflect.field(asset, "pathGroup");
-
-				for (i in 0...pathGroup.length)
-				{
-					pathGroup[i] = __cacheBreak(__resolvePath(basePath + pathGroup[i]));
-				}
-
-				pathGroups.set(id, pathGroup);
-			}
-
 			sizes.set(id, size);
 			types.set(id, asset.type);
 
@@ -864,27 +871,6 @@ class AssetLibrary
 	@:noCompletion private function loadAudioBuffer_onComplete(id:String, audioBuffer:AudioBuffer):Void
 	{
 		cachedAudioBuffers.set(id, audioBuffer);
-
-		if (pathGroups.exists(id))
-		{
-			var pathGroup = pathGroups.get(id);
-
-			for (otherID in pathGroups.keys())
-			{
-				if (otherID == id)
-					continue;
-
-				for (path in pathGroup)
-				{
-					if (pathGroups.get(otherID).indexOf(path) > -1)
-					{
-						cachedAudioBuffers.set(otherID, audioBuffer);
-						break;
-					}
-				}
-			}
-		}
-
 		__assetLoaded(id);
 	}
 

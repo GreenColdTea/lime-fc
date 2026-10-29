@@ -120,8 +120,6 @@ class AssetHelper
 	public static function createManifest(project:HXProject, library:String = null, targetPath:String = null):AssetManifest
 	{
 		var manifest = new AssetManifest();
-		var pathGroups = new Map<String, Array<String>>();
-
 		var libraries = new Map<String, Library>();
 		if (library == null)
 			library = DEFAULT_LIBRARY_NAME;
@@ -135,7 +133,7 @@ class AssetHelper
 
 		for (asset in project.assets)
 		{
-			assetData = getAssetData(project, pathGroups, libraries, library, asset);
+			assetData = getAssetData(project, libraries, library, asset);
 
 			if (assetData != null)
 			{
@@ -207,8 +205,7 @@ class AssetHelper
 		return manifests;
 	}
 
-	private static function getAssetData(project:HXProject, pathGroups:Map<String, Array<String>>, libraries:Map<String, Library>, library:String,
-			asset:Asset):Dynamic
+	private static function getAssetData(project:HXProject, libraries:Map<String, Library>, library:String, asset:Asset):Dynamic
 	{
 		if ((asset.library != null && asset.library != library) || asset.type == TEMPLATE)
 			return null;
@@ -243,24 +240,6 @@ class AssetHelper
 				{
 					assetData.preload = true;
 				}
-
-				if (asset.type == MUSIC || asset.type == SOUND)
-				{
-					var soundName = Path.withoutExtension(assetData.path);
-
-					if (!pathGroups.exists(soundName))
-					{
-						pathGroups.set(soundName, [assetData.path]);
-					}
-					else
-					{
-						pathGroups[soundName].push(assetData.path);
-						Reflect.deleteField(assetData, "preload");
-					}
-
-					Reflect.deleteField(assetData, "path");
-					assetData.pathGroup = pathGroups[soundName];
-				}
 			}
 		}
 		else
@@ -278,12 +257,11 @@ class AssetHelper
 		return assetData;
 	}
 
-	private static function getPackedAssetData(project:HXProject, output:FileOutput, pathGroups:Map<String, Array<String>>, libraries:Map<String, Library>,
-			library:Library, asset:Asset):Dynamic
+	private static function getPackedAssetData(project:HXProject, output:FileOutput, libraries:Map<String, Library>, library:Library, asset:Asset):Dynamic
 	{
 		if (project.target == HTML5 && (asset.type == MUSIC || asset.type == SOUND || asset.type == FONT))
 		{
-			return getAssetData(project, pathGroups, libraries, library.name, asset);
+			return getAssetData(project, libraries, library.name, asset);
 		}
 
 		if (asset.type == TEMPLATE)
@@ -609,7 +587,6 @@ class AssetHelper
 		var output, manifest, position, assetData:Dynamic, input;
 		var embeddedLibrary = false;
 
-		var pathGroups = new Map<String, Array<String>>();
 		var libraries = new Map<String, Library>();
 		for (lib in project.libraries)
 		{
@@ -656,7 +633,7 @@ class AssetHelper
 
 						for (asset in project.assets)
 						{
-							assetData = getPackedAssetData(project, output, pathGroups, libraries, library, asset);
+							assetData = getPackedAssetData(project, output, libraries, library, asset);
 
 							if (assetData != null)
 							{

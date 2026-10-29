@@ -215,7 +215,14 @@ class NativeApplication
 
 	private function handleDropEvent():Void
 	{
-		var window = #if mobile parent.window #else parent.__windowByID.get(dropEventInfo.windowID) #end;
+		var window = parent.__windowByID.get(dropEventInfo.windowID);
+
+		#if mobile
+		if (window == null)
+		{
+			window = parent.window;
+		}
+		#end
 
 		if (window != null)
 		{
@@ -307,6 +314,13 @@ class NativeApplication
 	{
 		var window = parent.__windowByID.get(keyEventInfo.windowID);
 
+		#if mobile
+		if (window == null)
+		{
+			window = parent.window;
+		}
+		#end
+
 		if (window != null)
 		{
 			var type:KeyEventType = keyEventInfo.type;
@@ -361,6 +375,13 @@ class NativeApplication
 	private function handleMouseEvent():Void
 	{
 		var window = parent.__windowByID.get(mouseEventInfo.windowID);
+
+		#if mobile
+		if (window == null)
+		{
+			window = parent.window;
+		}
+		#end
 
 		if (window != null)
 		{
@@ -465,6 +486,13 @@ class NativeApplication
 	private function handleTextEvent():Void
 	{
 		var window = parent.__windowByID.get(textEventInfo.windowID);
+
+		#if mobile
+		if (window == null)
+		{
+			window = parent.window;
+		}
+		#end
 
 		if (window != null)
 		{
@@ -621,6 +649,13 @@ class NativeApplication
 	private function handleWindowEvent():Void
 	{
 		var window = parent.__windowByID.get(windowEventInfo.windowID);
+
+		#if mobile
+		if (window == null)
+		{
+			window = parent.window;
+		}
+		#end
 
 		if (window != null)
 		{

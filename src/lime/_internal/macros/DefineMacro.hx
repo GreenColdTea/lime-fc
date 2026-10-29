@@ -47,9 +47,9 @@ class DefineMacro
 
 				if (cffi)
 				{
-					Compiler.define("lime-openal");
 					Compiler.define("lime-cairo");
 					Compiler.define("lime-harfbuzz");
+					Compiler.define("lime-miniaudio");
 					Compiler.define("lime-cffi");
 				}
 				else
