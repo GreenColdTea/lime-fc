@@ -4,18 +4,22 @@ package lime._internal.backend.native;
 import cpp.Pointer;
 #end
 
+import haxe.Int64;
 import haxe.MainLoop;
 
 import lime.media.AudioManager;
 import lime.media.AudioSource;
 import lime.media.miniaudio.MAAudioBuffer;
 import lime.media.miniaudio.MAAudioBufferConfig;
+import lime.media.miniaudio.MAAudioRingBuffer;
 import lime.media.miniaudio.MASound;
 import lime.media.miniaudio.MASoundConfig;
 
 @:access(lime.media.AudioBuffer)
 class NativeAudioSource
 {
+	private var preRingBuffers:Array<MAAudioRingBuffer> = [];
+	private var postRingBuffers:Array<MAAudioRingBuffer> = [];
 	private var buffer:MAAudioBuffer;
 	private var handle:MASound;
 	private var loops:Int = 0;
@@ -40,6 +44,10 @@ class NativeAudioSource
 			buffer.uninit();
 			buffer = null;
 		}
+
+		preRingBuffers = [];
+
+		postRingBuffers = [];
 	}
 
 	public function init():Void
@@ -53,6 +61,8 @@ class NativeAudioSource
 				config.flags = MASound.FLAG_NO_SPATIALIZATION;
 				config.pDataSource = parent.buffer.__srcMADecoder;
 				config.pNotifications.onAtEnd = sound_atEnd;
+				config.pNotifications.onPreProcess = sound_onPreProcess;
+				config.pNotifications.onProcess = sound_onProcess;
 
 				handle = MASound.init(AudioManager.engine, config);
 			}
@@ -69,6 +79,8 @@ class NativeAudioSource
 				config.flags = MASound.FLAG_NO_SPATIALIZATION;
 				config.pDataSource = buffer;
 				config.pNotifications.onAtEnd = sound_atEnd;
+				config.pNotifications.onPreProcess = sound_onPreProcess;
+				config.pNotifications.onProcess = sound_onProcess;
 
 				handle = MASound.init(AudioManager.engine, config);
 			}
@@ -101,6 +113,38 @@ class NativeAudioSource
 		}
 	}
 
+	public function addPreRingBuffer(rb:MAAudioRingBuffer):Void
+	{
+		if (preRingBuffers.contains(rb))
+			return;
+
+		preRingBuffers.push(rb);
+	}
+
+	public function removePreRingBuffer(rb:MAAudioRingBuffer):Void
+	{
+		if (!preRingBuffers.contains(rb))
+			return;
+
+		preRingBuffers.remove(rb);
+	}
+
+	public function addPostRingBuffer(rb:MAAudioRingBuffer):Void
+	{
+		if (postRingBuffers.contains(rb))
+			return;
+
+		postRingBuffers.push(rb);
+	}
+
+	public function removePostRingBuffer(rb:MAAudioRingBuffer):Void
+	{
+		if (!postRingBuffers.contains(rb))
+			return;
+
+		postRingBuffers.remove(rb);
+	}
+
 	// Event Handlers
 
 	private function sound_atEnd(_):Void
@@ -117,6 +161,32 @@ class NativeAudioSource
 		{
 			parent.onComplete.dispatch();
 		});
+	}
+
+	private function sound_onPreProcess(_, pFrames:lime.system.CFFIPointer, frameCount:Dynamic):Void
+	{
+		if (preRingBuffers != null && preRingBuffers.length > 0)
+		{
+			final frameCount:Int = Int64.toInt(Int64.make(frameCount.high, frameCount.low));
+
+			for (ringBuffer in preRingBuffers)
+			{
+				ringBuffer.write_pcm_frames(pFrames, frameCount);
+			}
+		}
+	}
+
+	private function sound_onProcess(_, pFrames:lime.system.CFFIPointer, frameCount:Dynamic):Void
+	{
+		if (postRingBuffers != null && postRingBuffers.length > 0)
+		{
+			final frameCount:Int = Int64.toInt(Int64.make(frameCount.high, frameCount.low));
+
+			for (ringBuffer in postRingBuffers)
+			{
+				ringBuffer.write_pcm_frames(pFrames, frameCount);
+			}
+		}
 	}
 
 	// Get & Set Methods

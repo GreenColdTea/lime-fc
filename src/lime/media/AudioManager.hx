@@ -16,7 +16,7 @@ import lime.media.howlerjs.Howler;
 @:allow(lime._internal.backend.native.NativeApplication)
 class AudioManager
 {
-	#if lime_miniaudio_debug_output
+	#if (lime_miniaudio && lime_miniaudio_debug_output)
 	@:noCompletion
 	private static function onLog(level:MALogLevel, pMessage:String):Void
 	{
@@ -64,13 +64,6 @@ class AudioManager
 
 			#if lime_miniaudio_debug_output
 			config.pLog = log;
-			#end
-
-			#if (ios && simulator)
-			// For some reason, if we don't request a sample rate,
-			// Core Audio will decide to use 8000 Hz on simulator, so to prevent this,
-			// force sample rate to 48000 Hz to match `MA_DEFAULT_SAMPLE_RATE` for better playback quality.
-			config.sampleRate = 48000;
 			#end
 
 			#if ios

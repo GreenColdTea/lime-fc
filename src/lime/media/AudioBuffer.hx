@@ -1,17 +1,15 @@
 package lime.media;
 
 import haxe.Int64;
-import haxe.crypto.Base64;
 import haxe.io.Bytes;
 
 import lime.app.Future;
 import lime.utils.ArrayBufferView;
-import lime.utils.Float32Array;
-import lime.utils.Int16Array;
-import lime.utils.Int32Array;
 import lime.utils.Log;
-import lime.utils.UInt8Array;
+
 #if lime_howlerjs
+import haxe.crypto.Base64;
+
 import lime.media.howlerjs.Howl;
 #elseif lime_miniaudio
 import lime.media.miniaudio.MADataFormat;
@@ -21,6 +19,10 @@ import lime.media.miniaudio.MAFormat;
 import lime.media.miniaudio.MAHelpers;
 import lime.system.ThreadPool;
 import lime.system.WorkOutput;
+import lime.utils.Float32Array;
+import lime.utils.Int16Array;
+import lime.utils.Int32Array;
+import lime.utils.UInt8Array;
 #end
 
 /**
@@ -99,7 +101,6 @@ class AudioBuffer
 		if (__srcHowl != null)
 		{
 			__srcHowl.unload();
-			__srcHowl = null;
 		}
 		#elseif (lime_cffi && lime_miniaudio && !macro)
 		if (__srcMADecoder != null)
@@ -107,40 +108,6 @@ class AudioBuffer
 			__srcMADecoder.uninit();
 			__srcMADecoder = null;
 		}
-		#end
-	}
-
-	/**
-		Creates an `AudioBuffer` from a Base64-encoded string.
-
-		@param base64String The Base64-encoded audio data.
-		@param stream Whether to use streaming instead of directly decoding all the audio data.
-		@return An `AudioBuffer` instance with the decoded audio data.
-	**/
-	public static function fromBase64(base64String:String, ?stream:Bool = false):AudioBuffer
-	{
-		if (base64String == null)
-		{
-			return null;
-		}
-
-		#if (js && html5 && lime_howlerjs)
-		// if base64String doesn't contain codec data, add it.
-		if (base64String.indexOf(",") == -1)
-		{
-			base64String = "data:" + __getCodec(Base64.decode(base64String)) + ";base64," + base64String;
-		}
-
-		var audioBuffer = new AudioBuffer();
-		audioBuffer.__srcHowl = new Howl({src: [base64String], preload: true});
-		return audioBuffer;
-		#elseif (lime_cffi && lime_miniaudio && !macro)
-		// if base64String contains codec data, strip it then decode it.
-		var base64StringSplit = base64String.split(",");
-		var base64StringNoEncoding = base64StringSplit[base64StringSplit.length - 1];
-		return __createFromMADecoder(MADecoder.init_memory(Base64.decode(base64StringNoEncoding), MADecoderConfig.init(S16, 0, 0)), stream);
-		#else
-		return null;
 		#end
 	}
 
@@ -198,10 +165,9 @@ class AudioBuffer
 		Asynchronously loads an `AudioBuffer` from a `Bytes` object.
 
 		@param bytes The `Bytes` object containing the audio data.
-		@param stream Whether to use streaming instead of directly decoding all the audio data.
 		@return A `Future` that resolves to the loaded `AudioBuffer`.
 	**/
-	public static function loadFromBytes(bytes:Bytes, ?stream:Bool = false):Future<AudioBuffer>
+	public static function loadFromBytes(bytes:Bytes):Future<AudioBuffer>
 	{
 		if (bytes == null)
 		{
@@ -245,7 +211,7 @@ class AudioBuffer
 
 		var promise = new lime.app.Promise<AudioBuffer>();
 
-		__localThreadPool.run(localThreadPool_doWork, {promise: promise, bytes: bytes, stream: stream});
+		__localThreadPool.run(localThreadPool_doWork, {promise: promise, bytes: bytes});
 
 		return promise.future;
 		#else
@@ -257,10 +223,9 @@ class AudioBuffer
 		Asynchronously loads an `AudioBuffer` from a file.
 
 		@param path The file path to the audio data.
-		@param stream Whether to use streaming instead of directly decoding all the audio data.
 		@return A `Future` that resolves to the loaded `AudioBuffer`.
 	**/
-	public static function loadFromFile(path:String, ?stream:Bool = false):Future<AudioBuffer>
+	public static function loadFromFile(path:String):Future<AudioBuffer>
 	{
 		if (path == null)
 		{
@@ -302,7 +267,7 @@ class AudioBuffer
 
 		var promise = new lime.app.Promise<AudioBuffer>();
 
-		__localThreadPool.run(localThreadPool_doWork, {promise: promise, path: path, stream: stream});
+		__localThreadPool.run(localThreadPool_doWork, {promise: promise, path: path});
 
 		return promise.future;
 		#else
@@ -356,26 +321,33 @@ class AudioBuffer
 	}
 
 	#if (lime_cffi && lime_miniaudio && !macro)
-	@:noCompletion private static function __createFromMADecoder(decoder:MADecoder, stream:Bool):AudioBuffer
+	@:noCompletion private static function __createFromMADecoder(decoder:MADecoder, ?stream:Bool = false):AudioBuffer
 	{
 		if (decoder != null)
 		{
-			if (stream)
-			{
-				var audioBuffer = new AudioBuffer();
-				audioBuffer.__srcMADecoder = decoder;
-				return audioBuffer;
-			}
-			else
-			{
-				var totalFrames:Int = Int64.toInt(decoder.get_length_in_pcm_frames());
+			var frames:Int64 = decoder.get_length_in_pcm_frames();
 
-				if (totalFrames > 0)
+			if (frames > 0)
+			{
+				var dataFormat:MADataFormat = decoder.get_data_format();
+
+				if (stream)
 				{
+					var buffer:AudioBuffer = new AudioBuffer();
+					buffer.frames = frames;
+					buffer.sampleRate = dataFormat.sampleRate;
+					buffer.channels = dataFormat.channels;
+					buffer.format = dataFormat.format;
+					buffer.__srcMADecoder = decoder;
+					return buffer;
+				}
+				else
+				{
+					#if cpp
 					// When we are not streaming and we are required to put these frames inside an buffer,
 					// We cant use Int64 as the buffer's length as per Haxe's limitation,
 					// And even if youd wanna go beyound the limit, at that point youd use streaming which doesnt have this issue anyway.
-					var dataFormat:MADataFormat = decoder.get_data_format();
+					var totalFrames:Int = Int64.toInt(frames);
 
 					var bytesPerSample:Int = MAHelpers.get_bytes_per_sample(dataFormat.format);
 
@@ -395,22 +367,20 @@ class AudioBuffer
 							Log.error('Unsupported audio buffer format: ${MAHelpers.get_format_name(dataFormat.format)}');
 					}
 
-					if (dataBuffer != null)
+					if (dataBuffer != null && decoder.read_pcm_frames(cpp.Pointer.ofArray(dataBuffer.buffer.getData()), totalFrames) > 0)
 					{
-						if (decoder.read_pcm_frames(#if cpp cpp.Pointer.ofArray(dataBuffer.buffer.getData()) #else null #end, totalFrames) > 0)
-						{
-							decoder.uninit();
-							decoder = null;
+						decoder.uninit();
+						decoder = null;
 
-							var buffer = new AudioBuffer();
-							buffer.sampleRate = dataFormat.sampleRate;
-							buffer.channels = dataFormat.channels;
-							buffer.format = dataFormat.format;
-							buffer.frames = totalFrames;
-							buffer.data = dataBuffer;
-							return buffer;
-						}
+						var buffer:AudioBuffer = new AudioBuffer();
+						buffer.frames = frames;
+						buffer.sampleRate = dataFormat.sampleRate;
+						buffer.channels = dataFormat.channels;
+						buffer.format = dataFormat.format;
+						buffer.data = dataBuffer;
+						return buffer;
 					}
+					#end
 				}
 			}
 
@@ -436,7 +406,7 @@ class AudioBuffer
 
 		if (decoder != null)
 		{
-			var audioBuffer:AudioBuffer = __createFromMADecoder(decoder, state.stream);
+			var audioBuffer:AudioBuffer = __createFromMADecoder(decoder);
 
 			if (audioBuffer != null)
 			{
