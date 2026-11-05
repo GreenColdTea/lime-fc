@@ -559,15 +559,8 @@ class AssetHelper
 
 					asset = new Asset("", "manifest/" + library.name + ".json", AssetType.MANIFEST);
 
-					if (embed)
-					{
-						asset.embed = true;
-					}
-					else
-					{
-						asset.embed = false;
-						manifest.rootPath = "../";
-					}
+					asset.embed = true;
+					manifest.rootPath = "";
 
 					asset.library = library.name;
 					asset.data = manifest.serialize();
@@ -599,11 +592,18 @@ class AssetHelper
 
 			if (isPackedLibrary(project, library))
 			{
-				// TODO
-				if (type == "zip")
-					type = "deflate";
+				if (type == "zip") type = "deflate";
 
-				// TODO: Support library.embed=true by embedding all the assets instead of packing
+				if (library.embed) 
+				{
+					for (asset in project.assets) 
+					{
+						if (asset.library == library.name) {
+							asset.embed = true;
+						}
+					}
+					continue; 
+				}
 
 				cacheAvailable = false;
 				cacheDirectory = null;
@@ -615,41 +615,68 @@ class AssetHelper
 					cacheDirectory = targetDirectory + "/obj/libraries/";
 					filename = library.name + ".pak";
 
-					// TODO: Support caching
-
 					System.mkdir(cacheDirectory);
+					var pakPath = cacheDirectory + filename;
+					var manifestCachePath = pakPath + ".manifest";
 
-					if (FileSystem.exists(cacheDirectory + filename))
+					if (FileSystem.exists(pakPath) && FileSystem.exists(manifestCachePath))
 					{
-						FileSystem.deleteFile(cacheDirectory + filename);
-					}
-
-					output = File.write(cacheDirectory + filename, true);
-					position = 0;
-
-					try
-					{
-						var assetData:Dynamic;
-
+						cacheAvailable = true;
+						var pakTime = FileSystem.stat(pakPath).mtime.getTime();
+						
 						for (asset in project.assets)
 						{
-							assetData = getPackedAssetData(project, output, libraries, library, asset);
-
-							if (assetData != null)
+							if (asset.library == library.name && asset.sourcePath != null && FileSystem.exists(asset.sourcePath))
 							{
-								manifest.assets.push(assetData);
+								if (FileSystem.stat(asset.sourcePath).mtime.getTime() > pakTime)
+								{
+									cacheAvailable = false;
+									break;
+								}
 							}
 						}
 					}
-					catch (e:Dynamic)
+
+					if (cacheAvailable)
 					{
+						var cacheData = File.getContent(manifestCachePath);
+						manifest = Unserializer.run(cacheData);
+					}
+					else
+					{
+						if (FileSystem.exists(pakPath))
+						{
+							FileSystem.deleteFile(pakPath);
+						}
+
+						output = File.write(pakPath, true);
+						position = 0;
+
+						try
+						{
+							var assetData:Dynamic;
+
+							for (asset in project.assets)
+							{
+								assetData = getPackedAssetData(project, output, libraries, library, asset);
+
+								if (assetData != null)
+								{
+									manifest.assets.push(assetData);
+								}
+							}
+						}
+						catch (e:Dynamic)
+						{
+							output.close();
+							FileSystem.deleteFile(pakPath);
+						}
+
 						output.close();
-						FileSystem.deleteFile(cacheDirectory + filename);
+						File.saveContent(manifestCachePath, Serializer.run(manifest));
 					}
 
-					output.close();
-
-					var libraryAsset = new Asset(cacheDirectory + filename, "lib/" + filename, AssetType.BINARY);
+					var libraryAsset = new Asset(pakPath, "lib/" + filename, AssetType.BINARY);
 					libraryAsset.library = library.name;
 					project.assets.push(libraryAsset);
 
@@ -657,7 +684,6 @@ class AssetHelper
 					data.library = library.name;
 					manifest.libraryType = "lime.utils.PackedAssetLibrary";
 					manifest.libraryArgs = ["lib/" + filename, type];
-					// manifest.rootPath = "../";
 					data.data = manifest.serialize();
 					data.embed = true;
 

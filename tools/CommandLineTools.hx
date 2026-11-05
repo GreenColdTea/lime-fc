@@ -361,10 +361,13 @@ class CommandLineTools
 						project.config.set("project.rebuild.path", rebuildPath);
 						project.config.set("project.rebuild.file", rebuildFile);
 
-						// TODO: Fix use of initialize without resetting reference?
+						var targetProject = new HXProject();
+						targetProject.merge(project);
+						targetProject = initializeProject(targetProject, targetName);
 
-						project = initializeProject(project, targetName);
-						buildProject(project);
+						if (targetProject != null) {
+							buildProject(targetProject);
+						}
 
 						if (Log.verbose)
 						{
@@ -393,8 +396,6 @@ class CommandLineTools
 
 		for (arg in args)
 		{
-			// TODO: Allow -rebuild without locking native binary?
-
 			if (arg == "-nocffi" || arg == "-rebuild")
 			{
 				CFFI.enabled = false;
@@ -1993,8 +1994,17 @@ class CommandLineTools
 							}
 							else
 							{
-								// TODO: Only certain properties?
-								Reflect.setField(fieldReference, property, argValue);
+								if ((propertyReference is Array)) 
+								{
+									var arr:Array<Dynamic> = Reflect.field(fieldReference, property);
+									if (arr == null) arr = [];
+									arr.push(argValue);
+									Reflect.setField(fieldReference, property, arr);
+								} 
+								else 
+								{
+									Reflect.setField(fieldReference, property, argValue);
+								}
 							}
 						}
 					}
