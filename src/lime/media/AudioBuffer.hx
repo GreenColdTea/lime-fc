@@ -12,17 +12,24 @@ import haxe.crypto.Base64;
 
 import lime.media.howlerjs.Howl;
 #elseif lime_miniaudio
+import lime.media.miniaudio.MAAudioBuffer;
+import lime.media.miniaudio.MAAudioRingBuffer;
 import lime.media.miniaudio.MADataFormat;
 import lime.media.miniaudio.MADecoder;
 import lime.media.miniaudio.MADecoderConfig;
 import lime.media.miniaudio.MAFormat;
-import lime.media.miniaudio.MAHelpers;
 import lime.system.ThreadPool;
 import lime.system.WorkOutput;
+
+#if cpp
+import cpp.Pointer;
+
+import lime.media.miniaudio.MAHelpers;
 import lime.utils.Float32Array;
 import lime.utils.Int16Array;
 import lime.utils.Int32Array;
 import lime.utils.UInt8Array;
+#end
 #end
 
 /**
@@ -73,24 +80,40 @@ class AudioBuffer
 	**/
 	public var data:ArrayBufferView;
 
-	/**
-		The source of the audio data. This can be an `Howl` or `MADecoder`.
-	**/
-	public var src(get, set):Dynamic;
-
-	#if lime_miniaudio
-	@:noCompletion private static var __localThreadPool:ThreadPool;
-	#end
-
-	@:noCompletion private var __srcCustom:Dynamic;
-	@:noCompletion private var __srcHowl:#if lime_howlerjs Howl #else Dynamic #end;
+	#if lime_howlerjs
+	@:noCompletion private var __srcHowl:Howl;
 	@:noCompletion private var __srcHowlerDefaultSprite:String;
-	@:noCompletion private var __srcMADecoder:#if lime_miniaudio MADecoder #else Dynamic #end;
+	#elseif lime_miniaudio
+	@:noCompletion private static var __localThreadPool:ThreadPool;
+
+	@:noCompletion private var __srcMADecoder:MADecoder;
+	@:noCompletion private var __srcMAAudioBuffer:MAAudioBuffer;
+	@:noCompletion private var __srcMAAudioRingBuffer:MAAudioRingBuffer;
+	#end
+	@:noCompletion private var __srcCustom:Dynamic;
 
 	/**
 		Creates a new, empty `AudioBuffer` instance.
 	**/
 	public function new() {}
+
+	/**
+		Returns whether this `AudioBuffer` is valid or not.
+	**/
+	public function isValid():Bool
+	{
+		#if (js && html5 && lime_howlerjs)
+		return __srcHowl != null;
+		#elseif (lime_cffi && lime_miniaudio && !macro)
+		final validMADataSource:Bool = __srcMADecoder != null || __srcMAAudioBuffer != null || __srcMAAudioRingBuffer != null;
+
+		final validData:Bool = data != null && data.length > 0;
+
+		return validMADataSource || validData;
+		#else
+		return __srcCustom != null;
+		#end
+	}
 
 	/**
 		Disposes of the resources used by this `AudioBuffer`, such as unloading any associated audio data.
@@ -107,6 +130,21 @@ class AudioBuffer
 		{
 			__srcMADecoder.uninit();
 			__srcMADecoder = null;
+		}
+		else if (__srcMAAudioBuffer != null)
+		{
+			__srcMAAudioBuffer.uninit();
+			__srcMAAudioBuffer = null;
+		}
+		else if (__srcMAAudioRingBuffer != null)
+		{
+			__srcMAAudioRingBuffer.uninit();
+			__srcMAAudioRingBuffer = null;
+		}
+		else if (data != null && data.length > 0)
+		{
+			data.buffer = null;
+			data = null;
 		}
 		#end
 	}
@@ -367,7 +405,7 @@ class AudioBuffer
 							Log.error('Unsupported audio buffer format: ${MAHelpers.get_format_name(dataFormat.format)}');
 					}
 
-					if (dataBuffer != null && decoder.read_pcm_frames(cpp.Pointer.ofArray(dataBuffer.buffer.getData()), totalFrames) > 0)
+					if (dataBuffer != null && decoder.read_pcm_frames(Pointer.ofArray(dataBuffer.buffer.getData()), totalFrames) > 0)
 					{
 						decoder.uninit();
 						decoder = null;
@@ -451,26 +489,4 @@ class AudioBuffer
 		}
 	}
 	#end
-
-	@:noCompletion private function get_src():Dynamic
-	{
-		#if (js && html5 && lime_howlerjs)
-		return __srcHowl;
-		#elseif (lime_cffi && lime_miniaudio && !macro)
-		return __srcMADecoder;
-		#else
-		return __srcCustom;
-		#end
-	}
-
-	@:noCompletion private function set_src(value:Dynamic):Dynamic
-	{
-		#if (js && html5 && lime_howlerjs)
-		return __srcHowl = value;
-		#elseif (lime_cffi && lime_miniaudio && !macro)
-		return __srcMADecoder = value;
-		#else
-		return __srcCustom = value;
-		#end
-	}
 }

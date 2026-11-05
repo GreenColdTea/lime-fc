@@ -511,6 +511,8 @@ class NativeApplication
 
 	private function handleTouchEvent():Void
 	{
+		var timestamp:Int64 = Int64.fromFloat(touchEventInfo.timestamp);
+
 		switch (touchEventInfo.type)
 		{
 			case TOUCH_START:
@@ -519,7 +521,7 @@ class NativeApplication
 				if (touch == null)
 				{
 					touch = new Touch(touchEventInfo.x, touchEventInfo.y, touchEventInfo.id, touchEventInfo.dx, touchEventInfo.dy, touchEventInfo.pressure,
-						touchEventInfo.device);
+						touchEventInfo.device, timestamp);
 				}
 				else
 				{
@@ -530,6 +532,7 @@ class NativeApplication
 					touch.dy = touchEventInfo.dy;
 					touch.pressure = touchEventInfo.pressure;
 					touch.device = touchEventInfo.device;
+					touch.timestamp = timestamp;
 				}
 
 				currentTouches.set(touch.id, touch);
@@ -546,6 +549,7 @@ class NativeApplication
 					touch.dx = touchEventInfo.dx;
 					touch.dy = touchEventInfo.dy;
 					touch.pressure = touchEventInfo.pressure;
+					touch.timestamp = timestamp;
 
 					Touch.onEnd.dispatch(touch);
 
@@ -563,6 +567,7 @@ class NativeApplication
 					touch.dx = touchEventInfo.dx;
 					touch.dy = touchEventInfo.dy;
 					touch.pressure = touchEventInfo.pressure;
+					touch.timestamp = timestamp;
 
 					Touch.onMove.dispatch(touch);
 				}
@@ -1094,8 +1099,10 @@ private enum abstract TextEventType(Int)
 	public var type:TouchEventType;
 	public var x:Float;
 	public var y:Float;
+	public var timestamp:Float;
 
-	public function new(type:TouchEventType = null, x:Float = 0, y:Float = 0, id:Int = 0, dx:Float = 0, dy:Float = 0, pressure:Float = 0, device:Int = 0)
+	public function new(type:TouchEventType = null, x:Float = 0, y:Float = 0, id:Int = 0, dx:Float = 0, dy:Float = 0, pressure:Float = 0, device:Int = 0,
+			timestamp:Float = 0)
 	{
 		this.type = type;
 		this.x = x;
@@ -1105,11 +1112,12 @@ private enum abstract TextEventType(Int)
 		this.dy = dy;
 		this.pressure = pressure;
 		this.device = device;
+		this.timestamp = timestamp;
 	}
 
 	public function clone():TouchEventInfo
 	{
-		return new TouchEventInfo(type, x, y, id, dx, dy, pressure, device);
+		return new TouchEventInfo(type, x, y, id, dx, dy, pressure, device, timestamp);
 	}
 }
 
